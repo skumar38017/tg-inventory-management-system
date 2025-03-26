@@ -137,14 +137,16 @@ class ToEventWindow:
         # Create a canvas and scrollbars for the table
         self.canvas = tk.Canvas(self.table_frame)
         
-        # Vertical scrollbar
+        # Vertical scrollbar - fixed to scroll top-to-bottom
         self.v_scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.canvas.yview)
-        
-        # Horizontal scrollbar (new)
-        self.h_scrollbar = ttk.Scrollbar(self.table_frame, orient="horizontal", command=self.canvas.xview)
-        
-        self.scrollable_frame = tk.Frame(self.canvas)
+        self.v_scrollbar.pack(side="right", fill="y")
 
+        # Horizontal scrollbar
+        self.h_scrollbar = ttk.Scrollbar(self.table_frame, orient="horizontal", command=self.canvas.xview)
+        self.h_scrollbar.pack(side="bottom", fill="x")
+
+        # Create the scrollable frame
+        self.scrollable_frame = tk.Frame(self.canvas)
         self.scrollable_frame.bind(
             "<Configure>",
             lambda e: self.canvas.configure(
@@ -152,8 +154,13 @@ class ToEventWindow:
             )
         )
 
+        # Create window in canvas - this is the key change for scroll direction
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        # Make sure the canvas starts at the top
+        self.canvas.yview_moveto(0)
 
         # Table headers
         self.headers = [
@@ -180,11 +187,6 @@ class ToEventWindow:
                 entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
                 row_entries.append(entry)
             self.table_entries.append(row_entries)
-
-        # Pack the widgets with horizontal scrollbar at bottom
-        self.h_scrollbar.pack(side="bottom", fill="x")
-        self.v_scrollbar.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
 
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
