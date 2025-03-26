@@ -1,0 +1,9 @@
+uvicorn backend.app.main:app --reload
+
+python frontend/app/ui.py
+
+
+Run the Frontend:
+
+python -m frontend.app
+python -m frontend.app.ui
