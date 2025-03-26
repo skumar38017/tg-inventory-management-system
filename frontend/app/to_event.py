@@ -12,6 +12,10 @@ class ToEventWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs - To Event")
 
+        # Track wrap state
+        self.is_wrapped = False
+        self.original_column_widths = []
+        
         # Hide parent window (optional)
         self.parent.withdraw()
         
@@ -125,59 +129,73 @@ class ToEventWindow:
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
 
         # Inventory table in row 5
-        table_frame = tk.Frame(self.window)
-        table_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
-        table_frame.grid_rowconfigure(0, weight=1)
-        table_frame.grid_columnconfigure(0, weight=1)
+        self.table_frame = tk.Frame(self.window)
+        self.table_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+        self.table_frame.grid_rowconfigure(0, weight=1)
+        self.table_frame.grid_columnconfigure(0, weight=1)
 
-        # Create a canvas and scrollbar for the table
-        canvas = tk.Canvas(table_frame)
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
+        # Create a canvas and scrollbars for the table
+        self.canvas = tk.Canvas(self.table_frame)
+        
+        # Vertical scrollbar
+        self.v_scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.canvas.yview)
+        
+        # Horizontal scrollbar (new)
+        self.h_scrollbar = ttk.Scrollbar(self.table_frame, orient="horizontal", command=self.canvas.xview)
+        
+        self.scrollable_frame = tk.Frame(self.canvas)
 
-        scrollable_frame.bind(
+        self.scrollable_frame.bind(
             "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
             )
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
 
         # Table headers
-        headers = [
+        self.headers = [
             "Zone/Activity", "Sr. No.", "Inventory", "Description/Specifications",
             "Quantity", "Comments", "Total", "Units", 
             "Per Unit Power Consumption (Watt/H)", "Total Power Consumption (Watt)",
             "Status (purchased/not purchased)", "POC"
         ]
 
-        for col, header in enumerate(headers):
-            tk.Label(scrollable_frame, text=header, font=('Helvetica', 9, 'bold'),
+        # Store original column widths
+        self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
+        
+        for col, header in enumerate(self.headers):
+            tk.Label(self.scrollable_frame, text=header, font=('Helvetica', 9, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
 
         # Create entry fields for each column
         self.table_entries = []
         for row in range(1, 6):  # Create 5 empty rows
             row_entries = []
-            for col in range(len(headers)):
-                if col == 4 or col == 6 or col == 7 or col == 8 or col == 9:  # Numeric fields
-                    entry = tk.Entry(scrollable_frame, font=('Helvetica', 9), width=15)
-                else:
-                    entry = tk.Entry(scrollable_frame, font=('Helvetica', 9), width=20)
+            for col in range(len(self.headers)):
+                entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
+                               width=self.original_column_widths[col])
                 entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
                 row_entries.append(entry)
             self.table_entries.append(row_entries)
 
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Pack the widgets with horizontal scrollbar at bottom
+        self.h_scrollbar.pack(side="bottom", fill="x")
+        self.v_scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
 
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
         button_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=10)
 
-        # Remove row button (added before Add Row)
+        # Wrap button to adjust columns (toggle)
+        self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
+                                font=('Helvetica', 10, 'bold'))
+        self.wrap_btn.pack(side=tk.LEFT, padx=5)
+
+        # Remove row button
         remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.remove_table_row,
                                  font=('Helvetica', 10, 'bold'))
         remove_row_btn.pack(side=tk.LEFT, padx=5)
@@ -211,25 +229,62 @@ class ToEventWindow:
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
 
+    def toggle_wrap(self):
+        """Toggle between wrapped and original column sizes"""
+        if not self.is_wrapped:
+            self.adjust_columns()
+            self.wrap_btn.config(text="Unwrap")
+            self.is_wrapped = True
+        else:
+            self.reset_columns()
+            self.wrap_btn.config(text="Wrap")
+            self.is_wrapped = False
+
+    def adjust_columns(self):
+        """Adjust column widths based on content"""
+        # Calculate max width for each column
+        col_widths = [len(header) for header in self.headers]
+        
+        # Check all entries in each column
+        for row in self.table_entries:
+            for col, entry in enumerate(row):
+                content = entry.get()
+                if content:
+                    col_widths[col] = max(col_widths[col], len(content))
+        
+        # Apply the new widths
+        for col, width in enumerate(col_widths):
+            # Add some padding and limit max width
+            adjusted_width = min(width + 5, 50)  # Max width of 50 characters
+            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width * 8)  # Approximate pixel width
+            
+        # Update the canvas scroll region
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.canvas.xview_moveto(0)  # Reset horizontal scroll to left
+
+    def reset_columns(self):
+        """Reset columns to their original widths"""
+        for col, width in enumerate(self.original_column_widths):
+            self.scrollable_frame.grid_columnconfigure(col, minsize=width * 10)  # Reset to original width
+            
+        # Update the canvas scroll region
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.canvas.xview_moveto(0)  # Reset horizontal scroll to left
+
     def add_table_row(self):
         """Add a new row to the table"""
         current_rows = len(self.table_entries)
-        headers = [
-            "Zone/Activity", "Sr. No.", "Inventory", "Description/Specifications",
-            "Quantity", "Comments", "Total", "Units", 
-            "Per Unit Power Consumption (Watt/H)", "Total Power Consumption (Watt)",
-            "Status (purchased/not purchased)", "POC"
-        ]
         
         row_entries = []
-        for col in range(len(headers)):
-            if col == 4 or col == 6 or col == 7 or col == 8 or col == 9:  # Numeric fields
-                entry = tk.Entry(self.table_entries[0][0].master, font=('Helvetica', 9), width=15)
-            else:
-                entry = tk.Entry(self.table_entries[0][0].master, font=('Helvetica', 9), width=20)
+        for col in range(len(self.headers)):
+            entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
+                           width=self.original_column_widths[col])
             entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
             row_entries.append(entry)
         self.table_entries.append(row_entries)
+        
+        # Update the canvas scroll region
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def remove_table_row(self):
         """Remove the last row from the table"""
@@ -240,6 +295,9 @@ class ToEventWindow:
         last_row = self.table_entries.pop()
         for entry in last_row:
             entry.destroy()
+        
+        # Update the canvas scroll region
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def submit_form(self):
         """Handle form submission"""
