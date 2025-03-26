@@ -1,3 +1,7 @@
+#  frontend/app/from_inventory.py
+
+# frontend/app/to_event.py
+
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
@@ -5,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class ToEventWindow:
+class FromEventWindow:
     def __init__(self, parent):
         self.parent = parent
         self.window = tk.Toplevel(parent)
@@ -27,50 +31,40 @@ class ToEventWindow:
 
     def setup_ui(self):
         """Set up all UI elements"""
-        # Header frame with no padding at top
+        # Header
         header_frame = tk.Frame(self.window)
-        header_frame.pack(fill=tk.X, padx=10, pady=(0, 5))  # pady=(top,bottom)
+        header_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        # Configure grid for header - 3 columns
-        header_frame.grid_columnconfigure(0, weight=1)  # Left spacer
-        header_frame.grid_columnconfigure(1, weight=0)  # Center for clock (no weight)
-        header_frame.grid_columnconfigure(2, weight=1)  # Right for company info
-        
-        # Clock in absolute center at top (touching top margin)
-        self.clock_label = tk.Label(header_frame, 
-                                  font=('Helvetica', 8),
-                                  padx=0, pady=0)
-        self.clock_label.grid(row=0, column=1, sticky='n')
+        # Clock
+        self.clock_label = tk.Label(header_frame, font=('Helvetica', 8))
+        self.clock_label.pack(side=tk.LEFT)
         self.update_clock()
         
-        # Company info in top-right corner
-        company_info = """Tagglabs Experiential Pvt. Ltd.
-Sector 49, Gurugram, Haryana 122018
-201, Second Floor, Eros City Square Mall
-Eros City Square
-098214 43358"""
+        # Company info
+        company_frame = tk.Frame(header_frame)
+        company_frame.pack(side=tk.RIGHT)
         
-        company_label = tk.Label(header_frame, 
-                              text=company_info,
-                              font=('Helvetica', 7),
-                              justify=tk.RIGHT,
-                              padx=0, pady=0)
-        company_label.grid(row=0, column=2, sticky='ne')  # northeast corner
+        company_info = """Tagglabs Experiential Pvt. Ltd.
+Sector 49, Gurugram, Haryana 122018"""
+        
+        tk.Label(company_frame, text=company_info, 
+                font=('Helvetica', 7), justify=tk.RIGHT).pack()
         
         # Main content
         content_frame = tk.Frame(self.window)
         content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         tk.Label(content_frame, 
-               text="Items Going To Event",
-               font=('Helvetica', 16, 'bold')).pack()
+                text="Items Going To Event",
+                font=('Helvetica', 16, 'bold')).pack()
+        
+        # Add your specific To Event content here
         
         # Bottom buttons
         button_frame = tk.Frame(self.window)
         button_frame.pack(fill=tk.X, padx=10, pady=10)
         
-        tk.Button(button_frame, 
-                text="Return to Main", 
+        tk.Button(button_frame, text="Return to Main", 
                 command=self.on_close,
                 font=('Helvetica', 10)).pack(side=tk.RIGHT)
 

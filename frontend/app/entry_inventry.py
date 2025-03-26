@@ -1,12 +1,8 @@
-# frontend/app/entry_inventry.py
-
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
-import time
 import platform
 import logging
-import traceback
 
 from .inventory import fetch_inventory, add_inventory
 from .to_event import ToEventWindow
@@ -82,7 +78,7 @@ def configure_responsive_grid():
     company_label.config(font=('Helvetica', 7))
 
 # ----------------------------------------------------------------------------
-# Chlid window functions
+# Child window functions
 def open_to_event():
     try:
         logger.info("Opening To Event window")
@@ -92,6 +88,7 @@ def open_to_event():
         logger.error(f"Failed to open To Event window: {e}")
         messagebox.showerror("Error", "Could not open To Event window")
 # -----------------------------------------------------------------------------
+
 # Create the main window
 root = tk.Tk()
 root.title("Tagglabs's Inventory")
@@ -113,31 +110,30 @@ except tk.TclError:
 
 # Header section
 header_frame = tk.Frame(root)
-header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-header_frame.grid_columnconfigure(0, weight=1) # Make header expand horizontally
+header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)  
 
+# Clock in absolute center at top (touching top margin)
 clock_label = tk.Label(header_frame, font=('Helvetica', 8))
-clock_label.pack(side='left', padx=(0, 10), pady=(0, 5))
+clock_label.grid(row=0, column=0, sticky='n', pady=(0,0))  # Centered at top with no padding
+update_clock()
 
-company_frame = tk.Frame(header_frame)
-company_frame.pack(side='right', anchor='e')
-
+# Company info in row 1 (top-right)
 company_info = """Tagglabs Experiential Pvt. Ltd.
 Sector 49, Gurugram, Haryana 122018
 201, Second Floor, Eros City Square Mall
 Eros City Square
 098214 43358"""
 
-company_label = tk.Label(company_frame,
+company_label = tk.Label(header_frame,
                         text=company_info,
                         font=('Helvetica', 7),
                         justify=tk.RIGHT)
-company_label.pack()
+company_label.grid(row=1, column=0, sticky='ne', pady=(0,5))  # northeast corner
 
 # Form with horizontal scrolling
 form_container = tk.Frame(root)
-form_container.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-form_container.grid_columnconfigure(0, weight=1) # Make form expand horizontally
+form_container.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+form_container.grid_columnconfigure(0, weight=1)  # Make form expand horizontally
 
 canvas = tk.Canvas(form_container)
 scrollbar = tk.Scrollbar(form_container, orient="horizontal", command=canvas.xview)
@@ -179,7 +175,7 @@ for col, field in enumerate(fields):
     if field in ['On Rent', 'On Event', 'In Office', 'In Warehouse']:
         entries[field].grid(row=1, column=col, padx=5, pady=2)
     else:
-        entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='ew') # Make entry expand horizontally
+        entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='ew')  # Make entry expand horizontally
 
 # Update scroll region and set initial position to far left
 form_frame.update_idletasks()
@@ -196,11 +192,11 @@ form_frame.bind("<Configure>", on_frame_configure)
 # Buttons
 button_frame = tk.Frame(root)
 button_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
-button_frame.grid_columnconfigure(0, weight=1) # Make button frame expand horizontally
+button_frame.grid_columnconfigure(0, weight=1)  # Make button frame expand horizontally
 
 add_button = tk.Button(button_frame, text="Add Item", command=add_inventory_item,
                        font=('Helvetica', 10, 'bold'))
-add_button.pack(anchor='w', padx=10)
+add_button.pack(expand=True, pady=5)
 
 # List display with increased space
 list_frame = tk.Frame(root)
@@ -262,6 +258,10 @@ quit_button = tk.Button(quit_frame, text="Quit", command=quit_application,
 quit_button.pack()
 
 # Grid configuration
+# Configure header grid with 2 rows
+header_frame.grid_rowconfigure(0, weight=1)  # Clock row
+header_frame.grid_rowconfigure(1, weight=1)  # Company info row
+header_frame.grid_columnconfigure(0, weight=1)  # Make header expand horizontally
 root.grid_rowconfigure(0, weight=0)
 root.grid_rowconfigure(1, weight=0)
 root.grid_rowconfigure(2, weight=0)
