@@ -173,17 +173,34 @@ add_button = tk.Button(button_frame, text="Add Item", command=add_inventory_item
                       font=('Helvetica', 10, 'bold'))
 add_button.pack()
 
-# List display
+# List display with increased space
 list_frame = tk.Frame(root)
 list_frame.grid(row=3, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
-list_frame.grid_columnconfigure(0, weight=1)
+list_frame.grid_rowconfigure(0, weight=1)  # Allow vertical expansion
+list_frame.grid_columnconfigure(0, weight=1)  # Allow horizontal expansion
 
-inventory_listbox = tk.Listbox(list_frame)
+# Increase the height of the listbox and configure fonts
+inventory_listbox = tk.Listbox(
+    list_frame,
+    height=15,  # Increased from default 10
+    font=('Helvetica', 9),  # Adjust font size as needed
+    activestyle='none',  # Cleaner look
+    selectbackground='#4a6984',  # Better selection color
+    selectforeground='white'
+)
 inventory_listbox.grid(row=0, column=0, sticky="nsew")
 
-list_scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=inventory_listbox.yview)
+# Configure scrollbar
+list_scrollbar = tk.Scrollbar(
+    list_frame, 
+    orient="vertical", 
+    command=inventory_listbox.yview
+)
 list_scrollbar.grid(row=0, column=1, sticky="ns")
 inventory_listbox.config(yscrollcommand=list_scrollbar.set)
+
+# Adjust grid weights to give more space to the list
+root.grid_rowconfigure(3, weight=3)  # Increased from weight=1 to give more space to list
 
 # Quit button
 quit_frame = tk.Frame(root)
