@@ -1,0 +1,31 @@
+office_inventory_management/
+│
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── routers/
+│   │   │   ├── __init__.py
+│   │   │   ├── inventory.py
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   ├── inventory.py
+│   │   ├── schemas/
+│   │   │   ├── __init__.py
+│   │   │   ├── inventory.py
+│   │   ├── crud/
+│   │   │   ├── __init__.py
+│   │   │   ├── inventory.py
+│   │   ├── database.py
+│   │   ├── dependencies.py
+│   │   ├── config.py
+│   │
+│   ├── tests/
+│   │   ├── __init__.py
+│   │   ├── test_inventory.py
+│   │
+│   ├── requirements.txt
+│   ├── .env
+│
+├── .gitignore
+├── README.md
