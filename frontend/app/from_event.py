@@ -1,4 +1,4 @@
-#  frontend/app/to_event.py
+#  frontend/app/from_event.py
 
 import tkinter as tk
 from tkinter import messagebox
@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class ToEventWindow:
+class FromEventWindow:
     def __init__(self, parent):
         self.parent = parent
         self.window = tk.Toplevel(parent)
