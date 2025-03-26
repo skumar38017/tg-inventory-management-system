@@ -5,8 +5,23 @@ from tkinter import messagebox
 from datetime import datetime
 import time
 import platform
+import logging
+import traceback
 
 from .inventory import fetch_inventory, add_inventory
+from .to_event import ToEventWindow
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('inventory_system.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 def clear_fields():
     for entry in entries.values():
@@ -56,16 +71,27 @@ def quit_application():
 def configure_responsive_grid():
     screen_width = root.winfo_screenwidth()
     font_size = max(6, screen_width // 100)
-    
+
     for label in labels.values():
         label.config(font=('Helvetica', font_size), anchor='w')
     for entry in entries.values():
         if isinstance(entry, tk.Entry):
             entry.config(font=('Helvetica', font_size), width=12)
-    
+
     clock_label.config(font=('Helvetica', 8))
     company_label.config(font=('Helvetica', 7))
 
+# ----------------------------------------------------------------------------
+# Chlid window functions
+def open_to_event():
+    try:
+        logger.info("Opening To Event window")
+        # Create a new instance of ToEventWindow
+        to_event_window = ToEventWindow(root)
+    except Exception as e:
+        logger.error(f"Failed to open To Event window: {e}")
+        messagebox.showerror("Error", "Could not open To Event window")
+# -----------------------------------------------------------------------------
 # Create the main window
 root = tk.Tk()
 root.title("Tagglabs's Inventory")
@@ -81,19 +107,20 @@ except tk.TclError:
             root.attributes('-fullscreen', True)
     except:
         root.geometry("{0}x{1}+0+0".format(
-            root.winfo_screenwidth(), 
+            root.winfo_screenwidth(),
             root.winfo_screenheight()
         ))
 
 # Header section
 header_frame = tk.Frame(root)
-header_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+header_frame.grid_columnconfigure(0, weight=1) # Make header expand horizontally
 
 clock_label = tk.Label(header_frame, font=('Helvetica', 8))
-clock_label.pack(pady=(0, 5))
+clock_label.pack(side='left', padx=(0, 10), pady=(0, 5))
 
 company_frame = tk.Frame(header_frame)
-company_frame.pack(anchor='e')
+company_frame.pack(side='right', anchor='e')
 
 company_info = """Tagglabs Experiential Pvt. Ltd.
 Sector 49, Gurugram, Haryana 122018
@@ -101,7 +128,7 @@ Sector 49, Gurugram, Haryana 122018
 Eros City Square
 098214 43358"""
 
-company_label = tk.Label(company_frame, 
+company_label = tk.Label(company_frame,
                         text=company_info,
                         font=('Helvetica', 7),
                         justify=tk.RIGHT)
@@ -109,7 +136,8 @@ company_label.pack()
 
 # Form with horizontal scrolling
 form_container = tk.Frame(root)
-form_container.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+form_container.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+form_container.grid_columnconfigure(0, weight=1) # Make form expand horizontally
 
 canvas = tk.Canvas(form_container)
 scrollbar = tk.Scrollbar(form_container, orient="horizontal", command=canvas.xview)
@@ -122,9 +150,9 @@ canvas.create_window((0, 0), window=form_frame, anchor="nw")
 
 # Field definitions in exact requested sequence
 fields = [
-    'S No', 'Product ID', 'Name', 'Qty', 
-    'Purchase', 'Purchase Price', 'On Rent', 
-    'Vendor Name', 'Total Rent', 'On Event', 
+    'S No', 'Product ID', 'Name', 'Qty',
+    'Purchase', 'Purchase Price', 'On Rent',
+    'Vendor Name', 'Total Rent', 'On Event',
     'In Office', 'In Warehouse'
 ]
 
@@ -136,22 +164,22 @@ checkbox_vars = {}
 for col, field in enumerate(fields):
     # Create label (left-aligned)
     label_text = field.replace('_', ' ').title()
-    labels[field] = tk.Label(form_frame, text=label_text, font=('Helvetica', 15, 'bold'), anchor='w')
-    
+    labels[field] = tk.Label(form_frame, text=label_text, font=('Helvetica', 10), anchor='w')
+
     # Create input widget
     if field in ['On Rent', 'On Event', 'In Office', 'In Warehouse']:
         checkbox_vars[field] = tk.BooleanVar()
         entries[field] = tk.Checkbutton(form_frame, variable=checkbox_vars[field])
     else:
         entries[field] = tk.Entry(form_frame, width=12)
-    
+
     # Grid placement with proper alignment
     labels[field].grid(row=0, column=col, padx=5, pady=2, sticky='w')
-    
+
     if field in ['On Rent', 'On Event', 'In Office', 'In Warehouse']:
         entries[field].grid(row=1, column=col, padx=5, pady=2)
     else:
-        entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='w')
+        entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='ew') # Make entry expand horizontally
 
 # Update scroll region and set initial position to far left
 form_frame.update_idletasks()
@@ -167,11 +195,12 @@ form_frame.bind("<Configure>", on_frame_configure)
 
 # Buttons
 button_frame = tk.Frame(root)
-button_frame.grid(row=2, column=0, columnspan=2, sticky="nsew", pady=10)
+button_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
+button_frame.grid_columnconfigure(0, weight=1) # Make button frame expand horizontally
 
-add_button = tk.Button(button_frame, text="Add Item", command=add_inventory_item, 
-                      font=('Helvetica', 10, 'bold'))
-add_button.pack()
+add_button = tk.Button(button_frame, text="Add Item", command=add_inventory_item,
+                       font=('Helvetica', 10, 'bold'))
+add_button.pack(anchor='w', padx=10)
 
 # List display with increased space
 list_frame = tk.Frame(root)
@@ -192,8 +221,8 @@ inventory_listbox.grid(row=0, column=0, sticky="nsew")
 
 # Configure scrollbar
 list_scrollbar = tk.Scrollbar(
-    list_frame, 
-    orient="vertical", 
+    list_frame,
+    orient="vertical",
     command=inventory_listbox.yview
 )
 list_scrollbar.grid(row=0, column=1, sticky="ns")
@@ -202,12 +231,34 @@ inventory_listbox.config(yscrollcommand=list_scrollbar.set)
 # Adjust grid weights to give more space to the list
 root.grid_rowconfigure(3, weight=3)  # Increased from weight=1 to give more space to list
 
+# Bottom-left corner buttons
+bottom_left_frame = tk.Frame(root)
+bottom_left_frame.grid(row=4, column=0, sticky='sw', padx=10, pady=10)
+
+# Create the buttons
+buttons = [
+    ("To Event", open_to_event),
+    ("From Event", None),
+    ("Assigned", None),
+    ("Damage/Waste/Not Working", None)
+]
+
+for text, command in buttons:
+    btn = tk.Button(
+        bottom_left_frame,
+        text=text,
+        command=command,
+        font=('Helvetica', 9, 'bold'),
+        width=30
+    )
+    btn.pack(side='left', padx=5)
+
 # Quit button
 quit_frame = tk.Frame(root)
 quit_frame.grid(row=4, column=1, sticky='se', padx=10, pady=10)
 
-quit_button = tk.Button(quit_frame, text="Quit", command=quit_application, 
-                       font=('Helvetica', 10, 'bold'), width=10)
+quit_button = tk.Button(quit_frame, text="Quit", command=quit_application,
+                        font=('Helvetica', 10, 'bold'), width=10)
 quit_button.pack()
 
 # Grid configuration
