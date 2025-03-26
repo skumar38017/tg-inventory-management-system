@@ -1,6 +1,6 @@
 #  frontend/app/__main__.py
 
-from .ui import root
+from .entry_inventry import root
 
 if __name__ == "__main__":
     root.mainloop()
