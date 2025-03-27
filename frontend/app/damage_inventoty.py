@@ -190,7 +190,7 @@ class DamageWindow:
         
         # Create headers (row 0)
         for col, header in enumerate(self.headers):
-            tk.Label(self.scrollable_input_frame, text=header, font=('Helvetica', 9, 'bold'),
+            tk.Label(self.scrollable_input_frame, text=header, font=('Helvetica', 15, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
             # Set initial column widths
             self.scrollable_input_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col] * 8)
@@ -199,7 +199,7 @@ class DamageWindow:
         self.table_entries = []
         row_entries = []
         for col in range(len(self.headers)):
-            entry = tk.Entry(self.scrollable_input_frame, font=('Helvetica', 9), 
+            entry = tk.Entry(self.scrollable_input_frame, font=('Helvetica', 15), 
                            width=self.original_column_widths[col])
             entry.grid(row=1, column=col, sticky="ew", padx=2, pady=2)
             row_entries.append(entry)
@@ -207,7 +207,7 @@ class DamageWindow:
 
         # Separator between input and display areas
         separator = ttk.Separator(content_frame, orient='horizontal')
-        separator.grid(row=1, column=0, sticky="ew", pady=5)
+        separator.grid(row=1, column=0, sticky="ew", pady=2)
 
         # Display frames (bottom half)
         display_frame = tk.Frame(content_frame)
@@ -322,14 +322,14 @@ class DamageWindow:
         
         # Create headers
         for col, header in enumerate(self.headers):
-            tk.Label(self.search_results_inner_frame, text=header, font=('Helvetica', 9, 'bold'),
+            tk.Label(self.search_results_inner_frame, text=header, font=('Helvetica', 15, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
             self.search_results_inner_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col] * 8)
         
         # Display results
         for row_idx, item in enumerate(results, start=1):
             for col, (key, value) in enumerate(item.items()):
-                tk.Label(self.search_results_inner_frame, text=value, font=('Helvetica', 9),
+                tk.Label(self.search_results_inner_frame, text=value, font=('Helvetica', 15),
                        borderwidth=1, relief="solid", padx=5, pady=2).grid(row=row_idx, column=col, sticky="ew")
 
     def display_submission_history(self):
@@ -340,7 +340,7 @@ class DamageWindow:
         
         # Create headers
         for col, header in enumerate(self.headers):
-            tk.Label(self.history_inner_frame, text=header, font=('Helvetica', 9, 'bold'),
+            tk.Label(self.history_inner_frame, text=header, font=('Helvetica', 15, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
             self.history_inner_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col] * 8)
         
@@ -348,7 +348,7 @@ class DamageWindow:
         for row_idx, entry in enumerate(self.submitted_data, start=1):
             for item in entry['inventory_items']:
                 for col, (key, value) in enumerate(item.items()):
-                    tk.Label(self.history_inner_frame, text=value, font=('Helvetica', 9),
+                    tk.Label(self.history_inner_frame, text=value, font=('Helvetica', 15),
                            borderwidth=1, relief="solid", padx=5, pady=2).grid(row=row_idx, column=col, sticky="ew")
 
     def search_inventory(self):
