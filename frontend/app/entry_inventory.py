@@ -1,3 +1,4 @@
+
 # frontend/app/entry_inventory.py
 
 import tkinter as tk
@@ -6,7 +7,7 @@ from datetime import datetime
 import platform
 import logging
 
-from backend.app.routers.inventory import fetch_inventory, add_inventory
+from backend.app.routers.inventory import fetch_inventory, add_inventory, search_inventory
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from .assign_inventory import AssignInventoryWindow
@@ -29,6 +30,9 @@ root = None
 inventory_listbox = None
 added_items_listbox = None
 search_results_listbox = None
+search_inventory_id_entry = None
+search_project_id_entry = None
+search_product_id_entry = None
 
 def clear_fields():
     """Clear all input fields and reset checkboxes"""
@@ -73,6 +77,39 @@ def add_to_added_items_list(item):
         f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item.get('Returned Date', '')} | "
         f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
         f"{'Yes' if item['In Warehouse'] else 'No'} | {item.get('Inventory Barcode', '')}")
+
+def perform_search():
+    """Perform inventory search based on search criteria"""
+    inventory_id = search_inventory_id_entry.get().strip()
+    project_id = search_project_id_entry.get().strip()
+    product_id = search_product_id_entry.get().strip()
+    
+    search_results_listbox.delete(0, tk.END)
+    
+    try:
+        results = search_inventory(
+            inventory_id=inventory_id if inventory_id else None,
+            project_id=project_id if project_id else None,
+            product_id=product_id if product_id else None
+        )
+        
+        if not results:
+            messagebox.showinfo("Search Results", "No matching items found")
+            return
+            
+        for item in results:
+            search_results_listbox.insert(tk.END, 
+                f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
+                f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
+                f"{item['Purchase Date']} | {item['Purchase Amount']} | {'Yes' if item['On Rent'] else 'No'} | "
+                f"{item['Vendor Name']} | {item['Total Rent']} | "
+                f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item.get('Returned Date', '')} | "
+                f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
+                f"{'Yes' if item['In Warehouse'] else 'No'} | {item.get('Inventory Barcode', '')}")
+                
+    except Exception as e:
+        logger.error(f"Search failed: {e}")
+        messagebox.showerror("Search Error", "Failed to perform search")
 
 def add_inventory_item():
     """Add a new inventory item based on form data"""
@@ -352,6 +389,34 @@ def create_list_frames(root):
     search_frame = tk.Frame(notebook)
     notebook.add(search_frame, text="Search Results")
     
+    # Search fields
+    search_fields_frame = tk.Frame(search_frame)
+    search_fields_frame.pack(fill="x", pady=5)
+    
+    global search_inventory_id_entry, search_project_id_entry, search_product_id_entry
+    
+    tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=5)
+    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=20)
+    search_inventory_id_entry.grid(row=0, column=1, sticky='w', padx=5)
+    
+    tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=5)
+    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=20)
+    search_project_id_entry.grid(row=0, column=3, sticky='w', padx=5)
+    
+    tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 9)).grid(row=0, column=4, sticky='e', padx=5)
+    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=20)
+    search_product_id_entry.grid(row=0, column=5, sticky='w', padx=5)
+
+    # Search button
+    search_btn = tk.Button(search_fields_frame, text="Search", command=perform_search, 
+                         font=('Helvetica', 9, 'bold'))
+    search_btn.grid(row=0, column=6, sticky='e', padx=5)
+
+    # Separator line
+    separator = ttk.Separator(search_frame, orient='horizontal')
+    separator.pack(fill="x", pady=5)
+    
+    # Search results listbox
     global search_results_listbox
     search_results_listbox = tk.Listbox(
         search_frame,
