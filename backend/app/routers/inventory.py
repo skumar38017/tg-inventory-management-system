@@ -26,3 +26,16 @@ def add_inventory(item):
             messagebox.showerror("Error", "Failed to add item")
     except requests.exceptions.RequestException as e:
         messagebox.showerror("Error", f"Network error: {e}")
+
+# Function to Search for an inventory item
+def search_inventory(query):
+    try:
+        response = requests.get(f"http://127.0.0.1:8000/inventory/?query={query}")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            messagebox.showerror("Error", "Failed to search for item")
+            return []
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Error", f"Network error: {e}")
+        return []
