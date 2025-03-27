@@ -6,11 +6,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class FromEventWindow:
+class AssignInventoryWindow:
     def __init__(self, parent):
         self.parent = parent
         self.window = tk.Toplevel(parent)
-        self.window.title("Tagglabs's Inventory - Return From Event")
+        self.window.title("Tagglabs's Inventory - Assign Inventory To Employee")
 
         # Track wrap state
         self.is_wrapped = False
@@ -90,7 +90,7 @@ class FromEventWindow:
         
         # Centered inventory list title
         tk.Label(title_frame, 
-               text="INVENTORY LIST",
+               text="ASSIGN INVENTORY TO EMPLOYEE",
                font=('Helvetica', 12, 'bold')).pack()
 
         # Information fields in row 3
@@ -98,95 +98,92 @@ class FromEventWindow:
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
         # Employee Name and Location
-        tk.Label(info_frame, text="Employee Name", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=5)
-        self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.employee_name.grid(row=0, column=1, sticky='w', padx=5)
+        tk.Label(info_frame, text="Inventory ID", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=5)
+        self.inventory_id = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
+        self.inventory_id.grid(row=0, column=1, sticky='w', padx=5)
         
-        tk.Label(info_frame, text="Location", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=5)
-        self.location = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.location.grid(row=0, column=3, sticky='w', padx=5)
+        tk.Label(info_frame, text="Project ID", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=5)
+        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
+        self.project_id.grid(row=0, column=3, sticky='w', padx=5)
         
         # Client Name and Setup Date
-        tk.Label(info_frame, text="Client Name", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=5)
-        self.client_name = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.client_name.grid(row=1, column=1, sticky='w', padx=5)
-        
-        tk.Label(info_frame, text="Setup Date", font=('Helvetica', 9)).grid(row=1, column=2, sticky='e', padx=5)
-        self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.setup_date.grid(row=1, column=3, sticky='w', padx=5)
-        
-        # Project Name and Event Date
-        tk.Label(info_frame, text="Project Name", font=('Helvetica', 9)).grid(row=2, column=0, sticky='e', padx=5)
-        self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.project_name.grid(row=2, column=1, sticky='w', padx=5)
-        
-        tk.Label(info_frame, text="Event Date", font=('Helvetica', 9)).grid(row=2, column=2, sticky='e', padx=5)
-        self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.event_date.grid(row=2, column=3, sticky='w', padx=5)
+        tk.Label(info_frame, text="Product ID", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=5)
+        self.product_id = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
+        self.product_id.grid(row=1, column=1, sticky='w', padx=5)
+                
+        #  add Search button
+        search_btn = tk.Button(info_frame, text="Search", command=self.search_product)
+        search_btn.grid(row=1, column=2, sticky='e', padx=5)
         
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
 
-        # Inventory table in row 5
-        self.table_frame = tk.Frame(self.window)
-        self.table_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
-        self.table_frame.grid_rowconfigure(0, weight=1)
-        self.table_frame.grid_columnconfigure(0, weight=1)
-
-        # Create a canvas and scrollbars for the table
-        self.canvas = tk.Canvas(self.table_frame)
+        # Inventory table in row 5 - using a container frame
+        self.table_container = tk.Frame(self.window)
+        self.table_container.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
         
-        # Vertical scrollbar - fixed to scroll top-to-bottom
-        self.v_scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.canvas.yview)
+        # Create header frame (fixed at top)
+        self.header_frame = tk.Frame(self.table_container)
+        self.header_frame.pack(side="top", fill="x")
+
+        # Create canvas and scrollbars for content
+        self.canvas = tk.Canvas(self.table_container)
+        self.v_scrollbar = ttk.Scrollbar(self.table_container, orient="vertical", command=self.canvas.yview)
+        self.h_scrollbar = ttk.Scrollbar(self.table_container, orient="horizontal", command=self.canvas.xview)
+
+        # Pack the widgets
         self.v_scrollbar.pack(side="right", fill="y")
-
-        # Horizontal scrollbar
-        self.h_scrollbar = ttk.Scrollbar(self.table_frame, orient="horizontal", command=self.canvas.xview)
         self.h_scrollbar.pack(side="bottom", fill="x")
-
-        # Create the scrollable frame
-        self.scrollable_frame = tk.Frame(self.canvas)
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
-
-        # Create window in canvas - this is the key change for scroll direction
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
         self.canvas.pack(side="left", fill="both", expand=True)
 
-        # Make sure the canvas starts at the top
-        self.canvas.yview_moveto(0)
+        # Create scrollable frame
+        self.scrollable_frame = tk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        # Configure scrolling
+        self.scrollable_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
 
         # Table headers
         self.headers = [
-            "Zone/Activity", "Sr. No.", "Inventory", "Description/Specifications",
-            "Quantity", "Comments", "Total", "Units", 
-            "Per Unit Power Consumption (Watt/H)", "Total Power Consumption (Watt)",
-            "Status (purchased/not purchased)", "POC"
+            "Assigned To", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID","ProjectID", "Description/Specifications",
+            "Qty","Status", "Purpose/Reason", "Assigned Date", "Submission Date", "Assigned By", 
+            "Comments"
         ]
 
         # Store original column widths
-        self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
+        self.original_column_widths = [15, 20, 10, 15, 15, 25, 10, 15, 20, 15, 15, 15, 20]
         
+        # Create headers in header frame
         for col, header in enumerate(self.headers):
-            tk.Label(self.scrollable_frame, text=header, font=('Helvetica', 9, 'bold'),
+            tk.Label(self.header_frame, text=header, font=('Helvetica', 9, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
+            self.header_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col]*8)
 
-        # Create entry fields for each column
+        # Create entry fields in scrollable frame
         self.table_entries = []
-        for row in range(1, 6):  # Create 5 empty rows
+        for row in range(5):  # Create 5 empty rows
             row_entries = []
             for col in range(len(self.headers)):
                 entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
                                width=self.original_column_widths[col])
                 entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                self.scrollable_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col]*8)
                 row_entries.append(entry)
             self.table_entries.append(row_entries)
+
+        # Function to sync horizontal scrolling between headers and content
+        def sync_horizontal_scroll(*args):
+            # Move both the canvas and header frame
+            self.canvas.xview(*args)
+            # Calculate the horizontal offset
+            x_offset = -self.canvas.canvasx(0)
+            # Apply the same offset to the header frame
+            self.header_frame.place(x=x_offset, relwidth=1)
+            
+        # Configure the horizontal scrollbar to use our sync function
+        self.h_scrollbar.config(command=sync_horizontal_scroll)
 
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
@@ -244,53 +241,47 @@ class FromEventWindow:
 
     def adjust_columns(self):
         """Adjust column widths based on content"""
-        # Calculate max width for each column
         col_widths = [len(header) for header in self.headers]
         
-        # Check all entries in each column
         for row in self.table_entries:
             for col, entry in enumerate(row):
                 content = entry.get()
                 if content:
                     col_widths[col] = max(col_widths[col], len(content))
         
-        # Apply the new widths
         for col, width in enumerate(col_widths):
-            # Add some padding and limit max width
-            adjusted_width = min(width + 5, 50)  # Max width of 50 characters
-            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width * 8)  # Approximate pixel width
+            adjusted_width = min(width + 5, 50)
+            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width * 8)
+            self.header_frame.grid_columnconfigure(col, minsize=adjusted_width * 8)
             
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.xview_moveto(0)  # Reset horizontal scroll to left
+        self.canvas.xview_moveto(0)
 
     def reset_columns(self):
         """Reset columns to their original widths"""
         for col, width in enumerate(self.original_column_widths):
-            self.scrollable_frame.grid_columnconfigure(col, minsize=width * 10)  # Reset to original width
+            adjusted_width = width * 8  # Convert character width to pixels
+            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width)
+            self.header_frame.grid_columnconfigure(col, minsize=adjusted_width)
             
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.xview_moveto(0)  # Reset horizontal scroll to left
+        self.canvas.xview_moveto(0)
 
     def add_table_row(self):
         """Add a new row to the table"""
         current_rows = len(self.table_entries)
-        
         row_entries = []
         for col in range(len(self.headers)):
             entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
                            width=self.original_column_widths[col])
-            entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+            entry.grid(row=current_rows, column=col, sticky="ew", padx=2, pady=2)
             row_entries.append(entry)
         self.table_entries.append(row_entries)
-        
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def remove_table_row(self):
         """Remove the last row from the table"""
-        if len(self.table_entries) <= 1:  # Keep at least one row
+        if len(self.table_entries) <= 1:
             messagebox.showwarning("Warning", "Cannot remove the last row")
             return
             
@@ -298,17 +289,14 @@ class FromEventWindow:
         for entry in last_row:
             entry.destroy()
         
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def submit_form(self):
         """Handle form submission"""
-        # Validate required fields
         if not self.employee_name.get() or not self.client_name.get():
             messagebox.showwarning("Warning", "Please fill in all required fields")
             return
             
-        # Process the data
         data = {
             'employee_name': self.employee_name.get(),
             'location': self.location.get(),
@@ -321,18 +309,19 @@ class FromEventWindow:
         
         for row in self.table_entries:
             item = {
-                'zone_activity': row[0].get(),
-                'sr_no': row[1].get(),
-                'inventory': row[2].get(),
-                'description': row[3].get(),
-                'quantity': row[4].get(),
-                'comments': row[5].get(),
-                'total': row[6].get(),
-                'units': row[7].get(),
-                'power_per_unit': row[8].get(),
-                'total_power': row[9].get(),
-                'status': row[10].get(),
-                'poc': row[11].get()
+                'assigned_to': row[0].get(),
+                'zone_activity': row[1].get(),
+                'sr_no': row[2].get(),
+                'inventory_id': row[3].get(),
+                'project_id': row[4].get(),
+                'description': row[5].get(),
+                'quantity': row[6].get(),
+                'status': row[7].get(),
+                'purpose': row[8].get(),
+                'assigned_date': row[9].get(),
+                'submission_date': row[10].get(),
+                'assigned_by': row[11].get(),
+                'comments': row[12].get()
             }
             data['inventory_items'].append(item)
         
@@ -346,6 +335,6 @@ class FromEventWindow:
 
     def on_close(self):
         """Handle window closing"""
-        logger.info("Closing To Event window")
+        logger.info("Closing Assign Inventory window")
         self.window.destroy()
-        self.parent.deiconify()  # Show parent window
+        self.parent.deiconify()
