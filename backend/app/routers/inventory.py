@@ -1,4 +1,4 @@
-# frontend/app/inventory.py
+# backend/app/routers/inventory.py
 
 import requests
 from tkinter import messagebox
