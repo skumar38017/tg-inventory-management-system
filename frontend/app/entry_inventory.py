@@ -109,13 +109,13 @@ def configure_responsive_grid():
 
     for label in labels.values():
         label.config(font=('Helvetica', font_size), anchor='w')
-    for entry in entries.values():
+    for entry in entries:
         if isinstance(entry, tk.Entry):
             entry.config(font=('Helvetica', font_size), width=12)
 
     clock_label.config(font=('Helvetica', 8))
     company_label.config(font=('Helvetica', 7))
-#  --------------------------------------------------------------------------------------------------
+
 # Child window functions
 def open_to_event():
     try:
@@ -207,21 +207,25 @@ Eros City Square
 def create_form_frame(root):
     """Create the form frame with horizontal scrolling"""
     form_container = tk.Frame(root)
-    form_container.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-    form_container.grid_columnconfigure(0, weight=1)
+    form_container.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
     
-    canvas = tk.Canvas(form_container)
-    scrollbar = tk.Scrollbar(form_container, orient="horizontal", command=canvas.xview)
-    scrollbar.pack(side="bottom", fill="x")
+    # Create canvas and scrollbar
+    canvas = tk.Canvas(form_container, height=80)
+    scroll_x = tk.Scrollbar(form_container, orient="horizontal", command=canvas.xview)
+    
+    # Pack the scrollbar and canvas
+    scroll_x.pack(side="bottom", fill="x")
     canvas.pack(side="top", fill="both", expand=True)
-    canvas.configure(xscrollcommand=scrollbar.set)
+    canvas.configure(xscrollcommand=scroll_x.set)
     
+    # Create frame inside canvas
     form_frame = tk.Frame(canvas)
     canvas.create_window((0, 0), window=form_frame, anchor="nw")
     
+    # Configure scroll region
     def on_frame_configure(event):
         canvas.configure(scrollregion=canvas.bbox("all"))
-        canvas.xview_moveto(0)
+        canvas.xview_moveto(0)  # Start scrolled all the way to the left
     
     form_frame.bind("<Configure>", on_frame_configure)
     
@@ -255,11 +259,7 @@ def create_input_fields(form_frame):
             entries[field] = tk.Entry(form_frame, width=12)
         
         labels[field].grid(row=0, column=col, padx=5, pady=2, sticky='w')
-        
-        if field in ['On Rent', 'On Event', 'In Office', 'In Warehouse']:
-            entries[field].grid(row=1, column=col, padx=5, pady=2)
-        else:
-            entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='ew')
+        entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='ew')
 
 def create_button_frame(root):
     """Create the button frame with action buttons"""
@@ -334,11 +334,11 @@ def create_bottom_frames(root):
 
 def configure_grid(root):
     """Configure the root grid layout"""
-    root.grid_rowconfigure(0, weight=0)
-    root.grid_rowconfigure(1, weight=0)
-    root.grid_rowconfigure(2, weight=0)
-    root.grid_rowconfigure(3, weight=1)  # Most weight to list frame
-    root.grid_rowconfigure(4, weight=0)
+    root.grid_rowconfigure(0, weight=0)  # Header
+    root.grid_rowconfigure(1, weight=0)  # Form
+    root.grid_rowconfigure(2, weight=0)  # Button
+    root.grid_rowconfigure(3, weight=1)  # List (most weight)
+    root.grid_rowconfigure(4, weight=0)  # Bottom buttons
     root.grid_columnconfigure(0, weight=1)
     root.grid_columnconfigure(1, weight=1)
 
@@ -363,3 +363,6 @@ def main():
     root.protocol("WM_DELETE_WINDOW", quit_application)
     
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
