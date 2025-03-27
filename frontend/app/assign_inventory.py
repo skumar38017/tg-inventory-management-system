@@ -123,55 +123,84 @@ Eros City Square
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
 
         # =============================================
-        # MAIN CONTENT AREA (1/3 for list, 2/3 for table)
+        # MAIN CONTENT AREA (2/3 for list, 1/3 for table)
         # =============================================
         content_frame = tk.Frame(self.window)
         content_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
         
         # Configure grid weights for the content frame
-        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_rowconfigure(0, weight=2)  # Search results (larger)
+        content_frame.grid_rowconfigure(1, weight=1)  # Table (smaller)
         content_frame.grid_columnconfigure(0, weight=1)
         
-        # LIST BOX CONTAINER (1/3 of vertical space)
+        # LIST BOX CONTAINER (2/3 of vertical space)
         list_frame = tk.Frame(content_frame, bd=2, relief=tk.GROOVE)
         list_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+        list_frame.grid_rowconfigure(0, weight=1)
+        list_frame.grid_columnconfigure(0, weight=1)
         
         # Add label for the list box
         tk.Label(list_frame, text="Search Results", font=('Helvetica', 10, 'bold')).pack(pady=5)
         
         # Create list box with scrollbar
-        self.list_box = tk.Listbox(list_frame, font=('Helvetica', 10), height=10)
+        self.list_box = tk.Listbox(list_frame, font=('Helvetica', 10))
         scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.list_box.yview)
         self.list_box.configure(yscrollcommand=scrollbar.set)
         
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.list_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # TABLE CONTAINER (2/3 of vertical space)
+        # TABLE CONTAINER (1/3 of vertical space)
         table_container = tk.Frame(content_frame, bd=2, relief=tk.GROOVE)
         table_container.grid(row=1, column=0, sticky="nsew", pady=(5, 0))
+        table_container.grid_rowconfigure(0, weight=1)
+        table_container.grid_columnconfigure(0, weight=1)
         
-        # Create a frame to hold both the header and scrollable content
+        # Create a frame to hold all table elements
         self.table_holder = tk.Frame(table_container)
         self.table_holder.pack(fill="both", expand=True)
 
-        # Create a canvas for horizontal scrolling that will hold both header and content
+        # Create canvas for scrolling
         self.horizontal_canvas = tk.Canvas(self.table_holder)
         self.horizontal_canvas.pack(side="top", fill="both", expand=True)
 
-        # Create a frame inside the canvas for the header and content
+        # Create scrollable area
         self.scrollable_area = tk.Frame(self.horizontal_canvas)
         self.horizontal_canvas.create_window((0, 0), window=self.scrollable_area, anchor="nw")
 
-        # Create header frame (fixed at top)
+        # "Assigned To" label centered above headers
+        assigned_to_label_frame = tk.Frame(self.scrollable_area)
+        assigned_to_label_frame.pack(side="top", fill="x", pady=(5,0))
+        
+        # Center the label in its frame
+        tk.Label(assigned_to_label_frame, text="Assigned To", 
+                font=('Helvetica', 10, 'bold')).pack()
+
+        # Table headers frame
         self.header_frame = tk.Frame(self.scrollable_area)
         self.header_frame.pack(side="top", fill="x")
 
-        # Create vertical scrollable canvas for content only
+        # Table headers
+        self.headers = [
+            "Assigned To", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
+            "Description/Specifications", "Qty", "Status", "Purpose/Reason", 
+            "Assigned Date", "Submission Date", "Assigned By", "Comments", "Assignment Returned Date"
+        ]
+
+        # Store original column widths
+        self.original_column_widths = [15, 20, 10, 15, 15, 15, 25, 10, 15, 20, 15, 15, 15, 20, 20]
+        
+        # Create headers
+        for col, header in enumerate(self.headers):
+            tk.Label(self.header_frame, text=header, font=('Helvetica', 10, 'bold'),
+                   borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
+            self.header_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col]*10)
+
+        # Create vertical scrollable canvas for content
         self.vertical_canvas = tk.Canvas(self.scrollable_area)
         self.vertical_canvas.pack(side="top", fill="both", expand=True)
 
-        # Create scrollable frame for content
+        # Create scrollable frame for input fields
         self.scrollable_frame = tk.Frame(self.vertical_canvas)
         self.vertical_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
 
@@ -186,29 +215,7 @@ Eros City Square
         self.vertical_canvas.configure(yscrollcommand=self.v_scrollbar.set)
         self.horizontal_canvas.configure(xscrollcommand=self.h_scrollbar.set)
         
-        self.scrollable_frame.bind("<Configure>", lambda e: self.vertical_canvas.configure(
-            scrollregion=self.vertical_canvas.bbox("all")))
-        
-        self.scrollable_area.bind("<Configure>", lambda e: self.horizontal_canvas.configure(
-            scrollregion=self.horizontal_canvas.bbox("all")))
-
-        # Table headers
-        self.headers = [
-            "Assigned To", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
-            "Description/Specifications", "Qty", "Status", "Purpose/Reason", 
-            "Assigned Date", "Submission Date", "Assigned By", "Comments"
-        ]
-
-        # Store original column widths
-        self.original_column_widths = [15, 20, 10, 15, 15, 15, 25, 10, 15, 20, 15, 15, 15, 20]
-        
-        # Create headers in header frame
-        for col, header in enumerate(self.headers):
-            tk.Label(self.header_frame, text=header, font=('Helvetica', 10, 'bold'),
-                   borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
-            self.header_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col]*10)
-
-        # Create entry fields in scrollable frame
+        # Create input fields
         self.table_entries = []
         for row in range(1):  # Create 1 row for input fields
             row_entries = []
@@ -220,14 +227,11 @@ Eros City Square
                 row_entries.append(entry)
             self.table_entries.append(row_entries)
 
-        # Make sure columns stay aligned
+        # Configure scroll regions
         def update_scroll_region(event):
-            # Update vertical scroll region
             self.vertical_canvas.configure(scrollregion=self.vertical_canvas.bbox("all"))
-            # Update horizontal scroll region
             self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
             
-            # Keep header and content columns aligned
             content_width = self.scrollable_frame.winfo_width()
             header_width = self.header_frame.winfo_width()
             if content_width > header_width:
@@ -280,10 +284,6 @@ Eros City Square
         self.window.grid_rowconfigure(6, weight=0)  # Buttons
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
-
-        # Configure content frame row weights (1/3 for list, 2/3 for table)
-        content_frame.grid_rowconfigure(0, weight=1)  # List box
-        content_frame.grid_rowconfigure(1, weight=2)  # Table
 
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
@@ -365,8 +365,8 @@ Eros City Square
         # Here you would typically implement your search logic
         # For demonstration, we'll add some dummy data
         if inventory_id or project_id or product_id or employee_name:
-            # Add some sample results
-            for i in range(1, 6):
+            # Add some sample results (more items to fill the larger list box)
+            for i in range(1, 20):
                 result_text = f"Result {i}: "
                 if inventory_id:
                     result_text += f"InvID: {inventory_id}-{i} "
@@ -417,7 +417,8 @@ Eros City Square
                 'assigned_date': row[10].get(),
                 'submission_date': row[11].get(),
                 'assigned_by': row[12].get(),
-                'comments': row[13].get()
+                'comments': row[13].get(),
+                'assignment_returned_date': row[14].get()
             }
             data['assignments'].append(item)
         
