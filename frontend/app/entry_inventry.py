@@ -8,6 +8,8 @@ import logging
 
 from .inventory import fetch_inventory, add_inventory
 from .to_event import ToEventWindow
+from .from_event import FromEventWindow
+from. assign_inventory import AssignInventoryWindow
 
 # Configure logging
 logging.basicConfig(
@@ -89,6 +91,24 @@ def open_to_event():
     except Exception as e:
         logger.error(f"Failed to open To Event window: {e}")
         messagebox.showerror("Error", "Could not open To Event window")
+
+def open_from_event():
+    try:
+        logger.info("Opening Return From Event window")
+        # Create a new instance of FromEventWindow
+        from_event_window = FromEventWindow(root)
+    except Exception as e:
+        logger.error(f"Failed to open Return From Event window: {e}")
+        messagebox.showerror("Error", "Could not open Return From Event window")
+
+def open_assign_inventory():
+    try:
+        logger.info("Opening Assign Inventory window")
+        # Create a new instance of AssignInventoryWindow
+        assign_inventory_window = AssignInventoryWindow(root)
+    except Exception as e:
+        logger.error(f"Failed to open Assign Inventory window: {e}")
+        messagebox.showerror("Error", "Could not open Assign Inventory window")
 # -----------------------------------------------------------------------------
 
 # Create the main window
@@ -236,8 +256,8 @@ bottom_left_frame.grid(row=4, column=0, sticky='sw', padx=10, pady=10)
 # Create the buttons
 buttons = [
     ("To Event", open_to_event),
-    ("From Event", None),
-    ("Assigned", None),
+    ("From Event", open_from_event),
+    ("Assigned", open_assign_inventory),
     ("Damage/Waste/Not Working", None)
 ]
 
