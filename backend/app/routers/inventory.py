@@ -39,3 +39,16 @@ def search_inventory(query):
     except requests.exceptions.RequestException as e:
         messagebox.showerror("Error", f"Network error: {e}")
         return []
+    
+#  Function to get the total number of items in the inventory
+def get_inventory_by_date_range ():
+    try:
+        response = requests.get("http://127.0.0.1:8000/inventory/date_range/")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            messagebox.showerror("Error", "Failed to fetch inventory data")
+            return []
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Error", f"Network error: {e}")
+        return []

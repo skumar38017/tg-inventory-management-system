@@ -6,7 +6,7 @@ from datetime import datetime
 import platform
 import logging
 
-from backend.app.routers.inventory import fetch_inventory, add_inventory, search_inventory
+from backend.app.routers.inventory import fetch_inventory, add_inventory, search_inventory, get_inventory_by_date_range
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from .assign_inventory import AssignInventoryWindow
@@ -49,22 +49,55 @@ def update_inventory_list():
     search_results_listbox.delete(0, tk.END)
 
 def update_main_inventory_list():
-    """Update only the main inventory listbox"""
+    """Update only the main inventory listbox with all items"""
     inventory_listbox.delete(0, tk.END)
     try:
         inventory = fetch_inventory()
-        for item in inventory:
-            inventory_listbox.insert(tk.END, 
-                f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
-                f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
-                f"{item['Purchase Date']} | {item['Purchase Amount']} | {'Yes' if item['On Rent'] else 'No'} | "
-                f"{item['Vendor Name']} | {item['Total Rent']} | "
-                f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item['Returned Date']} | "
-                f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-                f"{'Yes' if item['In Warehouse'] else 'No'}")
+        display_inventory_items(inventory)
     except Exception as e:
         logger.error(f"Failed to fetch inventory: {e}")
         messagebox.showerror("Error", "Could not fetch inventory data")
+
+def display_inventory_items(items):
+    """Display inventory items in the listbox"""
+    inventory_listbox.delete(0, tk.END)
+    for item in items:
+        inventory_listbox.insert(tk.END, 
+            f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
+            f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
+            f"{item['Purchase Date']} | {item['Purchase Amount']} | {'Yes' if item['On Rent'] else 'No'} | "
+            f"{item['Vendor Name']} | {item['Total Rent']} | "
+            f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item['Returned Date']} | "
+            f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
+            f"{'Yes' if item['In Warehouse'] else 'No'}")
+
+def filter_by_date_range():
+    """Filter inventory items by date range"""
+    from_date = from_date_entry.get()
+    to_date = to_date_entry.get()
+    
+    if not from_date or not to_date:
+        messagebox.showwarning("Warning", "Please select both From and To dates")
+        return
+    
+    try:
+        # Convert dates to proper format if needed
+        from_date_obj = datetime.strptime(from_date, "%Y-%m-%d")
+        to_date_obj = datetime.strptime(to_date, "%Y-%m-%d")
+        
+        if from_date_obj > to_date_obj:
+            messagebox.showwarning("Warning", "From date cannot be after To date")
+            return
+            
+        items = get_inventory_by_date_range(from_date, to_date)
+        display_inventory_items(items)
+        
+    except ValueError as e:
+        logger.error(f"Invalid date format: {e}")
+        messagebox.showerror("Error", "Invalid date format. Please use YYYY-MM-DD")
+    except Exception as e:
+        logger.error(f"Failed to filter by date range: {e}")
+        messagebox.showerror("Error", "Could not filter inventory by date range")
 
 def add_to_added_items_list(item):
     """Add a newly added item to the added items listbox"""
@@ -137,7 +170,7 @@ def add_inventory_item():
         item[key] = var.get()
 
     # Get other fields
-    optional_fields = ['Returned Date']  # Removed 'Inventory Barcode'
+    optional_fields = ['Returned Date']
     for field in optional_fields:
         if field in entries and isinstance(entries[field], tk.Entry):
             item[field] = entries[field].get().strip()
@@ -303,7 +336,6 @@ def create_input_fields(form_frame):
         'Purchase Date', 'Purchase Amount', 'On Rent',
         'Vendor Name', 'Total Rent', 'Rented Inventory Returned', 
         'Returned Date', 'On Event', 'In Office', 'In Warehouse'
-        # Removed 'Inventory Barcode'
     ]
     
     for col, field in enumerate(fields):
@@ -342,6 +374,39 @@ def create_list_frames(root):
     inventory_frame = tk.Frame(notebook)
     notebook.add(inventory_frame, text="Inventory List")
     
+    # Date range filter frame
+    date_filter_frame = tk.Frame(inventory_frame)
+    date_filter_frame.pack(fill="x", pady=5)
+    
+    global from_date_entry, to_date_entry
+    
+    # From Date
+    tk.Label(date_filter_frame, text="From Date:", font=('Helvetica', 9)).grid(row=0, column=0, padx=5, sticky='e')
+    from_date_entry = tk.Entry(date_filter_frame, font=('Helvetica', 9), width=12)
+    from_date_entry.grid(row=0, column=1, padx=5, sticky='w')
+    from_date_entry.insert(0, datetime.now().strftime("%Y-%m-01"))  # Default to first day of current month
+    
+    # To Date
+    tk.Label(date_filter_frame, text="To Date:", font=('Helvetica', 9)).grid(row=0, column=2, padx=5, sticky='e')
+    to_date_entry = tk.Entry(date_filter_frame, font=('Helvetica', 9), width=12)
+    to_date_entry.grid(row=0, column=3, padx=5, sticky='w')
+    to_date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))  # Default to current date
+    
+    # Filter button
+    filter_btn = tk.Button(date_filter_frame, text="Filter", command=filter_by_date_range,
+                          font=('Helvetica', 9, 'bold'))
+    filter_btn.grid(row=0, column=4, padx=5)
+    
+    # Show All button
+    show_all_btn = tk.Button(date_filter_frame, text="Show All", command=update_main_inventory_list,
+                           font=('Helvetica', 9))
+    show_all_btn.grid(row=0, column=5, padx=5)
+    
+    # Separator
+    separator = ttk.Separator(inventory_frame, orient='horizontal')
+    separator.pack(fill="x", pady=5)
+    
+    # Inventory listbox
     global inventory_listbox
     inventory_listbox = tk.Listbox(
         inventory_frame,
