@@ -90,7 +90,7 @@ class FromEventWindow:
         
         # Centered inventory list title
         tk.Label(title_frame, 
-               text="INVENTORY LIST",
+               text="RETURENED INVENTORY LIST",
                font=('Helvetica', 12, 'bold')).pack()
 
         # Information fields in row 3
