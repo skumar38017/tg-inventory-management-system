@@ -6,7 +6,7 @@ from datetime import datetime
 import platform
 import logging
 
-from .inventory import fetch_inventory, add_inventory
+from backend.app.routers.inventory import fetch_inventory, add_inventory
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from. assign_inventory import AssignInventoryWindow
@@ -30,12 +30,14 @@ def clear_fields():
     for var in checkbox_vars.values():
         var.set(False)
 
+#  update_inventory_list
 def update_inventory_list():
     inventory_listbox.delete(0, tk.END)
     inventory = fetch_inventory()
     for item in inventory:
         inventory_listbox.insert(tk.END, f"{item['S No']} | {item['Product ID']} | {item['Name']} | {item['Qty']} | {item['Purchase']} | {item['Purchase Price']} | {'Yes' if item['On Rent'] else 'No'} | {item['Vendor Name']} | {item['Total Rent']} | {'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | {'Yes' if item['In Warehouse'] else 'No'}")
 
+#  add_inventory_item
 def add_inventory_item():
     item = {}
     for key, widget in entries.items():
@@ -64,10 +66,12 @@ def update_clock():
     clock_label.config(text=now)
     root.after(1000, update_clock)
 
+#  quit_application
 def quit_application():
     if messagebox.askokcancel("Quit", "Do you really want to quit?"):
         root.destroy()
 
+#  configure_responsive_grid
 def configure_responsive_grid():
     screen_width = root.winfo_screenwidth()
     font_size = max(6, screen_width // 100)
@@ -81,8 +85,9 @@ def configure_responsive_grid():
     clock_label.config(font=('Helvetica', 8))
     company_label.config(font=('Helvetica', 7))
 
-# ----------------------------------------------------------------------------
+# =============================================
 # Child window functions
+# =============================================
 def open_to_event():
     try:
         logger.info("Opening To Event window")
@@ -210,8 +215,9 @@ def on_frame_configure(event):
     canvas.xview_moveto(0)  # Keep view locked to left after resizing
 
 form_frame.bind("<Configure>", on_frame_configure)
-
+#  ============================================
 # Buttons
+# =============================================
 button_frame = tk.Frame(root)
 button_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
 button_frame.grid_columnconfigure(0, weight=1)  # Make button frame expand horizontally
@@ -220,7 +226,9 @@ add_button = tk.Button(button_frame, text="Add Item", command=add_inventory_item
                        font=('Helvetica', 10, 'bold'))
 add_button.pack(expand=True, pady=5)
 
+# =============================================
 # List display with increased space
+# =============================================
 list_frame = tk.Frame(root)
 list_frame.grid(row=3, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
 list_frame.grid_rowconfigure(0, weight=1)  # Allow vertical expansion
@@ -253,7 +261,9 @@ root.grid_rowconfigure(3, weight=3)  # Increased from weight=1 to give more spac
 bottom_left_frame = tk.Frame(root)
 bottom_left_frame.grid(row=4, column=0, sticky='sw', padx=10, pady=10)
 
+# =============================================
 # Create the buttons
+# =============================================
 buttons = [
     ("To Event", open_to_event),
     ("From Event", open_from_event),
