@@ -1,4 +1,3 @@
-
 # frontend/app/entry_inventory.py
 
 import tkinter as tk
@@ -62,7 +61,7 @@ def update_main_inventory_list():
                 f"{item['Vendor Name']} | {item['Total Rent']} | "
                 f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item['Returned Date']} | "
                 f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-                f"{'Yes' if item['In Warehouse'] else 'No'} | {item['Inventory Barcode']}")
+                f"{'Yes' if item['In Warehouse'] else 'No'}")
     except Exception as e:
         logger.error(f"Failed to fetch inventory: {e}")
         messagebox.showerror("Error", "Could not fetch inventory data")
@@ -76,7 +75,7 @@ def add_to_added_items_list(item):
         f"{item['Vendor Name']} | {item['Total Rent']} | "
         f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item.get('Returned Date', '')} | "
         f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-        f"{'Yes' if item['In Warehouse'] else 'No'} | {item.get('Inventory Barcode', '')}")
+        f"{'Yes' if item['In Warehouse'] else 'No'}")
 
 def perform_search():
     """Perform inventory search based on search criteria"""
@@ -105,7 +104,7 @@ def perform_search():
                 f"{item['Vendor Name']} | {item['Total Rent']} | "
                 f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item.get('Returned Date', '')} | "
                 f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-                f"{'Yes' if item['In Warehouse'] else 'No'} | {item.get('Inventory Barcode', '')}")
+                f"{'Yes' if item['In Warehouse'] else 'No'}")
                 
     except Exception as e:
         logger.error(f"Search failed: {e}")
@@ -138,7 +137,7 @@ def add_inventory_item():
         item[key] = var.get()
 
     # Get other fields
-    optional_fields = ['Returned Date', 'Inventory Barcode']
+    optional_fields = ['Returned Date']  # Removed 'Inventory Barcode'
     for field in optional_fields:
         if field in entries and isinstance(entries[field], tk.Entry):
             item[field] = entries[field].get().strip()
@@ -303,8 +302,8 @@ def create_input_fields(form_frame):
         'Sno.', "InventoryID", "ProductID", 'Name', 'Qty', 'Purchase',
         'Purchase Date', 'Purchase Amount', 'On Rent',
         'Vendor Name', 'Total Rent', 'Rented Inventory Returned', 
-        'Returned Date', 'On Event', 'In Office', 'In Warehouse', 
-        'Inventory Barcode'
+        'Returned Date', 'On Event', 'In Office', 'In Warehouse'
+        # Removed 'Inventory Barcode'
     ]
     
     for col, field in enumerate(fields):
