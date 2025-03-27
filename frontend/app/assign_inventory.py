@@ -47,7 +47,7 @@ class AssignInventoryWindow:
                     self.window.winfo_screenwidth(),
                     self.window.winfo_screenheight()
                 ))
-    # Ui setup
+    
     def setup_ui(self):
         """Set up all UI elements"""
         # Header section - Clock in row 0
@@ -248,6 +248,21 @@ Eros City Square
         return_button.pack(side=tk.RIGHT, padx=5)
 
         # =============================================
+        # List Display
+        # =============================================
+        list_frame = tk.Frame(self.window)
+        list_frame.grid(row=9, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+
+        tk.Label(list_frame, text="List Display", font=('Helvetica', 12, 'bold')).pack()
+
+        self.listbox = tk.Listbox(list_frame, font=('Helvetica', 10), width=50, height=15)
+        self.listbox.pack(fill="both", expand=True)
+
+        # Add some sample data to the listbox
+        for i in range(10):
+            self.listbox.insert(tk.END, f"Sample Items {i+1}") 
+
+        # =============================================
         # Grid configuration for window
         # =============================================
         self.window.grid_rowconfigure(0, weight=0)  # Clock
@@ -257,6 +272,7 @@ Eros City Square
         self.window.grid_rowconfigure(4, weight=0)  # Separator
         self.window.grid_rowconfigure(5, weight=1)  # Table
         self.window.grid_rowconfigure(6, weight=0)  # Buttons
+        self.window.grid_rowconfigure(7, weight=1)  # List Display
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
 
@@ -390,3 +406,9 @@ Eros City Square
         logger.info("Closing Assign Inventory window")
         self.window.destroy()
         self.parent.deiconify()
+
+# Example usage
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AssignInventoryWindow(root)
+    root.mainloop()
