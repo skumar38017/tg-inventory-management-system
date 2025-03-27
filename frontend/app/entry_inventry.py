@@ -9,7 +9,8 @@ import logging
 from backend.app.routers.inventory import fetch_inventory, add_inventory
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
-from. assign_inventory import AssignInventoryWindow
+from .assign_inventory import AssignInventoryWindow
+from .damage_inventoty import DamageWindow
 
 # Configure logging
 logging.basicConfig(
@@ -114,6 +115,15 @@ def open_assign_inventory():
     except Exception as e:
         logger.error(f"Failed to open Assign Inventory window: {e}")
         messagebox.showerror("Error", "Could not open Assign Inventory window")
+
+def open_damage_inventory():
+    try:
+        logger.info("Opening Damage/Waste/Not Working/Lost window")
+        # Create a new instance of DamageWindow
+        damage_window = DamageWindow(root)
+    except Exception as e:
+        logger.error(f"Failed to open Damage/Waste/Not Working/Lost window: {e}")
+        messagebox.showerror("Error", "Could not open Damage/Waste/Not Working/Lost window")
 # -----------------------------------------------------------------------------
 
 # Create the main window
@@ -268,7 +278,7 @@ buttons = [
     ("To Event", open_to_event),
     ("From Event", open_from_event),
     ("Assigned", open_assign_inventory),
-    ("Damage/Waste/Not Working", None)
+    ("Damage/Waste/Not Working", open_damage_inventory)
 ]
 
 for text, command in buttons:
