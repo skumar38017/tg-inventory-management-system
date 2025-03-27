@@ -47,7 +47,7 @@ class AssignInventoryWindow:
                     self.window.winfo_screenwidth(),
                     self.window.winfo_screenheight()
                 ))
-    
+
     def setup_ui(self):
         """Set up all UI elements"""
         # Header section - Clock in row 0
@@ -123,15 +123,36 @@ Eros City Square
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
 
         # =============================================
-        # TABLE CONTAINER WITH PROPER SCROLLING SOLUTION
+        # MAIN CONTENT AREA (1/3 for list, 2/3 for table)
         # =============================================
+        content_frame = tk.Frame(self.window)
+        content_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
         
-        # Main container for the table
-        self.table_container = tk.Frame(self.window)
-        self.table_container.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+        # Configure grid weights for the content frame
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(0, weight=1)
+        
+        # LIST BOX CONTAINER (1/3 of vertical space)
+        list_frame = tk.Frame(content_frame, bd=2, relief=tk.GROOVE)
+        list_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+        
+        # Add label for the list box
+        tk.Label(list_frame, text="Search Results", font=('Helvetica', 10, 'bold')).pack(pady=5)
+        
+        # Create list box with scrollbar
+        self.list_box = tk.Listbox(list_frame, font=('Helvetica', 10), height=10)
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.list_box.yview)
+        self.list_box.configure(yscrollcommand=scrollbar.set)
+        
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.list_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # TABLE CONTAINER (2/3 of vertical space)
+        table_container = tk.Frame(content_frame, bd=2, relief=tk.GROOVE)
+        table_container.grid(row=1, column=0, sticky="nsew", pady=(5, 0))
         
         # Create a frame to hold both the header and scrollable content
-        self.table_holder = tk.Frame(self.table_container)
+        self.table_holder = tk.Frame(table_container)
         self.table_holder.pack(fill="both", expand=True)
 
         # Create a canvas for horizontal scrolling that will hold both header and content
@@ -156,7 +177,7 @@ Eros City Square
 
         # Scrollbars
         self.v_scrollbar = ttk.Scrollbar(self.table_holder, orient="vertical", command=self.vertical_canvas.yview)
-        self.h_scrollbar = ttk.Scrollbar(self.table_container, orient="horizontal", command=self.horizontal_canvas.xview)
+        self.h_scrollbar = ttk.Scrollbar(table_container, orient="horizontal", command=self.horizontal_canvas.xview)
         
         self.v_scrollbar.pack(side="right", fill="y")
         self.h_scrollbar.pack(side="bottom", fill="x")
@@ -248,21 +269,6 @@ Eros City Square
         return_button.pack(side=tk.RIGHT, padx=5)
 
         # =============================================
-        # List Display
-        # =============================================
-        list_frame = tk.Frame(self.window)
-        list_frame.grid(row=9, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
-
-        tk.Label(list_frame, text="List Display", font=('Helvetica', 12, 'bold')).pack()
-
-        self.listbox = tk.Listbox(list_frame, font=('Helvetica', 10), width=50, height=15)
-        self.listbox.pack(fill="both", expand=True)
-
-        # Add some sample data to the listbox
-        for i in range(10):
-            self.listbox.insert(tk.END, f"Sample Items {i+1}") 
-
-        # =============================================
         # Grid configuration for window
         # =============================================
         self.window.grid_rowconfigure(0, weight=0)  # Clock
@@ -270,11 +276,14 @@ Eros City Square
         self.window.grid_rowconfigure(2, weight=0)  # Title
         self.window.grid_rowconfigure(3, weight=0)  # Info fields
         self.window.grid_rowconfigure(4, weight=0)  # Separator
-        self.window.grid_rowconfigure(5, weight=1)  # Table
+        self.window.grid_rowconfigure(5, weight=1)  # Content area (list + table)
         self.window.grid_rowconfigure(6, weight=0)  # Buttons
-        self.window.grid_rowconfigure(7, weight=1)  # List Display
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
+
+        # Configure content frame row weights (1/3 for list, 2/3 for table)
+        content_frame.grid_rowconfigure(0, weight=1)  # List box
+        content_frame.grid_rowconfigure(1, weight=2)  # Table
 
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
@@ -344,14 +353,33 @@ Eros City Square
         self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
 
     def search_product(self):
-        """Handle product search"""
+        """Handle product search and display results in list box"""
         inventory_id = self.inventory_id.get()
         project_id = self.project_id.get()
         product_id = self.product_id.get()
+        employee_name = self.employee_name.get()
+        
+        # Clear previous results
+        self.list_box.delete(0, tk.END)
         
         # Here you would typically implement your search logic
-        # For now, we'll just show a message
-        messagebox.showinfo("Search", f"Searching for Inventory ID: {inventory_id}, Project ID: {project_id}, Product ID: {product_id}")
+        # For demonstration, we'll add some dummy data
+        if inventory_id or project_id or product_id or employee_name:
+            # Add some sample results
+            for i in range(1, 6):
+                result_text = f"Result {i}: "
+                if inventory_id:
+                    result_text += f"InvID: {inventory_id}-{i} "
+                if project_id:
+                    result_text += f"ProjID: {project_id}-{i} "
+                if product_id:
+                    result_text += f"ProdID: {product_id}-{i} "
+                if employee_name:
+                    result_text += f"Emp: {employee_name}-{i}"
+                
+                self.list_box.insert(tk.END, result_text.strip())
+        else:
+            messagebox.showwarning("Warning", "Please enter at least one search criteria")
 
     def submit_form(self):
         """Handle form submission"""
@@ -406,9 +434,3 @@ Eros City Square
         logger.info("Closing Assign Inventory window")
         self.window.destroy()
         self.parent.deiconify()
-
-# Example usage
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = AssignInventoryWindow(root)
-    root.mainloop()
