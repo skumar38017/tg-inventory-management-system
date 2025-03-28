@@ -133,50 +133,105 @@ def perform_search():
         messagebox.showerror("Search Error", "Failed to perform search")
 
 def add_inventory_item():
-    """Add a new inventory item based on form data"""
-    item = {}
+    """Add new inventory items from all rows"""
+    row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
     required_fields = ['SNo', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 
                       'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent']
-    
-    # Validate required fields
-    for key in required_fields:
-        if key in entries and isinstance(entries[key], tk.Entry):
-            value = entries[key].get().strip()
-            if not value:
-                messagebox.showerror("Error", f"{key} field is required")
-                return
-            if key in ['TotalQuantity', 'PurchaseAmount', 'TotalRent']:
-                try:
-                    item[key] = float(value) if '.' in value else int(value)
-                except ValueError:
-                    messagebox.showerror("Error", f"{key} must be a number")
-                    return
-            else:
-                item[key] = value
-    
-    # Get checkbox values
-    for key, var in checkbox_vars.items():
-        item[key] = var.get()
-
-    # Get other fields
     optional_fields = ['ReturnedDate']
-    for field in optional_fields:
-        if field in entries and isinstance(entries[field], tk.Entry):
-            item[field] = entries[field].get().strip()
+    
+    for row in range(row_count):
+        item = {}
+        # Validate required fields for each row
+        for key in required_fields:
+            field_name = f"{key.replace(' ', '')}_{row}" if row > 0 else key.replace(' ', '')
+            if field_name in entries and isinstance(entries[field_name], tk.Entry):
+                value = entries[field_name].get().strip()
+                if not value:
+                    messagebox.showerror("Error", f"{key} field is required in row {row+1}")
+                    return
+                if key in ['TotalQuantity', 'PurchaseAmount', 'TotalRent']:
+                    try:
+                        item[key] = float(value) if '.' in value else int(value)
+                    except ValueError:
+                        messagebox.showerror("Error", f"{key} must be a number in row {row+1}")
+                        return
+                else:
+                    item[key] = value
+        
+        # Get checkbox values for each row
+        for field in ['OnRent', 'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse']:
+            field_name = f"{field}_{row}" if row > 0 else field
+            if field_name in checkbox_vars:
+                item[field] = checkbox_vars[field_name].get()
 
-    try:
-        added_item = add_inventory(item)
-        if added_items_listbox:
-            added_items_listbox.insert(tk.END, 
-                f"{added_item['S No']} | {added_item['InventoryID']} | {added_item['Product ID']} | {added_item['Name']} | "
-                f"{added_item['Qty']} | {'Yes' if added_item['Purchase'] else 'No'} | "
-                f"{added_item['Purchase Date']} | {added_item['Purchase Amount']}")
-        clear_fields()
-        update_main_inventory_list()
-    except Exception as e:
-        logger.error(f"Failed to add inventory item: {e}")
-        messagebox.showerror("Error", "Could not add inventory item")
+        # Get optional fields for each row
+        for field in optional_fields:
+            field_name = f"{field.replace(' ', '')}_{row}" if row > 0 else field.replace(' ', '')
+            if field_name in entries and isinstance(entries[field_name], tk.Entry):
+                item[field] = entries[field_name].get().strip()
 
+        # Only add if we have data for this row
+        if item:
+            try:
+                added_item = add_inventory(item)
+                if added_items_listbox:
+                    added_items_listbox.insert(tk.END, 
+                        f"{added_item['S No']} | {added_item['InventoryID']} | {added_item['Product ID']} | {added_item['Name']} | "
+                        f"{added_item['Qty']} | {'Yes' if added_item['Purchase'] else 'No'} | "
+                        f"{added_item['Purchase Date']} | {added_item['Purchase Amount']}")
+            except Exception as e:
+                logger.error(f"Failed to add inventory item: {e}")
+                messagebox.showerror("Error", f"Could not add inventory item from row {row+1}")
+    
+    # Clear all fields after adding
+    clear_fields()
+    update_main_inventory_list()
+
+def add_new_row(scrollable_frame, header_labels):
+    """Add a new row of input fields below the existing ones"""
+    row_num = len(scrollable_frame.grid_slaves()) // len(header_labels)  # Calculate current row count
+    
+    for col, field in enumerate(header_labels):
+        var_name = f"{field.replace(' ', '')}_{row_num}"  # Unique name for each row
+        if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
+            checkbox_vars[var_name] = tk.BooleanVar()
+            entries[var_name] = tk.Checkbutton(
+                scrollable_frame, 
+                variable=checkbox_vars[var_name],
+                borderwidth=1,
+                relief='solid'
+            )
+            entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
+        else:
+            entries[var_name] = tk.Entry(
+                scrollable_frame, 
+                font=('Helvetica', 9), 
+                borderwidth=1,
+                relief='solid'
+            )
+            entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
+
+def remove_last_row(scrollable_frame):
+    """Remove the last row of input fields"""
+    # Get all widgets in the scrollable frame
+    widgets = scrollable_frame.grid_slaves()
+    if not widgets:
+        return
+    
+    # Find the highest row number
+    max_row = max(int(w.grid_info()['row']) for w in widgets)
+    
+    # Remove all widgets in the last row
+    for widget in widgets:
+        if widget.grid_info()['row'] == max_row:
+            widget.destroy()
+            # Also remove from entries/checkbox_vars if needed
+            for key in list(entries.keys()):
+                if key.endswith(f"_{max_row}"):
+                    del entries[key]
+            for key in list(checkbox_vars.keys()):
+                if key.endswith(f"_{max_row}"):
+                    del checkbox_vars[key]
 def update_clock():
     """Update the clock label with current time"""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -368,7 +423,8 @@ def create_list_frames(root):
     # Initialize the inventory list
     update_main_inventory_list()
     
-        # Frame 2: New Entry - Updated to match requested layout
+    # Frame 2: New Entry - Updated to match requested layout
+    """Create the new entry tab with all its components"""
     new_entry_frame = tk.Frame(notebook)
     notebook.add(new_entry_frame, text="New Entry")
 
@@ -447,14 +503,35 @@ def create_list_frames(root):
     button_frame = tk.Frame(form_container)
     button_frame.pack(fill='x', pady=5)
     
+    # Remove Row button
+    remove_row_button = tk.Button(
+        button_frame, 
+        text="Remove Row", 
+        command=lambda: remove_last_row(scrollable_frame),
+        font=('Helvetica', 10, 'bold'),
+        width=15
+    )
+    remove_row_button.pack(side='left', padx=0)
+
+    # Add Item button
     add_button = tk.Button(
         button_frame, 
         text="Add Item", 
         command=add_inventory_item,
         font=('Helvetica', 10, 'bold'),
-        width=20
+        width=15
     )
-    add_button.pack()
+    add_button.pack(side='left', padx=5, expand=True)
+
+    # Add Row button
+    add_row_button = tk.Button(
+        button_frame, 
+        text="Add Row", 
+        command=lambda: add_new_row(scrollable_frame, header_labels),
+        font=('Helvetica', 10, 'bold'),
+        width=15
+    )
+    add_row_button.pack(side='left', padx=0)
 
     # Added Items List section
     list_frame = tk.Frame(new_entry_frame)
@@ -475,7 +552,7 @@ def create_list_frames(root):
     global added_items_listbox
     added_items_listbox = tk.Listbox(
         list_container,
-        height=listbox_height,
+        height=10,  # Default height, can be adjusted
         font=('Helvetica', 9),
         selectbackground='#4a6984',
         selectforeground='white'
@@ -490,7 +567,7 @@ def create_list_frames(root):
     )
     list_scrollbar.pack(side="right", fill="y")
     added_items_listbox.config(yscrollcommand=list_scrollbar.set)
-    
+        
     # Frame 3: Search Results
     search_frame = tk.Frame(notebook)
     notebook.add(search_frame, text="Search Results")
