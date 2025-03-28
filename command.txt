@@ -7,3 +7,11 @@ Run the Frontend:
 
 python -m frontend.app
 python -m frontend.app.ui
+
+```python
+frontend : This will host your frontend at http://localhost:9000.
+```
+        
+Run the Frontend: streamlit run frontend/app/__main__.py
+
+        streamlit run frontend/app/__main__.py --server.port=9000
