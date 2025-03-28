@@ -368,31 +368,35 @@ def create_list_frames(root):
     # Initialize the inventory list
     update_main_inventory_list()
     
-    # Frame 2: New Entry
+        # Frame 2: New Entry - Updated to match requested layout
     new_entry_frame = tk.Frame(notebook)
     notebook.add(new_entry_frame, text="New Entry")
 
-    # Create main container with vertical scroll
-    entry_container = tk.Frame(new_entry_frame)
-    entry_container.pack(fill='both', expand=True)
+    # Main container for the form
+    form_container = tk.Frame(new_entry_frame)
+    form_container.pack(fill='both', expand=True, padx=10, pady=5)
 
-    # Create canvas and scrollbar
-    entry_canvas = tk.Canvas(entry_container)
-    entry_scrollbar = tk.Scrollbar(entry_container, orient='vertical', command=entry_canvas.yview)
-    entry_scrollable_frame = tk.Frame(entry_canvas)
+    # Container for the header and input rows with horizontal scroll
+    scroll_container = tk.Frame(form_container)
+    scroll_container.pack(fill='x', expand=True)
 
-    entry_scrollable_frame.bind(
+    # Create canvas and horizontal scrollbar only
+    canvas = tk.Canvas(scroll_container)
+    h_scrollbar = tk.Scrollbar(scroll_container, orient='horizontal', command=canvas.xview)
+    scrollable_frame = tk.Frame(canvas)
+
+    scrollable_frame.bind(
         "<Configure>",
-        lambda e: entry_canvas.configure(
-            scrollregion=entry_canvas.bbox("all")
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
         )
     )
 
-    entry_canvas.create_window((0, 0), window=entry_scrollable_frame, anchor='nw')
-    entry_canvas.configure(yscrollcommand=entry_scrollbar.set)
+    canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
+    canvas.configure(xscrollcommand=h_scrollbar.set)
 
-    entry_canvas.pack(side='left', fill='both', expand=True)
-    entry_scrollbar.pack(side='right', fill='y')
+    canvas.pack(side='top', fill='x', expand=True)
+    h_scrollbar.pack(side='bottom', fill='x')
 
     # Create the entry form inside the scrollable frame
     global entries, checkbox_vars
@@ -408,19 +412,19 @@ def create_list_frames(root):
         'In Warehouse', 'Issued Qty', 'Balance Qty'
     ]
 
-    # Create header row
+    # Create header row (i)
     for col, label in enumerate(header_labels):
-        header = tk.Label(entry_scrollable_frame, text=label, 
+        header = tk.Label(scrollable_frame, text=label, 
                          font=('Helvetica', 9, 'bold'), borderwidth=1, relief='solid')
         header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
 
-    # Input fields row
+    # Input fields row (ii)
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
         if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
             checkbox_vars[var_name] = tk.BooleanVar()
             entries[var_name] = tk.Checkbutton(
-                entry_scrollable_frame, 
+                scrollable_frame, 
                 variable=checkbox_vars[var_name],
                 borderwidth=1,
                 relief='solid'
@@ -428,66 +432,64 @@ def create_list_frames(root):
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
         else:
             entries[var_name] = tk.Entry(
-                entry_scrollable_frame, 
+                scrollable_frame, 
                 font=('Helvetica', 9), 
                 borderwidth=1,
                 relief='solid'
             )
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
 
-    # Configure column weights to make them expandable
+    # Configure column weights
     for col in range(len(header_labels)):
-        entry_scrollable_frame.grid_columnconfigure(col, weight=1)
+        scrollable_frame.grid_columnconfigure(col, weight=1)
 
-    # Add Item button
+    # Add Item button - centered below the scrollable area
+    button_frame = tk.Frame(form_container)
+    button_frame.pack(fill='x', pady=5)
+    
     add_button = tk.Button(
-        entry_scrollable_frame, 
+        button_frame, 
         text="Add Item", 
         command=add_inventory_item,
-        font=('Helvetica', 10, 'bold')
+        font=('Helvetica', 10, 'bold'),
+        width=20
     )
-    add_button.grid(row=2, column=0, columnspan=len(header_labels), pady=10, sticky='ew')
+    add_button.pack()
 
-    # Added Items List display
+    # Added Items List section
+    list_frame = tk.Frame(new_entry_frame)
+    list_frame.pack(fill='both', expand=True, padx=10, pady=5)
+
+    # "Added Items List" label centered
     list_label = tk.Label(
-        entry_scrollable_frame, 
+        list_frame, 
         text="Added Items List", 
         font=('Helvetica', 10, 'bold')
     )
-    list_label.grid(row=3, column=0, columnspan=len(header_labels), pady=5, sticky='ew')
+    list_label.pack()
 
-    # Create container frame for the listbox
-    list_container = tk.Frame(entry_scrollable_frame)
-    list_container.grid(row=4, column=0, columnspan=len(header_labels), sticky='nsew', padx=5, pady=5)
-    
-    # Configure container grid
-    list_container.grid_rowconfigure(0, weight=1)
-    list_container.grid_columnconfigure(0, weight=1)
+    # Create container for the listbox with vertical scroll only
+    list_container = tk.Frame(list_frame)
+    list_container.pack(fill='both', expand=True)
 
-    # Create the listbox
     global added_items_listbox
     added_items_listbox = tk.Listbox(
         list_container,
-        height=15,
+        height=listbox_height,
         font=('Helvetica', 9),
         selectbackground='#4a6984',
-        selectforeground='white',
-        borderwidth=1,
-        relief='solid'
+        selectforeground='white'
     )
-    added_items_listbox.grid(row=0, column=0, sticky='nsew')
+    added_items_listbox.pack(side="left", fill="both", expand=True)
 
-    # Add scrollbar
+    # Add vertical scrollbar
     list_scrollbar = tk.Scrollbar(
         list_container,
-        orient='vertical',
+        orient="vertical",
         command=added_items_listbox.yview
     )
-    list_scrollbar.grid(row=0, column=1, sticky='ns')
+    list_scrollbar.pack(side="right", fill="y")
     added_items_listbox.config(yscrollcommand=list_scrollbar.set)
-
-    # Configure row weights for the scrollable frame
-    entry_scrollable_frame.grid_rowconfigure(4, weight=1)  # Make the list row expandable
     
     # Frame 3: Search Results
     search_frame = tk.Frame(notebook)
