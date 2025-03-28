@@ -472,7 +472,7 @@ def create_list_frames(root):
         'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
         'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
         'Rented Inventory Returned', 'Returned Date', 'On Event', 'In Office', 
-        'In Warehouse', 'Issued Qty', 'Balance Qty'
+        'In Warehouse', 'Issued Qty', 'Balance Qty', 'Submited by'
     ]
     
     # Create header row (i)
@@ -565,7 +565,7 @@ def create_list_frames(root):
         selectforeground='white'
     )
     added_items_listbox.pack(side="left", fill="both", expand=True)
-    
+
     # Add vertical scrollbar
     list_scrollbar = tk.Scrollbar(
         list_container,
