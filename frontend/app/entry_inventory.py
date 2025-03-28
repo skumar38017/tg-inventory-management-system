@@ -35,11 +35,7 @@ search_product_id_entry = None
 
 def clear_fields():
     """Clear all input fields and reset checkboxes"""
-    for entry in entries.values():
-        if isinstance(entry, tk.Entry):
-            entry.delete(0, tk.END)
-    for var in checkbox_vars.values():
-        var.set(False)
+    pass  # No fields to clear now
 
 def update_inventory_list():
     """Update all three listboxes with current data"""
@@ -65,11 +61,7 @@ def display_inventory_items(items):
         inventory_listbox.insert(tk.END, 
             f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
             f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
-            f"{item['Purchase Date']} | {item['Purchase Amount']} | {'Yes' if item['On Rent'] else 'No'} | "
-            f"{item['Vendor Name']} | {item['Total Rent']} | "
-            f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item['Returned Date']} | "
-            f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-            f"{'Yes' if item['In Warehouse'] else 'No'}")
+            f"{item['Purchase Date']} | {item['Purchase Amount']}")
 
 def filter_by_date_range():
     """Filter inventory items by date range"""
@@ -99,17 +91,6 @@ def filter_by_date_range():
         logger.error(f"Failed to filter by date range: {e}")
         messagebox.showerror("Error", "Could not filter inventory by date range")
 
-def add_to_added_items_list(item):
-    """Add a newly added item to the added items listbox"""
-    added_items_listbox.insert(tk.END, 
-        f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
-        f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
-        f"{item['Purchase Date']} | {item['Purchase Amount']} | {'Yes' if item['On Rent'] else 'No'} | "
-        f"{item['Vendor Name']} | {item['Total Rent']} | "
-        f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item.get('Returned Date', '')} | "
-        f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-        f"{'Yes' if item['In Warehouse'] else 'No'}")
-
 def perform_search():
     """Perform inventory search based on search criteria"""
     inventory_id = search_inventory_id_entry.get().strip()
@@ -133,56 +114,11 @@ def perform_search():
             search_results_listbox.insert(tk.END, 
                 f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
                 f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
-                f"{item['Purchase Date']} | {item['Purchase Amount']} | {'Yes' if item['On Rent'] else 'No'} | "
-                f"{item['Vendor Name']} | {item['Total Rent']} | "
-                f"{'Yes' if item['Rented Inventory Returned'] else 'No'} | {item.get('Returned Date', '')} | "
-                f"{'Yes' if item['On Event'] else 'No'} | {'Yes' if item['In Office'] else 'No'} | "
-                f"{'Yes' if item['In Warehouse'] else 'No'}")
+                f"{item['Purchase Date']} | {item['Purchase Amount']}")
                 
     except Exception as e:
         logger.error(f"Search failed: {e}")
         messagebox.showerror("Search Error", "Failed to perform search")
-
-def add_inventory_item():
-    """Add a new inventory item based on form data"""
-    item = {}
-    required_fields = ['S No', 'InventoryID', 'Product ID', 'Name', 'Qty', 
-                      'Purchase Date', 'Purchase Amount', 'Vendor Name', 'Total Rent']
-    
-    # Validate required fields
-    for key in required_fields:
-        if key in entries and isinstance(entries[key], tk.Entry):
-            value = entries[key].get().strip()
-            if not value:
-                messagebox.showerror("Error", f"{key} field is required")
-                return
-            if key in ['Qty', 'Purchase Amount', 'Total Rent']:
-                try:
-                    item[key] = float(value) if '.' in value else int(value)
-                except ValueError:
-                    messagebox.showerror("Error", f"{key} must be a number")
-                    return
-            else:
-                item[key] = value
-    
-    # Get checkbox values
-    for key, var in checkbox_vars.items():
-        item[key] = var.get()
-
-    # Get other fields
-    optional_fields = ['Returned Date']
-    for field in optional_fields:
-        if field in entries and isinstance(entries[field], tk.Entry):
-            item[field] = entries[field].get().strip()
-
-    try:
-        add_inventory(item)
-        add_to_added_items_list(item)  # Add to added items list
-        clear_fields()
-        update_main_inventory_list()  # Update main list without clearing added items
-    except Exception as e:
-        logger.error(f"Failed to add inventory item: {e}")
-        messagebox.showerror("Error", "Could not add inventory item")
 
 def update_clock():
     """Update the clock label with current time"""
@@ -199,12 +135,6 @@ def configure_responsive_grid():
     """Adjust UI elements based on screen size"""
     screen_width = root.winfo_screenwidth()
     font_size = max(6, screen_width // 100)
-
-    for label in labels.values():
-        label.config(font=('Helvetica', font_size), anchor='w')
-    for entry in entries.values():
-        if isinstance(entry, tk.Entry):
-            entry.config(font=('Helvetica', font_size), width=12)
 
     clock_label.config(font=('Helvetica', 8))
     company_label.config(font=('Helvetica', 7))
@@ -267,7 +197,7 @@ def setup_main_window():
     return root
 
 def create_header_frame(root):
-    """Create and configure the header frame"""
+    """Create and configure the header frame with clock and company info"""
     header_frame = tk.Frame(root)
     header_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=0)
     
@@ -276,12 +206,12 @@ def create_header_frame(root):
     header_frame.grid_rowconfigure(0, weight=1)
     header_frame.grid_rowconfigure(1, weight=1)
     
-    # Clock label
+    # Row 1: Clock (top-center)
     global clock_label
     clock_label = tk.Label(header_frame, font=('Helvetica', 8))
     clock_label.grid(row=0, column=0, sticky='n', pady=(0,0))
     
-    # Company info
+    # Row 2: Company info (top-right-corner)
     company_info = """Tagglabs Experiential Pvt. Ltd.
 Sector 49, Gurugram, Haryana 122018
 201, Second Floor, Eros City Square Mall
@@ -297,80 +227,17 @@ Eros City Square
     
     return header_frame
 
-def create_form_frame(root):
-    """Create the form frame with horizontal scrolling"""
-    form_container = tk.Frame(root)
-    form_container.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-    
-    # Create canvas and scrollbar
-    canvas = tk.Canvas(form_container, height=80)
-    scroll_x = tk.Scrollbar(form_container, orient="horizontal", command=canvas.xview)
-    
-    # Pack the scrollbar and canvas
-    scroll_x.pack(side="bottom", fill="x")
-    canvas.pack(side="top", fill="both", expand=True)
-    canvas.configure(xscrollcommand=scroll_x.set)
-    
-    # Create frame inside canvas
-    form_frame = tk.Frame(canvas)
-    canvas.create_window((0, 0), window=form_frame, anchor="nw")
-    
-    # Configure scroll region
-    def on_frame_configure(event):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-        canvas.xview_moveto(0)
-    
-    form_frame.bind("<Configure>", on_frame_configure)
-    
-    return form_container, form_frame
-
-def create_input_fields(form_frame):
-    """Create input fields and labels"""
-    global labels, entries, checkbox_vars
-    labels = {}
-    entries = {}
-    checkbox_vars = {}
-    
-    fields = [
-        'Sno.', "InventoryID", "ProductID", 'Name', 'Qty', 'Purchase',
-        'Purchase Date', 'Purchase Amount', 'On Rent',
-        'Vendor Name', 'Total Rent', 'Rented Inventory Returned', 
-        'Returned Date', 'On Event', 'In Office', 'In Warehouse'
-    ]
-    
-    for col, field in enumerate(fields):
-        label_text = field.replace('_', ' ').title()
-        labels[field] = tk.Label(form_frame, text=label_text, 
-                                font=('Helvetica', 10), anchor='w')
-        
-        if field in ['Purchase', 'On Rent', 'Rented Inventory Returned', 
-                    'On Event', 'In Office', 'In Warehouse']:
-            checkbox_vars[field] = tk.BooleanVar()
-            entries[field] = tk.Checkbutton(form_frame, variable=checkbox_vars[field])
-        else:
-            entries[field] = tk.Entry(form_frame, width=12)
-        
-        labels[field].grid(row=0, column=col, padx=5, pady=2, sticky='w')
-        entries[field].grid(row=1, column=col, padx=5, pady=2, sticky='ew')
-
-def create_button_frame(root):
-    """Create the button frame with action buttons"""
-    button_frame = tk.Frame(root)
-    button_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
-    button_frame.grid_columnconfigure(0, weight=1)
-    
-    add_button = tk.Button(button_frame, text="Add Item", command=add_inventory_item,
-                          font=('Helvetica', 10, 'bold'))
-    add_button.pack(expand=True, pady=5)
-    
-    return button_frame
-
 def create_list_frames(root):
     """Create three list frames with notebook tabs"""
-    notebook = ttk.Notebook(root)
-    notebook.grid(row=3, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+    # Calculate 65% of screen height
+    screen_height = root.winfo_screenheight()
+    list_frame_height = int(screen_height * 0.65)
+    listbox_height = max(10, list_frame_height // 30)  # Dynamic row count
     
-    # Frame 1: Inventory List (from database)
+    notebook = ttk.Notebook(root)
+    notebook.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+    
+    # Frame 1: Inventory List
     inventory_frame = tk.Frame(notebook)
     notebook.add(inventory_frame, text="Inventory List")
     
@@ -388,17 +255,17 @@ def create_list_frames(root):
     tk.Label(left_frame, text="From Date:", font=('Helvetica', 9)).grid(row=0, column=0, padx=5, sticky='e')
     from_date_entry = tk.Entry(left_frame, font=('Helvetica', 9), width=12)
     from_date_entry.grid(row=0, column=1, padx=5, sticky='w')
-    from_date_entry.insert(0, datetime.now().strftime("%Y-%m-01"))  # Default to first day of current month
+    from_date_entry.insert(0, datetime.now().strftime("%Y-%m-01"))
     
     # To Date
     tk.Label(left_frame, text="To Date:", font=('Helvetica', 9)).grid(row=0, column=2, padx=5, sticky='e')
     to_date_entry = tk.Entry(left_frame, font=('Helvetica', 9), width=12)
     to_date_entry.grid(row=0, column=3, padx=5, sticky='w')
-    to_date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))  # Default to current date
+    to_date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
     
     # Filter button
     filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
-                          font=('Helvetica', 9, 'bold'))
+                         font=('Helvetica', 9, 'bold'))
     filter_btn.grid(row=0, column=4, padx=5)
     
     # Show All button
@@ -410,20 +277,22 @@ def create_list_frames(root):
     right_frame = tk.Frame(date_filter_frame)
     right_frame.pack(side="right", fill="x")
     
-    # Sync button (right-aligned)
+    # Sync button
     sync_btn = tk.Button(right_frame, text="Sync", command=update_inventory_list,
-                        font=('Helvetica', 9, 'bold'))
+                       font=('Helvetica', 9, 'bold'))
     sync_btn.pack(side="right", padx=5)
     
     # Separator
-    separator = ttk.Separator(inventory_frame, orient='horizontal')
-    separator.pack(fill="x", pady=5)
+    ttk.Separator(inventory_frame, orient='horizontal').pack(fill="x", pady=5)
     
-    # Inventory listbox
+    # Main List Container
+    list_container = tk.Frame(inventory_frame)
+    list_container.pack(fill="both", expand=True)
+    
     global inventory_listbox
     inventory_listbox = tk.Listbox(
-        inventory_frame,
-        height=10,
+        list_container,
+        height=listbox_height,
         font=('Helvetica', 9),
         activestyle='none',
         selectbackground='#4a6984',
@@ -432,7 +301,7 @@ def create_list_frames(root):
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
     scrollbar = tk.Scrollbar(
-        inventory_frame,
+        list_container,
         orient="vertical",
         command=inventory_listbox.yview
     )
@@ -443,10 +312,13 @@ def create_list_frames(root):
     added_items_frame = tk.Frame(notebook)
     notebook.add(added_items_frame, text="Added Items")
     
+    added_list_container = tk.Frame(added_items_frame)
+    added_list_container.pack(fill="both", expand=True)
+    
     global added_items_listbox
     added_items_listbox = tk.Listbox(
-        added_items_frame,
-        height=10,
+        added_list_container,
+        height=listbox_height,
         font=('Helvetica', 9),
         activestyle='none',
         selectbackground='#4a6984',
@@ -455,7 +327,7 @@ def create_list_frames(root):
     added_items_listbox.pack(side="left", fill="both", expand=True)
     
     added_scrollbar = tk.Scrollbar(
-        added_items_frame,
+        added_list_container,
         orient="vertical",
         command=added_items_listbox.yview
     )
@@ -490,14 +362,16 @@ def create_list_frames(root):
     search_btn.grid(row=0, column=6, sticky='e', padx=5)
 
     # Separator line
-    separator = ttk.Separator(search_frame, orient='horizontal')
-    separator.pack(fill="x", pady=5)
+    ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
     
-    # Search results listbox
+    # Search Results list container
+    search_list_container = tk.Frame(search_frame)
+    search_list_container.pack(fill="both", expand=True)
+    
     global search_results_listbox
     search_results_listbox = tk.Listbox(
-        search_frame,
-        height=10,
+        search_list_container,
+        height=listbox_height,
         font=('Helvetica', 9),
         activestyle='none',
         selectbackground='#4a6984',
@@ -506,7 +380,7 @@ def create_list_frames(root):
     search_results_listbox.pack(side="left", fill="both", expand=True)
     
     search_scrollbar = tk.Scrollbar(
-        search_frame,
+        search_list_container,
         orient="vertical",
         command=search_results_listbox.yview
     )
@@ -519,7 +393,7 @@ def create_bottom_frames(root):
     """Create the bottom frames with action buttons"""
     # Bottom-left buttons
     bottom_left_frame = tk.Frame(root)
-    bottom_left_frame.grid(row=4, column=0, sticky='sw', padx=10, pady=10)
+    bottom_left_frame.grid(row=2, column=0, sticky='sw', padx=10, pady=10)
     
     buttons = [
         ("To Event", open_to_event),
@@ -540,7 +414,7 @@ def create_bottom_frames(root):
     
     # Quit button
     quit_frame = tk.Frame(root)
-    quit_frame.grid(row=4, column=1, sticky='se', padx=10, pady=10)
+    quit_frame.grid(row=2, column=1, sticky='se', padx=10, pady=10)
     
     quit_button = tk.Button(quit_frame, text="Quit", command=quit_application,
                           font=('Helvetica', 10, 'bold'), width=10)
@@ -549,10 +423,8 @@ def create_bottom_frames(root):
 def configure_grid(root):
     """Configure the root grid layout"""
     root.grid_rowconfigure(0, weight=0)  # Header
-    root.grid_rowconfigure(1, weight=0)  # Form
-    root.grid_rowconfigure(2, weight=0)  # Button
-    root.grid_rowconfigure(3, weight=1)  # List frames (most weight)
-    root.grid_rowconfigure(4, weight=0)  # Bottom buttons
+    root.grid_rowconfigure(1, weight=1)  # List frames
+    root.grid_rowconfigure(2, weight=0)  # Bottom buttons
     root.grid_columnconfigure(0, weight=1)
     root.grid_columnconfigure(1, weight=1)
 
@@ -561,12 +433,11 @@ def main():
     global root
     root = setup_main_window()
     
-    header_frame = create_header_frame(root)
-    form_container, form_frame = create_form_frame(root)
-    create_input_fields(form_frame)
-    button_frame = create_button_frame(root)
-    notebook = create_list_frames(root)
-    create_bottom_frames(root)
+    # Create frames in order
+    header_frame = create_header_frame(root)  # Row 0: Clock and company info
+    notebook = create_list_frames(root)      # Row 1: Display lists
+    create_bottom_frames(root)               # Row 2: Bottom buttons
+    
     configure_grid(root)
     
     # Initialize
@@ -574,6 +445,7 @@ def main():
     configure_responsive_grid()
     root.bind('<Configure>', lambda e: configure_responsive_grid())
     update_clock()
+
     root.protocol("WM_DELETE_WINDOW", quit_application)
     
     root.mainloop()
