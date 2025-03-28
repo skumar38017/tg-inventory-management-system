@@ -52,3 +52,14 @@ def get_inventory_by_date_range ():
     except requests.exceptions.RequestException as e:
         messagebox.showerror("Error", f"Network error: {e}")
         return []
+    
+# Function to sync inventory data with the backend
+def sync_inventory():
+    try:
+        response = requests.post("http://127.0.0.1:8000/inventory/sync/")
+        if response.status_code == 200:
+            messagebox.showinfo("Success", "Inventory synced successfully")
+        else:
+            messagebox.showerror("Error", "Failed to sync inventory")
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Error", f"Network error: {e}")
