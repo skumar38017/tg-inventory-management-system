@@ -209,7 +209,7 @@ def configure_responsive_grid():
     clock_label.config(font=('Helvetica', 8))
     company_label.config(font=('Helvetica', 7))
 
-# Child window functions (unchanged)
+# Child window functions
 def open_to_event():
     try:
         logger.info("Opening To Event window")
@@ -380,27 +380,40 @@ def create_list_frames(root):
     
     global from_date_entry, to_date_entry
     
+    # Left side controls
+    left_frame = tk.Frame(date_filter_frame)
+    left_frame.pack(side="left", fill="x", expand=True)
+    
     # From Date
-    tk.Label(date_filter_frame, text="From Date:", font=('Helvetica', 9)).grid(row=0, column=0, padx=5, sticky='e')
-    from_date_entry = tk.Entry(date_filter_frame, font=('Helvetica', 9), width=12)
+    tk.Label(left_frame, text="From Date:", font=('Helvetica', 9)).grid(row=0, column=0, padx=5, sticky='e')
+    from_date_entry = tk.Entry(left_frame, font=('Helvetica', 9), width=12)
     from_date_entry.grid(row=0, column=1, padx=5, sticky='w')
     from_date_entry.insert(0, datetime.now().strftime("%Y-%m-01"))  # Default to first day of current month
     
     # To Date
-    tk.Label(date_filter_frame, text="To Date:", font=('Helvetica', 9)).grid(row=0, column=2, padx=5, sticky='e')
-    to_date_entry = tk.Entry(date_filter_frame, font=('Helvetica', 9), width=12)
+    tk.Label(left_frame, text="To Date:", font=('Helvetica', 9)).grid(row=0, column=2, padx=5, sticky='e')
+    to_date_entry = tk.Entry(left_frame, font=('Helvetica', 9), width=12)
     to_date_entry.grid(row=0, column=3, padx=5, sticky='w')
     to_date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))  # Default to current date
     
     # Filter button
-    filter_btn = tk.Button(date_filter_frame, text="Filter", command=filter_by_date_range,
+    filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
                           font=('Helvetica', 9, 'bold'))
     filter_btn.grid(row=0, column=4, padx=5)
     
     # Show All button
-    show_all_btn = tk.Button(date_filter_frame, text="Show All", command=update_main_inventory_list,
+    show_all_btn = tk.Button(left_frame, text="Show All", command=update_main_inventory_list,
                            font=('Helvetica', 9))
     show_all_btn.grid(row=0, column=5, padx=5)
+    
+    # Right side controls
+    right_frame = tk.Frame(date_filter_frame)
+    right_frame.pack(side="right", fill="x")
+    
+    # Sync button (right-aligned)
+    sync_btn = tk.Button(right_frame, text="Sync", command=update_inventory_list,
+                        font=('Helvetica', 9, 'bold'))
+    sync_btn.pack(side="right", padx=5)
     
     # Separator
     separator = ttk.Separator(inventory_frame, orient='horizontal')
