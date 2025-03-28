@@ -132,11 +132,12 @@ def perform_search():
         logger.error(f"Search failed: {e}")
         messagebox.showerror("Search Error", "Failed to perform search")
 
-def add_inventory_item():
+#  Add new inventory items from all rows
+def add_inventory_item(scrollable_frame, header_labels):
     """Add new inventory items from all rows"""
     row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
     required_fields = ['SNo', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 
-                      'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent']
+                      'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Submited by']
     optional_fields = ['ReturnedDate']
     
     for row in range(row_count):
@@ -187,6 +188,7 @@ def add_inventory_item():
     clear_fields()
     update_main_inventory_list()
 
+#  Add a new row of input fields below the existing ones
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row of input fields below the existing ones"""
     row_num = len(scrollable_frame.grid_slaves()) // len(header_labels)  # Calculate current row count
@@ -211,6 +213,7 @@ def add_new_row(scrollable_frame, header_labels):
             )
             entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
 
+#  Remove the last row of input fields
 def remove_last_row(scrollable_frame):
     """Remove the last row of input fields"""
     # Get all widgets in the scrollable frame
@@ -243,6 +246,7 @@ def quit_application():
     if messagebox.askokcancel("Quit", "Do you really want to quit?"):
         root.destroy()
 
+#  Adjust UI elements based on screen size
 def configure_responsive_grid():
     """Adjust UI elements based on screen size"""
     screen_width = root.winfo_screenwidth()
@@ -308,6 +312,7 @@ def setup_main_window():
 
     return root
 
+#  Create and configure the header frame with clock and company info
 def create_header_frame(root):
     """Create and configure the header frame with clock and company info"""
     header_frame = tk.Frame(root)
@@ -339,6 +344,7 @@ Eros City Square
     
     return header_frame
 
+#  Create list frames with notebook tabs
 def create_list_frames(root):
     """Create list frames with notebook tabs"""
     # Calculate 65% of screen height
@@ -524,7 +530,7 @@ def create_list_frames(root):
     add_button = tk.Button(
         button_frame, 
         text="Add Item", 
-        command=add_inventory_item,
+        command=lambda: add_inventory_item(scrollable_frame, header_labels),
         font=('Helvetica', 10, 'bold'),
         width=15
     )
@@ -559,7 +565,7 @@ def create_list_frames(root):
     global added_items_listbox
     added_items_listbox = tk.Listbox(
         list_container,
-        height=10,  # Default height, can be adjusted
+        height=10,
         font=('Helvetica', 9),
         selectbackground='#4a6984',
         selectforeground='white'
@@ -574,7 +580,7 @@ def create_list_frames(root):
     )
     list_scrollbar.pack(side="right", fill="y")
     added_items_listbox.config(yscrollcommand=list_scrollbar.set)
-        
+
     # Frame 3: Search Results
     search_frame = tk.Frame(notebook)
     notebook.add(search_frame, text="Search Results")
