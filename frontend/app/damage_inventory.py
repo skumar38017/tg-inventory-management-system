@@ -19,6 +19,12 @@ class DamageWindow:
         self.original_column_widths = []
         self.submitted_data = []  # Store all submitted entries
         
+        # Variables for edit functionality
+        self.selected_items = []
+        self.edit_mode = False
+        self.current_edit_id = None
+        self.checkbox_vars = []
+        
         # Hide parent window (optional)
         self.parent.withdraw()
         
@@ -163,7 +169,7 @@ class DamageWindow:
         self.headers = [
             "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
             "Inventory", "Description/Specifications", "Qty", "Comments", 
-            "Status", "Received Date", "Received By", "Damage Checked",
+            "Status", "Received Date", "Received By", "Check Status",
             "Employee Name", "Location", "Project Name", "Event Date"
         ]
         
@@ -181,7 +187,7 @@ class DamageWindow:
             9: 12,  # Status
             10: 12, # Received Date
             11: 15, # Received By
-            12: 15, # Damage Checked
+            12: 15, # Check Status
             13: 15, # Employee Name
             14: 12, # Location
             15: 15, # Project Name
@@ -220,13 +226,18 @@ class DamageWindow:
         # Search Results tab
         self.search_results_frame = tk.Frame(self.display_notebook)
         self.display_notebook.add(self.search_results_frame, text="Search Results")
+
+        # Edit/Update tab
+        self.edit_frame = tk.Frame(self.display_notebook)
+        self.display_notebook.add(self.edit_frame, text="Edit/Update")
         
         # Submission History tab
         self.submission_history_frame = tk.Frame(self.display_notebook)
         self.display_notebook.add(self.submission_history_frame, text="Submission History")
         
-        # Configure both display frames
+        # Configure all display frames
         self.setup_search_results_frame()
+        self.setup_edit_frame()
         self.setup_submission_history_frame()
 
         # Bottom buttons in row 6
@@ -288,6 +299,57 @@ class DamageWindow:
         self.search_canvas.configure(yscrollcommand=self.search_v_scrollbar.set)
         self.search_canvas.configure(xscrollcommand=self.search_h_scrollbar.set)
 
+    def setup_edit_frame(self):
+        """Setup the edit/update display frame"""
+        # Main container frame
+        edit_container = tk.Frame(self.edit_frame)
+        edit_container.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Top section - selection and search results
+        top_frame = tk.Frame(edit_container)
+        top_frame.pack(fill="both", expand=True)
+        
+        # Create canvas and scrollbars for the edit table
+        self.edit_canvas = tk.Canvas(top_frame)
+        self.edit_v_scrollbar = ttk.Scrollbar(top_frame, orient="vertical", command=self.edit_canvas.yview)
+        self.edit_h_scrollbar = ttk.Scrollbar(top_frame, orient="horizontal", command=self.edit_canvas.xview)
+        
+        # Pack scrollbars
+        self.edit_v_scrollbar.pack(side="right", fill="y")
+        self.edit_h_scrollbar.pack(side="bottom", fill="x")
+        self.edit_canvas.pack(side="left", fill="both", expand=True)
+        
+        # Create frame inside canvas
+        self.edit_inner_frame = tk.Frame(self.edit_canvas)
+        self.edit_canvas.create_window((0, 0), window=self.edit_inner_frame, anchor="nw")
+        
+        # Configure canvas scrolling
+        self.edit_inner_frame.bind(
+            "<Configure>",
+            lambda e: self.edit_canvas.configure(
+                scrollregion=self.edit_canvas.bbox("all")
+            )
+        )
+        self.edit_canvas.configure(yscrollcommand=self.edit_v_scrollbar.set)
+        self.edit_canvas.configure(xscrollcommand=self.edit_h_scrollbar.set)
+        
+        # Bottom section - action buttons
+        button_frame = tk.Frame(edit_container)
+        button_frame.pack(fill="x", pady=5)
+        
+        # Action buttons
+        self.edit_btn = tk.Button(button_frame, text="Edit", command=self.edit_selected,
+                                font=('Helvetica', 10, 'bold'), state=tk.DISABLED)
+        self.edit_btn.pack(side=tk.LEFT, padx=10)
+        
+        self.update_btn = tk.Button(button_frame, text="Update", command=self.update_selected,
+                                  font=('Helvetica', 10, 'bold'), state=tk.DISABLED)
+        self.update_btn.pack(side=tk.LEFT, padx=10)
+        
+        self.delete_btn = tk.Button(button_frame, text="Delete", command=self.delete_selected,
+                                  font=('Helvetica', 10, 'bold'), state=tk.DISABLED)
+        self.delete_btn.pack(side=tk.LEFT, padx=10)
+
     def setup_submission_history_frame(self):
         """Setup the submission history display frame"""
         # Create canvas and scrollbars
@@ -330,6 +392,34 @@ class DamageWindow:
         for row_idx, item in enumerate(results, start=1):
             for col, (key, value) in enumerate(item.items()):
                 tk.Label(self.search_results_inner_frame, text=value, font=('Helvetica', 15),
+                       borderwidth=1, relief="solid", padx=5, pady=2).grid(row=row_idx, column=col, sticky="ew")
+
+    def display_edit_results(self, results):
+        """Display search results in the edit frame with checkboxes"""
+        # Clear previous results
+        for widget in self.edit_inner_frame.winfo_children():
+            widget.destroy()
+        
+        # Create headers with checkbox in first column
+        tk.Label(self.edit_inner_frame, text="Select", font=('Helvetica', 15, 'bold'),
+                borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=0, sticky="ew")
+        
+        for col, header in enumerate(self.headers, start=1):
+            tk.Label(self.edit_inner_frame, text=header, font=('Helvetica', 15, 'bold'),
+                   borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
+            self.edit_inner_frame.columnconfigure(col, minsize=self.original_column_widths[col-1] * 8)
+        
+        # Display results with checkboxes
+        self.checkbox_vars = []
+        for row_idx, item in enumerate(results, start=1):
+            var = tk.BooleanVar()
+            self.checkbox_vars.append(var)
+            cb = tk.Checkbutton(self.edit_inner_frame, variable=var, 
+                              command=lambda: self.toggle_edit_buttons())
+            cb.grid(row=row_idx, column=0, sticky="ew", padx=5, pady=2)
+            
+            for col, (key, value) in enumerate(item.items(), start=1):
+                tk.Label(self.edit_inner_frame, text=value, font=('Helvetica', 15),
                        borderwidth=1, relief="solid", padx=5, pady=2).grid(row=row_idx, column=col, sticky="ew")
 
     def display_submission_history(self):
@@ -379,15 +469,16 @@ class DamageWindow:
             'status': "Active",
             'received_date': datetime.now().strftime("%Y-%m-%d"),
             'received_by': "Admin",
-            'damage_checked': "No",
+            'check_status': "No",
             'employee_name': "John Doe",
             'location': "Warehouse",
             'project_name': "Test Project",
             'event_date': datetime.now().strftime("%Y-%m-%d")
         }]
         
-        # Display results
+        # Display results in both tabs
         self.display_search_results(results)
+        self.display_edit_results(results)
         self.display_notebook.select(self.search_results_frame)
         
         logger.info(f"Searching inventory with criteria: {search_criteria}")
@@ -424,6 +515,126 @@ class DamageWindow:
         self.scrollable_input_frame.update_idletasks()
         self.input_canvas.configure(scrollregion=self.input_canvas.bbox("all"))
 
+    def toggle_edit_buttons(self):
+        """Enable/disable edit buttons based on selection"""
+        selected = any(var.get() for var in self.checkbox_vars) if hasattr(self, 'checkbox_vars') else False
+        if selected and not self.edit_mode:
+            self.edit_btn.config(state=tk.NORMAL)
+            self.update_btn.config(state=tk.DISABLED)
+            self.delete_btn.config(state=tk.NORMAL)
+        elif self.edit_mode:
+            self.edit_btn.config(state=tk.DISABLED)
+            self.update_btn.config(state=tk.NORMAL)
+            self.delete_btn.config(state=tk.DISABLED)
+        else:
+            self.edit_btn.config(state=tk.DISABLED)
+            self.update_btn.config(state=tk.DISABLED)
+            self.delete_btn.config(state=tk.DISABLED)
+
+    def edit_selected(self):
+        """Edit the selected item"""
+        selected_indices = [i for i, var in enumerate(self.checkbox_vars) if var.get()]
+        if len(selected_indices) != 1:
+            messagebox.showwarning("Warning", "Please select exactly one item to edit")
+            return
+        
+        self.edit_mode = True
+        self.toggle_edit_buttons()
+        
+        # Get the selected item data
+        selected_index = selected_indices[0]
+        selected_item = {
+            'zone_activity': f"Zone {selected_index+1}",
+            'sr_no': str(selected_index+1),
+            'inventory_id': f"INV{selected_index+1:03d}",
+            'product_id': f"PROD{selected_index+1:03d}",
+            'project_id': f"PROJ{selected_index+1:03d}",
+            'inventory': f"Inventory Item {selected_index+1}",
+            'description': f"Description for item {selected_index+1}",
+            'quantity': str(selected_index+1),
+            'comments': f"Comment {selected_index+1}",
+            'status': "Active",
+            'received_date': datetime.now().strftime("%Y-%m-%d"),
+            'received_by': "Admin",
+            'check_status': "No",
+            'employee_name': "John Doe",
+            'location': "Warehouse",
+            'project_name': "Test Project",
+            'event_date': datetime.now().strftime("%Y-%m-%d")
+        }
+        
+        # Store the ID of the item being edited
+        self.current_edit_id = selected_item['inventory_id']
+        
+        # Display the item in the input area for editing
+        for col, (key, value) in enumerate(selected_item.items()):
+            self.table_entries[0][col].delete(0, tk.END)
+            self.table_entries[0][col].insert(0, value)
+        
+        # Switch to the input area
+        self.window.focus_set()
+
+    def update_selected(self):
+        """Update the edited item"""
+        if not self.edit_mode or not self.current_edit_id:
+            messagebox.showwarning("Warning", "No item in edit mode")
+            return
+        
+        # Get the updated data from the input fields
+        updated_item = {
+            'zone_activity': self.table_entries[0][0].get().strip(),
+            'sr_no': self.table_entries[0][1].get().strip(),
+            'inventory_id': self.table_entries[0][2].get().strip(),
+            'product_id': self.table_entries[0][3].get().strip(),
+            'project_id': self.table_entries[0][4].get().strip(),
+            'inventory': self.table_entries[0][5].get().strip(),
+            'description': self.table_entries[0][6].get().strip(),
+            'quantity': self.table_entries[0][7].get().strip(),
+            'comments': self.table_entries[0][8].get().strip(),
+            'status': self.table_entries[0][9].get().strip(),
+            'received_date': self.table_entries[0][10].get().strip(),
+            'received_by': self.table_entries[0][11].get().strip(),
+            'check_status': self.table_entries[0][12].get().strip(),
+            'employee_name': self.table_entries[0][13].get().strip(),
+            'location': self.table_entries[0][14].get().strip(),
+            'project_name': self.table_entries[0][15].get().strip(),
+            'event_date': self.table_entries[0][16].get().strip()
+        }
+        
+        # Here you would typically update your database or data source
+        messagebox.showinfo("Success", f"Item {self.current_edit_id} updated successfully")
+        logger.info(f"Updated item {self.current_edit_id} with data: {updated_item}")
+        
+        # Reset edit mode
+        self.edit_mode = False
+        self.current_edit_id = None
+        self.toggle_edit_buttons()
+        
+        # Clear input fields
+        for entry in self.table_entries[0]:
+            entry.delete(0, tk.END)
+        
+        # Refresh the display
+        self.search_inventory()
+
+    def delete_selected(self):
+        """Delete the selected items"""
+        selected_indices = [i for i, var in enumerate(self.checkbox_vars) if var.get()]
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Please select at least one item to delete")
+            return
+        
+        # Confirm deletion
+        if not messagebox.askyesno("Confirm", f"Delete {len(selected_indices)} selected item(s)?"):
+            return
+        
+        # Here you would typically delete from your database or data source
+        messagebox.showinfo("Success", f"Deleted {len(selected_indices)} item(s)")
+        logger.info(f"Deleted items at indices: {selected_indices}")
+        
+        # Refresh the display
+        self.search_inventory()
+
     def submit_form(self):
         """Handle form submission"""
         # Get data from the single row
@@ -440,7 +651,7 @@ class DamageWindow:
             'status': self.table_entries[0][9].get().strip(),
             'received_date': self.table_entries[0][10].get().strip(),
             'received_by': self.table_entries[0][11].get().strip(),
-            'damage_checked': self.table_entries[0][12].get().strip(),
+            'check_status': self.table_entries[0][12].get().strip(),
             'employee_name': self.table_entries[0][13].get().strip(),
             'location': self.table_entries[0][14].get().strip(),
             'project_name': self.table_entries[0][15].get().strip(),
