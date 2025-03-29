@@ -116,28 +116,24 @@ class ToEventWindow:
         info_frame = tk.Frame(self.window)
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # First row - IDs and buttons
+# First row - IDs and buttons (now only Project ID)
         tk.Label(info_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
-        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='disabled')
+        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_id.grid(row=0, column=1, sticky='w', padx=2)
-        
-        tk.Label(info_frame, text="Work ID:", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=2)
-        self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
-        self.work_id.grid(row=0, column=3, sticky='w', padx=2)
-        
+                
         self.fetch_btn = tk.Button(info_frame, text="Fetch Details", command=self.fetch_record,
                                  font=('Helvetica', 9, 'bold'))
-        self.fetch_btn.grid(row=0, column=4, padx=5)
+        self.fetch_btn.grid(row=0, column=2, padx=5)
         
         self.edit_btn = tk.Button(info_frame, text="Edit", command=self.edit_record,
                                 font=('Helvetica', 9, 'bold'), state=tk.NORMAL)
-        self.edit_btn.grid(row=0, column=5, padx=5)
+        self.edit_btn.grid(row=0, column=3, padx=5)
         
         self.update_btn = tk.Button(info_frame, text="Update", command=self.update_record,
                                   font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
-        self.update_btn.grid(row=0, column=6, padx=5)
+        self.update_btn.grid(row=0, column=4, padx=5)
 
-        # Second row - all fields
+        # Second row - all fields (added Work ID at the end)
         tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
         self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.employee_name.grid(row=1, column=1, sticky='w', padx=2)
@@ -161,7 +157,12 @@ class ToEventWindow:
         tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=1, column=10, sticky='e', padx=2)
         self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.event_date.grid(row=1, column=11, sticky='w', padx=2)
-                
+        
+        # Moved Work ID to here (right-aligned at the end)
+        tk.Label(info_frame, text="Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
+        self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='disabled')
+        self.work_id.grid(row=1, column=13, sticky='w', padx=2)
+
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
@@ -227,7 +228,7 @@ class ToEventWindow:
                                       columns=("WorkID", "Employee", "Location", "Client", "Setup", "Project", "Event"),
                                       show="headings")
         
-        self.recent_tree.heading("WorkID", text="Work ID")
+        self.recent_tree.heading("WorkID", text="Project ID")
         self.recent_tree.heading("Employee", text="Employee Name")
         self.recent_tree.heading("Location", text="Location")
         self.recent_tree.heading("Client", text="Client Name")
@@ -289,10 +290,10 @@ class ToEventWindow:
         self.window.grid_columnconfigure(1, weight=1)
 
     def fetch_record(self):
-        """Fetch record based on Work ID"""
-        work_id = self.work_id.get()
-        if not work_id:
-            messagebox.showwarning("Warning", "Please enter a Work ID")
+        """Fetch record based on Project ID"""
+        project_id = self.project_id.get()
+        if not project_id:
+            messagebox.showwarning("Warning", "Please enter a project_id")
             return
             
         try:
@@ -300,7 +301,7 @@ class ToEventWindow:
             # record = database.get_record_by_work_id(work_id)
             
             if not record:
-                messagebox.showwarning("Warning", f"No record found for Work ID: {work_id}")
+                messagebox.showwarning("Warning", f"No record found for project_id: {project_id}")
                 return
                 
             # TODO: Populate fields from database record
@@ -380,7 +381,7 @@ class ToEventWindow:
         try:
             work_id = self.work_id.get()
             if not work_id:
-                messagebox.showwarning("Warning", "Work ID is required for update")
+                messagebox.showwarning("Warning", "Project ID is required for update")
                 return
                 
             # Prepare the data to be saved
