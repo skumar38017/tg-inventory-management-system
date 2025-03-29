@@ -39,6 +39,9 @@ class ToEventWindow:
         # Generate and set WorkID automatically
         self.generate_work_id()
         
+        # Load initial data
+        self.load_submitted_forms()
+        
         logger.info("To Event window opened successfully")
 
     def generate_work_id(self):
@@ -133,11 +136,11 @@ class ToEventWindow:
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
         # First row - IDs and buttons (now only Project ID)
-        tk.Label(info_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
+        tk.Label(info_frame, text="Project ID (Search):", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
         self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_id.grid(row=0, column=1, sticky='w', padx=2)
                 
-        self.fetch_btn = tk.Button(info_frame, text="Fetch Details", command=self.fetch_record,
+        self.fetch_btn = tk.Button(info_frame, text="Search", command=self.fetch_record,
                                  font=('Helvetica', 9, 'bold'))
         self.fetch_btn.grid(row=0, column=2, padx=5)
         
@@ -233,38 +236,19 @@ class ToEventWindow:
                 row_entries.append(entry)
             self.table_entries.append(row_entries)
 
-        # Recent Projects frame
-        recent_frame = tk.Frame(self.window, bg="white", bd=1, relief=tk.SOLID)
-        recent_frame.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=(5,0))
-        
-        tk.Label(recent_frame, text="Recent Projects Details", font=('Helvetica', 10, 'bold'), 
-               bg="white").pack(anchor="w", padx=5, pady=2)
+        # Create Notebook for tabs
+        self.tab_control = ttk.Notebook(self.window)
+        self.tab_control.grid(row=6, column=0, columnspan=2, sticky="nsew", padx=10, pady=(5,0))
 
-        self.recent_tree = ttk.Treeview(recent_frame, height=5, 
-                                      columns=("WorkID", "Employee", "Location", "Client", "Setup", "Project", "Event"),
-                                      show="headings")
-        
-        self.recent_tree.heading("WorkID", text="Project ID")
-        self.recent_tree.heading("Employee", text="Employee Name")
-        self.recent_tree.heading("Location", text="Location")
-        self.recent_tree.heading("Client", text="Client Name")
-        self.recent_tree.heading("Setup", text="Setup Date")
-        self.recent_tree.heading("Project", text="Project Name")
-        self.recent_tree.heading("Event", text="Event Date")
-        
-        self.recent_tree.column("WorkID", width=80)
-        self.recent_tree.column("Employee", width=120)
-        self.recent_tree.column("Location", width=100)
-        self.recent_tree.column("Client", width=120)
-        self.recent_tree.column("Setup", width=100)
-        self.recent_tree.column("Project", width=150)
-        self.recent_tree.column("Event", width=100)
-        
-        tree_scroll = ttk.Scrollbar(recent_frame, orient="vertical", command=self.recent_tree.yview)
-        self.recent_tree.configure(yscrollcommand=tree_scroll.set)
-        
-        self.recent_tree.pack(side="left", fill="both", expand=True)
-        tree_scroll.pack(side="right", fill="y")
+        # Tab 1: Submitted Forms
+        self.submitted_tab = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.submitted_tab, text="Submitted Forms")
+        self.setup_submitted_tab()
+
+        # Tab 2: Search Results
+        self.search_tab = ttk.Frame(self.tab_control)
+        self.tab_control.add(self.search_tab, text="Search Results")
+        self.setup_search_tab()
 
         # Bottom buttons
         button_frame = tk.Frame(self.window)
@@ -300,110 +284,237 @@ class ToEventWindow:
         self.window.grid_rowconfigure(3, weight=0)
         self.window.grid_rowconfigure(4, weight=0)
         self.window.grid_rowconfigure(5, weight=1)
-        self.window.grid_rowconfigure(6, weight=0)
+        self.window.grid_rowconfigure(6, weight=1)
         self.window.grid_rowconfigure(7, weight=0)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
 
+    def setup_submitted_tab(self):
+        """Setup the tab for submitted forms"""
+        frame = tk.Frame(self.submitted_tab)
+        frame.pack(fill="both", expand=True)
+
+        # Treeview for submitted forms
+        self.submitted_tree = ttk.Treeview(frame, height=10,
+                                         columns=("WorkID", "Employee", "Client", "EventDate", "TotalItems"),
+                                         show="headings")
+        
+        # Configure columns
+        self.submitted_tree.heading("WorkID", text="Work ID")
+        self.submitted_tree.heading("Employee", text="Employee")
+        self.submitted_tree.heading("Client", text="Client")
+        self.submitted_tree.heading("EventDate", text="Event Date")
+        self.submitted_tree.heading("TotalItems", text="Total Items")
+        
+        self.submitted_tree.column("WorkID", width=100)
+        self.submitted_tree.column("Employee", width=150)
+        self.submitted_tree.column("Client", width=150)
+        self.submitted_tree.column("EventDate", width=100)
+        self.submitted_tree.column("TotalItems", width=80)
+
+        # Scrollbars
+        y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.submitted_tree.yview)
+        x_scroll = ttk.Scrollbar(frame, orient="horizontal", command=self.submitted_tree.xview)
+        self.submitted_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        # Grid layout
+        self.submitted_tree.pack(side="left", fill="both", expand=True)
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+
+        # Double-click to load project
+        self.submitted_tree.bind("<Double-1>", self.load_submitted_project)
+
+    def setup_search_tab(self):
+        """Setup the tab for search results"""
+        frame = tk.Frame(self.search_tab)
+        frame.pack(fill="both", expand=True)
+
+        # Treeview for search results
+        self.search_tree = ttk.Treeview(frame, height=10,
+                                      columns=("WorkID", "ProjectID", "Employee", "Location", "Client", "EventDate"),
+                                      show="headings")
+        
+        # Configure columns
+        self.search_tree.heading("WorkID", text="Work ID")
+        self.search_tree.heading("ProjectID", text="Project ID")
+        self.search_tree.heading("Employee", text="Employee")
+        self.search_tree.heading("Location", text="Location")
+        self.search_tree.heading("Client", text="Client")
+        self.search_tree.heading("EventDate", text="Event Date")
+        
+        self.search_tree.column("WorkID", width=100)
+        self.search_tree.column("ProjectID", width=100)
+        self.search_tree.column("Employee", width=150)
+        self.search_tree.column("Location", width=100)
+        self.search_tree.column("Client", width=150)
+        self.search_tree.column("EventDate", width=100)
+
+        # Scrollbars
+        y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.search_tree.yview)
+        x_scroll = ttk.Scrollbar(frame, orient="horizontal", command=self.search_tree.xview)
+        self.search_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        # Grid layout
+        self.search_tree.pack(side="left", fill="both", expand=True)
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+
+        # Double-click to load project
+        self.search_tree.bind("<Double-1>", self.load_search_result)
+
+    def load_submitted_forms(self):
+        """Load all submitted forms into the submitted tab"""
+        # Clear existing items
+        for item in self.submitted_tree.get_children():
+            self.submitted_tree.delete(item)
+        
+        # TODO: Replace with actual database call
+        # submitted_forms = database.get_all_submitted_forms()
+        
+        # Sample data
+        submitted_forms = [
+            {
+                'work_id': 'PRJ12345',
+                'employee_name': 'John Doe',
+                'client_name': 'ABC Corp',
+                'event_date': '2023-01-20',
+                'total_items': 15
+            },
+            {
+                'work_id': 'PRJ67890',
+                'employee_name': 'Jane Smith',
+                'client_name': 'XYZ Inc',
+                'event_date': '2023-02-15',
+                'total_items': 8
+            }
+        ]
+        
+        for form in submitted_forms:
+            self.submitted_tree.insert("", "end", values=(
+                form['work_id'],
+                form['employee_name'],
+                form['client_name'],
+                form['event_date'],
+                form['total_items']
+            ))
+
+    def load_submitted_project(self, event):
+        """Load project from submitted tab when double-clicked"""
+        selected = self.submitted_tree.selection()
+        if selected:
+            item = self.submitted_tree.item(selected)
+            values = item['values']
+            
+            # Populate form fields
+            self.work_id.config(state='normal')
+            self.work_id.delete(0, tk.END)
+            self.work_id.insert(0, values[0])
+            self.work_id.config(state='readonly')
+            
+            self.employee_name.delete(0, tk.END)
+            self.employee_name.insert(0, values[1])
+            
+            self.client_name.delete(0, tk.END)
+            self.client_name.insert(0, values[2])
+            
+            self.event_date.delete(0, tk.END)
+            self.event_date.insert(0, values[3])
+            
+            # TODO: Load inventory items for this work_id
+            
+            # Switch back to form view
+            self.tab_control.select(0)  # First tab is the form
+
     def fetch_record(self):
-        """Fetch record based on Project ID and match with WorkID"""
-        project_id = self.project_id.get()
+        """Search records by Project ID and display in Search Results tab"""
+        project_id = self.project_id.get().strip()
         if not project_id:
-            messagebox.showwarning("Warning", "Please enter a Project ID")
+            messagebox.showwarning("Warning", "Please enter a Project ID to search")
             return
             
         try:
             # TODO: Replace with actual database call
-            # records = database.get_records_by_project_id(project_id)
+            # records = database.search_records_by_project_id(project_id)
             
-            # Sample data for demonstration
+            # Sample data - simulate search results
             records = [
                 {
                     'work_id': 'PRJ12345',
+                    'project_id': 'EVENT001',
                     'employee_name': 'John Doe',
                     'location': 'Gurugram',
                     'client_name': 'ABC Corp',
-                    'setup_date': '2023-01-15',
-                    'project_name': 'Product Launch',
-                    'event_date': '2023-01-20',
-                    'project_id': 'PROJ001'
+                    'event_date': '2023-01-20'
                 },
                 {
                     'work_id': 'PRJ67890',
+                    'project_id': 'EVENT001',
                     'employee_name': 'Jane Smith',
                     'location': 'Delhi',
                     'client_name': 'XYZ Inc',
-                    'setup_date': '2023-02-10',
-                    'project_name': 'Conference',
-                    'event_date': '2023-02-15',
-                    'project_id': 'PROJ001'
+                    'event_date': '2023-02-15'
                 }
             ]
             
             if not records:
-                messagebox.showwarning("Warning", f"No records found for Project ID: {project_id}")
+                messagebox.showinfo("Info", f"No records found for Project ID: {project_id}")
                 return
                 
-            # Clear the recent projects tree
-            for item in self.recent_tree.get_children():
-                self.recent_tree.delete(item)
+            # Clear existing items in search tab
+            for item in self.search_tree.get_children():
+                self.search_tree.delete(item)
                 
-            # Populate the tree with matching records
+            # Populate search tab
             for record in records:
-                self.recent_tree.insert("", "end", values=(
-                    record.get('work_id', ''),
-                    record.get('employee_name', ''),
-                    record.get('location', ''),
-                    record.get('client_name', ''),
-                    record.get('setup_date', ''),
-                    record.get('project_name', ''),
-                    record.get('event_date', '')
+                self.search_tree.insert("", "end", values=(
+                    record['work_id'],
+                    record['project_id'],
+                    record['employee_name'],
+                    record['location'],
+                    record['client_name'],
+                    record['event_date']
                 ))
             
-            # Bind double-click event to load project details
-            self.recent_tree.bind("<Double-1>", self.load_project_from_list)
-            
-            messagebox.showinfo("Success", f"Found {len(records)} matching records")
+            # Switch to search results tab
+            self.tab_control.select(self.search_tab)
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch records: {str(e)}")
-            logger.error(f"Fetch failed: {str(e)}")
+            messagebox.showerror("Error", f"Failed to search records: {str(e)}")
+            logger.error(f"Search failed: {str(e)}")
 
-    def load_project_from_list(self, event):
-        """Load selected project details when double-clicked"""
-        selected_item = self.recent_tree.selection()
-        if selected_item:
-            item = self.recent_tree.item(selected_item)
-            project_data = item['values']
+    def load_search_result(self, event):
+        """Load project from search results when double-clicked"""
+        selected = self.search_tree.selection()
+        if selected:
+            item = self.search_tree.item(selected)
+            values = item['values']
             
-            # Populate the fields from selected record
+            # Populate form fields
             self.work_id.config(state='normal')
             self.work_id.delete(0, tk.END)
-            self.work_id.insert(0, project_data[0])
+            self.work_id.insert(0, values[0])
             self.work_id.config(state='readonly')
             
+            self.project_id.delete(0, tk.END)
+            self.project_id.insert(0, values[1])
+            
             self.employee_name.delete(0, tk.END)
-            self.employee_name.insert(0, project_data[1])
+            self.employee_name.insert(0, values[2])
             
             self.location.delete(0, tk.END)
-            self.location.insert(0, project_data[2])
+            self.location.insert(0, values[3])
             
             self.client_name.delete(0, tk.END)
-            self.client_name.insert(0, project_data[3])
-            
-            self.setup_date.delete(0, tk.END)
-            self.setup_date.insert(0, project_data[4])
-            
-            self.project_name.delete(0, tk.END)
-            self.project_name.insert(0, project_data[5])
+            self.client_name.insert(0, values[4])
             
             self.event_date.delete(0, tk.END)
-            self.event_date.insert(0, project_data[6])
+            self.event_date.insert(0, values[5])
             
-            # Set fields to readonly initially
-            self.set_fields_readonly(True)
-            self.edit_btn.config(state=tk.NORMAL)
-            self.update_btn.config(state=tk.DISABLED)
+            # TODO: Load inventory items for this work_id
+            
+            # Switch back to form view
+            self.tab_control.select(0)  # First tab is the form
 
     def edit_record(self):
         """Enable editing of the record"""
@@ -429,7 +540,6 @@ class ToEventWindow:
                 'setup_date': self.setup_date.get(),
                 'project_name': self.project_name.get(),
                 'event_date': self.event_date.get(),
-                'project_id': self.project_id.get(),
                 'inventory_items': []
             }
             
@@ -461,8 +571,8 @@ class ToEventWindow:
             self.edit_btn.config(state=tk.NORMAL)
             self.update_btn.config(state=tk.DISABLED)
             
-            # Refresh recent projects list
-            self.fetch_record()
+            # Refresh submitted forms tab
+            self.load_submitted_forms()
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update record: {str(e)}")
@@ -544,7 +654,6 @@ class ToEventWindow:
             'setup_date': self.setup_date.get(),
             'project_name': self.project_name.get(),
             'event_date': self.event_date.get(),
-            'project_id': self.project_id.get(),
             'inventory_items': []
         }
         
@@ -574,6 +683,10 @@ class ToEventWindow:
         # Clear form and generate new WorkID
         self.clear_form()
         self.generate_work_id()
+        
+        # Refresh submitted forms tab
+        self.load_submitted_forms()
+        self.tab_control.select(self.submitted_tab)
 
     def clear_form(self):
         """Clear all form fields"""
@@ -583,7 +696,6 @@ class ToEventWindow:
         self.setup_date.delete(0, tk.END)
         self.project_name.delete(0, tk.END)
         self.event_date.delete(0, tk.END)
-        self.project_id.delete(0, tk.END)
         
         # Clear table entries
         for row in self.table_entries:
