@@ -3,6 +3,8 @@ from tkinter import messagebox, ttk
 from datetime import datetime
 import platform
 import logging
+import random
+import string
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,21 @@ class ToEventWindow:
         # Set initial state
         self.set_fields_readonly(False)
         
+        # Generate and set WorkID automatically
+        self.generate_work_id()
+        
         logger.info("To Event window opened successfully")
+
+    def generate_work_id(self):
+        """Generate a random WorkID in format PRJ followed by 5 digits"""
+        prefix = "PRJ"
+        digits = ''.join(random.choices(string.digits, k=5))
+        work_id = f"{prefix}{digits}"
+        self.work_id.config(state='normal')
+        self.work_id.delete(0, tk.END)
+        self.work_id.insert(0, work_id)
+        self.work_id.config(state='readonly')
+        return work_id
 
     def set_fields_readonly(self, readonly):
         """Set all fields to readonly or editable"""
@@ -47,8 +63,8 @@ class ToEventWindow:
         self.setup_date.config(state=state)
         self.project_name.config(state=state)
         self.event_date.config(state=state)
-        self.work_id.config(state=state)
-        self.project_id.config(state='disabled')  # Project ID is immutable
+        self.work_id.config(state='readonly')  # Always readonly
+        self.project_id.config(state='normal')  # Project ID is editable for fetching
         
         # Table entries
         for row in self.table_entries:
@@ -116,7 +132,7 @@ class ToEventWindow:
         info_frame = tk.Frame(self.window)
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-# First row - IDs and buttons (now only Project ID)
+        # First row - IDs and buttons (now only Project ID)
         tk.Label(info_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
         self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_id.grid(row=0, column=1, sticky='w', padx=2)
@@ -160,7 +176,7 @@ class ToEventWindow:
         
         # Moved Work ID to here (right-aligned at the end)
         tk.Label(info_frame, text="Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
-        self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='disabled')
+        self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
         self.work_id.grid(row=1, column=13, sticky='w', padx=2)
 
         # Separator line
@@ -290,65 +306,68 @@ class ToEventWindow:
         self.window.grid_columnconfigure(1, weight=1)
 
     def fetch_record(self):
-        """Fetch record based on Project ID"""
+        """Fetch record based on Project ID and match with WorkID"""
         project_id = self.project_id.get()
         if not project_id:
-            messagebox.showwarning("Warning", "Please enter a project_id")
+            messagebox.showwarning("Warning", "Please enter a Project ID")
             return
             
         try:
             # TODO: Replace with actual database call
-            # record = database.get_record_by_work_id(work_id)
+            # records = database.get_records_by_project_id(project_id)
             
-            if not record:
-                messagebox.showwarning("Warning", f"No record found for project_id: {project_id}")
+            # Sample data for demonstration
+            records = [
+                {
+                    'work_id': 'PRJ12345',
+                    'employee_name': 'John Doe',
+                    'location': 'Gurugram',
+                    'client_name': 'ABC Corp',
+                    'setup_date': '2023-01-15',
+                    'project_name': 'Product Launch',
+                    'event_date': '2023-01-20',
+                    'project_id': 'PROJ001'
+                },
+                {
+                    'work_id': 'PRJ67890',
+                    'employee_name': 'Jane Smith',
+                    'location': 'Delhi',
+                    'client_name': 'XYZ Inc',
+                    'setup_date': '2023-02-10',
+                    'project_name': 'Conference',
+                    'event_date': '2023-02-15',
+                    'project_id': 'PROJ001'
+                }
+            ]
+            
+            if not records:
+                messagebox.showwarning("Warning", f"No records found for Project ID: {project_id}")
                 return
                 
-            # TODO: Populate fields from database record
-            # self.project_id.config(state='normal')
-            # self.project_id.delete(0, tk.END)
-            # self.project_id.insert(0, record['project_id'])
-            # self.project_id.config(state='disabled')
-            
-            # Similarly populate other fields...
-            
-            # Set fields to readonly initially
-            self.set_fields_readonly(True)
-            self.edit_btn.config(state=tk.NORMAL)
-            self.update_btn.config(state=tk.DISABLED)
-            
-            messagebox.showinfo("Success", "Record loaded successfully")
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to fetch record: {str(e)}")
-            logger.error(f"Fetch failed: {str(e)}")
-
-    def load_recent_projects(self):
-        """Load recent projects from database"""
-        try:
-            # Clear existing items
+            # Clear the recent projects tree
             for item in self.recent_tree.get_children():
                 self.recent_tree.delete(item)
+                
+            # Populate the tree with matching records
+            for record in records:
+                self.recent_tree.insert("", "end", values=(
+                    record.get('work_id', ''),
+                    record.get('employee_name', ''),
+                    record.get('location', ''),
+                    record.get('client_name', ''),
+                    record.get('setup_date', ''),
+                    record.get('project_name', ''),
+                    record.get('event_date', '')
+                ))
             
-            # TODO: Replace with actual database call
-            # recent_projects = database.get_recent_projects()
-            
-            # for project in recent_projects:
-            #     self.recent_tree.insert("", "end", values=(
-            #         project['work_id'],
-            #         project['employee_name'],
-            #         project['location'],
-            #         project['client_name'],
-            #         project['setup_date'],
-            #         project['project_name'],
-            #         project['event_date']
-            #     ))
-            
-            # Bind double-click event
+            # Bind double-click event to load project details
             self.recent_tree.bind("<Double-1>", self.load_project_from_list)
             
+            messagebox.showinfo("Success", f"Found {len(records)} matching records")
+            
         except Exception as e:
-            logger.error(f"Failed to load recent projects: {str(e)}")
+            messagebox.showerror("Error", f"Failed to fetch records: {str(e)}")
+            logger.error(f"Fetch failed: {str(e)}")
 
     def load_project_from_list(self, event):
         """Load selected project details when double-clicked"""
@@ -357,12 +376,29 @@ class ToEventWindow:
             item = self.recent_tree.item(selected_item)
             project_data = item['values']
             
-            # Populate the fields
+            # Populate the fields from selected record
+            self.work_id.config(state='normal')
             self.work_id.delete(0, tk.END)
             self.work_id.insert(0, project_data[0])
+            self.work_id.config(state='readonly')
             
-            # TODO: Fetch full record from database using work_id
-            # and populate all fields
+            self.employee_name.delete(0, tk.END)
+            self.employee_name.insert(0, project_data[1])
+            
+            self.location.delete(0, tk.END)
+            self.location.insert(0, project_data[2])
+            
+            self.client_name.delete(0, tk.END)
+            self.client_name.insert(0, project_data[3])
+            
+            self.setup_date.delete(0, tk.END)
+            self.setup_date.insert(0, project_data[4])
+            
+            self.project_name.delete(0, tk.END)
+            self.project_name.insert(0, project_data[5])
+            
+            self.event_date.delete(0, tk.END)
+            self.event_date.insert(0, project_data[6])
             
             # Set fields to readonly initially
             self.set_fields_readonly(True)
@@ -381,7 +417,7 @@ class ToEventWindow:
         try:
             work_id = self.work_id.get()
             if not work_id:
-                messagebox.showwarning("Warning", "Project ID is required for update")
+                messagebox.showwarning("Warning", "Work ID is required for update")
                 return
                 
             # Prepare the data to be saved
@@ -393,6 +429,7 @@ class ToEventWindow:
                 'setup_date': self.setup_date.get(),
                 'project_name': self.project_name.get(),
                 'event_date': self.event_date.get(),
+                'project_id': self.project_id.get(),
                 'inventory_items': []
             }
             
@@ -425,7 +462,7 @@ class ToEventWindow:
             self.update_btn.config(state=tk.DISABLED)
             
             # Refresh recent projects list
-            self.load_recent_projects()
+            self.fetch_record()
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update record: {str(e)}")
@@ -495,7 +532,7 @@ class ToEventWindow:
 
     def submit_form(self):
         """Handle form submission"""
-        if not self.employee_name.get() or not self.client_name.get() or not self.work_id.get():
+        if not self.employee_name.get() or not self.client_name.get():
             messagebox.showwarning("Warning", "Please fill in all required fields")
             return
             
@@ -507,6 +544,7 @@ class ToEventWindow:
             'setup_date': self.setup_date.get(),
             'project_name': self.project_name.get(),
             'event_date': self.event_date.get(),
+            'project_id': self.project_id.get(),
             'inventory_items': []
         }
         
@@ -533,7 +571,24 @@ class ToEventWindow:
         messagebox.showinfo("Success", "Form submitted successfully")
         logger.info(f"Form submitted: {data}")
         
-        self.load_recent_projects()
+        # Clear form and generate new WorkID
+        self.clear_form()
+        self.generate_work_id()
+
+    def clear_form(self):
+        """Clear all form fields"""
+        self.employee_name.delete(0, tk.END)
+        self.location.delete(0, tk.END)
+        self.client_name.delete(0, tk.END)
+        self.setup_date.delete(0, tk.END)
+        self.project_name.delete(0, tk.END)
+        self.event_date.delete(0, tk.END)
+        self.project_id.delete(0, tk.END)
+        
+        # Clear table entries
+        for row in self.table_entries:
+            for entry in row:
+                entry.delete(0, tk.END)
 
     def update_clock(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
