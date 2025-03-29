@@ -32,7 +32,7 @@ class ToEventWindow:
         self.maximize_window()
         
         # Set initial state
-        self.set_fields_readonly(False)  # Start with fields editable for new entries
+        self.set_fields_readonly(False)
         
         logger.info("To Event window opened successfully")
 
@@ -47,7 +47,8 @@ class ToEventWindow:
         self.setup_date.config(state=state)
         self.project_name.config(state=state)
         self.event_date.config(state=state)
-        self.project_id.config(state='normal')  # Project ID should always be editable
+        self.work_id.config(state=state)
+        self.project_id.config(state='disabled')  # Project ID is immutable
         
         # Table entries
         for row in self.table_entries:
@@ -71,22 +72,21 @@ class ToEventWindow:
 
     def setup_ui(self):
         """Set up all UI elements"""
-        # Header section - Clock in row 0
+        # Header section
         clock_frame = tk.Frame(self.window)
         clock_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)
-        clock_frame.grid_columnconfigure(0, weight=1)  # Left spacer
-        clock_frame.grid_columnconfigure(1, weight=0)  # Center for clock
-        clock_frame.grid_columnconfigure(2, weight=1)  # Right spacer
+        clock_frame.grid_columnconfigure(0, weight=1)
+        clock_frame.grid_columnconfigure(1, weight=0)
+        clock_frame.grid_columnconfigure(2, weight=1)
 
-        # Clock in absolute center at top
         self.clock_label = tk.Label(clock_frame, font=('Helvetica', 8))
         self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
         self.update_clock()
 
-        # Company info in row 1 (top-right corner)
+        # Company info
         company_frame = tk.Frame(self.window)
         company_frame.grid(row=1, column=0, columnspan=2, sticky="e", padx=10, pady=0)
-        company_frame.grid_columnconfigure(0, weight=1)  # Left spacer
+        company_frame.grid_columnconfigure(0, weight=1)
 
         company_info = """Tagglabs Experiential Pvt. Ltd.
         Sector 49, Gurugram, Haryana 122018
@@ -100,44 +100,44 @@ class ToEventWindow:
                                justify=tk.RIGHT)
         company_label.grid(row=0, column=1, sticky='ne', pady=(0,0))
 
-        # Title section in row 2
+        # Title section
         title_frame = tk.Frame(self.window)
         title_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
         
-        # Centered company name
         tk.Label(title_frame, 
                text="Tagglabs Experiential Pvt. Ltd",
                font=('Helvetica', 14, 'bold')).pack()
         
-        # Centered inventory list title
         tk.Label(title_frame, 
                text="INVENTORY LIST",
                font=('Helvetica', 12, 'bold')).pack()
 
-        # Information fields in row 3
+        # Information fields
         info_frame = tk.Frame(self.window)
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # First row - Project ID and buttons
+        # First row - IDs and buttons
         tk.Label(info_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
-        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='disabled')
         self.project_id.grid(row=0, column=1, sticky='w', padx=2)
         
-        # Fetch Details button
+        tk.Label(info_frame, text="Work ID:", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=2)
+        self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.work_id.grid(row=0, column=3, sticky='w', padx=2)
+        
         self.fetch_btn = tk.Button(info_frame, text="Fetch Details", command=self.fetch_record,
                                  font=('Helvetica', 9, 'bold'))
-        self.fetch_btn.grid(row=0, column=2, padx=5)
+        self.fetch_btn.grid(row=0, column=4, padx=5)
         
-        # Edit and Update buttons
         self.edit_btn = tk.Button(info_frame, text="Edit", command=self.edit_record,
                                 font=('Helvetica', 9, 'bold'), state=tk.NORMAL)
-        self.edit_btn.grid(row=0, column=3, padx=5)
+        self.edit_btn.grid(row=0, column=5, padx=5)
         
         self.update_btn = tk.Button(info_frame, text="Update", command=self.update_record,
                                   font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
-        self.update_btn.grid(row=0, column=4, padx=5)
+        self.update_btn.grid(row=0, column=6, padx=5)
 
-        # Second row - all fields in one line {Title Info}
+        # Second row - all fields
         tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
         self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.employee_name.grid(row=1, column=1, sticky='w', padx=2)
@@ -166,24 +166,18 @@ class ToEventWindow:
         separator = ttk.Separator(self.window, orient='horizontal')
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
 
-        # Inventory table in row 5
+        # Inventory table
         self.table_frame = tk.Frame(self.window)
         self.table_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
         self.table_frame.grid_rowconfigure(0, weight=1)
         self.table_frame.grid_columnconfigure(0, weight=1)
 
-        # Create a canvas and scrollbars for the table
         self.canvas = tk.Canvas(self.table_frame)
-        
-        # Vertical scrollbar - fixed to scroll top-to-bottom
         self.v_scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.canvas.yview)
         self.v_scrollbar.pack(side="right", fill="y")
-
-        # Horizontal scrollbar
         self.h_scrollbar = ttk.Scrollbar(self.table_frame, orient="horizontal", command=self.canvas.xview)
         self.h_scrollbar.pack(side="bottom", fill="x")
 
-        # Create the scrollable frame
         self.scrollable_frame = tk.Frame(self.canvas)
         self.scrollable_frame.bind(
             "<Configure>",
@@ -192,12 +186,9 @@ class ToEventWindow:
             )
         )
 
-        # Create window in canvas - this is the key change for scroll direction
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
         self.canvas.pack(side="left", fill="both", expand=True)
-
-        # Make sure the canvas starts at the top
         self.canvas.yview_moveto(0)
 
         # Table headers
@@ -208,16 +199,15 @@ class ToEventWindow:
             "Status (purchased/not purchased)", "POC"
         ]
 
-        # Store original column widths
         self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
         
         for col, header in enumerate(self.headers):
             tk.Label(self.scrollable_frame, text=header, font=('Helvetica', 9, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
 
-        # Create entry fields for each column
+        # Create entry fields
         self.table_entries = []
-        for row in range(1, 6):  # Create 5 empty rows
+        for row in range(1, 6):  # 5 empty rows
             row_entries = []
             for col in range(len(self.headers)):
                 entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
@@ -226,31 +216,59 @@ class ToEventWindow:
                 row_entries.append(entry)
             self.table_entries.append(row_entries)
 
-        # Bottom buttons in row 6
-        button_frame = tk.Frame(self.window)
-        button_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=10)
+        # Recent Projects frame
+        recent_frame = tk.Frame(self.window, bg="white", bd=1, relief=tk.SOLID)
+        recent_frame.grid(row=6, column=0, columnspan=2, sticky="ew", padx=10, pady=(5,0))
+        
+        tk.Label(recent_frame, text="Recent Projects Details", font=('Helvetica', 10, 'bold'), 
+               bg="white").pack(anchor="w", padx=5, pady=2)
 
-        # Wrap button to adjust columns (toggle)
+        self.recent_tree = ttk.Treeview(recent_frame, height=5, 
+                                      columns=("WorkID", "Employee", "Location", "Client", "Setup", "Project", "Event"),
+                                      show="headings")
+        
+        self.recent_tree.heading("WorkID", text="Work ID")
+        self.recent_tree.heading("Employee", text="Employee Name")
+        self.recent_tree.heading("Location", text="Location")
+        self.recent_tree.heading("Client", text="Client Name")
+        self.recent_tree.heading("Setup", text="Setup Date")
+        self.recent_tree.heading("Project", text="Project Name")
+        self.recent_tree.heading("Event", text="Event Date")
+        
+        self.recent_tree.column("WorkID", width=80)
+        self.recent_tree.column("Employee", width=120)
+        self.recent_tree.column("Location", width=100)
+        self.recent_tree.column("Client", width=120)
+        self.recent_tree.column("Setup", width=100)
+        self.recent_tree.column("Project", width=150)
+        self.recent_tree.column("Event", width=100)
+        
+        tree_scroll = ttk.Scrollbar(recent_frame, orient="vertical", command=self.recent_tree.yview)
+        self.recent_tree.configure(yscrollcommand=tree_scroll.set)
+        
+        self.recent_tree.pack(side="left", fill="both", expand=True)
+        tree_scroll.pack(side="right", fill="y")
+
+        # Bottom buttons
+        button_frame = tk.Frame(self.window)
+        button_frame.grid(row=7, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+
         self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
                                 font=('Helvetica', 10, 'bold'))
         self.wrap_btn.pack(side=tk.LEFT, padx=5)
 
-        # Remove row button
         remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.remove_table_row,
                                  font=('Helvetica', 10, 'bold'))
         remove_row_btn.pack(side=tk.LEFT, padx=5)
 
-        # Add row button
         add_row_btn = tk.Button(button_frame, text="Add Row", command=self.add_table_row,
                               font=('Helvetica', 10, 'bold'))
         add_row_btn.pack(side=tk.LEFT, padx=5)
 
-        # Submit button
         submit_btn = tk.Button(button_frame, text="Submit", command=self.submit_form,
                              font=('Helvetica', 10, 'bold'))
         submit_btn.pack(side=tk.LEFT, padx=5)
 
-        # Return button on right
         return_button = tk.Button(button_frame, 
                                 text="Return to Main", 
                                 command=self.on_close,
@@ -259,73 +277,39 @@ class ToEventWindow:
         return_button.pack(side=tk.RIGHT, padx=5)
 
         # Grid configuration
-        self.window.grid_rowconfigure(0, weight=0)  # Clock
-        self.window.grid_rowconfigure(1, weight=0)  # Company info
-        self.window.grid_rowconfigure(2, weight=0)  # Title
-        self.window.grid_rowconfigure(3, weight=0)  # Info fields
-        self.window.grid_rowconfigure(4, weight=0)  # Separator
-        self.window.grid_rowconfigure(5, weight=1)  # Table
-        self.window.grid_rowconfigure(6, weight=0)  # Buttons
+        self.window.grid_rowconfigure(0, weight=0)
+        self.window.grid_rowconfigure(1, weight=0)
+        self.window.grid_rowconfigure(2, weight=0)
+        self.window.grid_rowconfigure(3, weight=0)
+        self.window.grid_rowconfigure(4, weight=0)
+        self.window.grid_rowconfigure(5, weight=1)
+        self.window.grid_rowconfigure(6, weight=0)
+        self.window.grid_rowconfigure(7, weight=0)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
 
     def fetch_record(self):
-        """Fetch record based on Project ID"""
-        project_id = self.project_id.get()
-        if not project_id:
-            messagebox.showwarning("Warning", "Please enter a Project ID")
+        """Fetch record based on Work ID"""
+        work_id = self.work_id.get()
+        if not work_id:
+            messagebox.showwarning("Warning", "Please enter a Work ID")
             return
             
         try:
-            # Here you would fetch the record from your database
-            # For demonstration, we'll use mock data
-            mock_data = self.get_mock_data(project_id)
+            # TODO: Replace with actual database call
+            # record = database.get_record_by_work_id(work_id)
             
-            if not mock_data:
-                messagebox.showwarning("Warning", f"No record found for Project ID: {project_id}")
+            if not record:
+                messagebox.showwarning("Warning", f"No record found for Work ID: {work_id}")
                 return
                 
-            # Populate the fields
-            self.employee_name.delete(0, tk.END)
-            self.employee_name.insert(0, mock_data['employee_name'])
+            # TODO: Populate fields from database record
+            # self.project_id.config(state='normal')
+            # self.project_id.delete(0, tk.END)
+            # self.project_id.insert(0, record['project_id'])
+            # self.project_id.config(state='disabled')
             
-            self.location.delete(0, tk.END)
-            self.location.insert(0, mock_data['location'])
-            
-            self.client_name.delete(0, tk.END)
-            self.client_name.insert(0, mock_data['client_name'])
-            
-            self.setup_date.delete(0, tk.END)
-            self.setup_date.insert(0, mock_data['setup_date'])
-            
-            self.project_name.delete(0, tk.END)
-            self.project_name.insert(0, mock_data['project_name'])
-            
-            self.event_date.delete(0, tk.END)
-            self.event_date.insert(0, mock_data['event_date'])
-            
-            # Clear existing table data
-            for row in self.table_entries:
-                for entry in row:
-                    entry.delete(0, tk.END)
-            
-            # Populate table with inventory items
-            for i, item in enumerate(mock_data['inventory_items']):
-                if i >= len(self.table_entries):
-                    self.add_table_row()
-                
-                self.table_entries[i][0].insert(0, item['zone_activity'])
-                self.table_entries[i][1].insert(0, item['sr_no'])
-                self.table_entries[i][2].insert(0, item['inventory'])
-                self.table_entries[i][3].insert(0, item['description'])
-                self.table_entries[i][4].insert(0, item['quantity'])
-                self.table_entries[i][5].insert(0, item['comments'])
-                self.table_entries[i][6].insert(0, item['total'])
-                self.table_entries[i][7].insert(0, item['units'])
-                self.table_entries[i][8].insert(0, item['power_per_unit'])
-                self.table_entries[i][9].insert(0, item['total_power'])
-                self.table_entries[i][10].insert(0, item['status'])
-                self.table_entries[i][11].insert(0, item['poc'])
+            # Similarly populate other fields...
             
             # Set fields to readonly initially
             self.set_fields_readonly(True)
@@ -338,50 +322,51 @@ class ToEventWindow:
             messagebox.showerror("Error", f"Failed to fetch record: {str(e)}")
             logger.error(f"Fetch failed: {str(e)}")
 
-    def get_mock_data(self, project_id):
-        """Generate mock data for demonstration"""
-        # In a real application, you would query your database here
-        if project_id == "PRJ-001":
-            return {
-                'employee_name': "John Doe",
-                'location': "Gurugram",
-                'client_name': "ABC Corp",
-                'setup_date': "2023-11-15",
-                'project_name': "Product Launch",
-                'event_date': "2023-11-20",
-                'project_id': "PRJ-001",
-                'inventory_items': [
-                    {
-                        'zone_activity': "Main Stage",
-                        'sr_no': "1",
-                        'inventory': "LED Screen",
-                        'description': "5x3m 4K Resolution",
-                        'quantity': "2",
-                        'comments': "",
-                        'total': "2",
-                        'units': "pcs",
-                        'power_per_unit': "500",
-                        'total_power': "1000",
-                        'status': "purchased",
-                        'poc': "Vendor A"
-                    },
-                    {
-                        'zone_activity': "Lounge Area",
-                        'sr_no': "2",
-                        'inventory': "Sofa Set",
-                        'description': "3-seater, black leather",
-                        'quantity': "4",
-                        'comments': "",
-                        'total': "4",
-                        'units': "pcs",
-                        'power_per_unit': "0",
-                        'total_power': "0",
-                        'status': "purchased",
-                        'poc': "Vendor B"
-                    }
-                ]
-            }
-        return None
+    def load_recent_projects(self):
+        """Load recent projects from database"""
+        try:
+            # Clear existing items
+            for item in self.recent_tree.get_children():
+                self.recent_tree.delete(item)
+            
+            # TODO: Replace with actual database call
+            # recent_projects = database.get_recent_projects()
+            
+            # for project in recent_projects:
+            #     self.recent_tree.insert("", "end", values=(
+            #         project['work_id'],
+            #         project['employee_name'],
+            #         project['location'],
+            #         project['client_name'],
+            #         project['setup_date'],
+            #         project['project_name'],
+            #         project['event_date']
+            #     ))
+            
+            # Bind double-click event
+            self.recent_tree.bind("<Double-1>", self.load_project_from_list)
+            
+        except Exception as e:
+            logger.error(f"Failed to load recent projects: {str(e)}")
+
+    def load_project_from_list(self, event):
+        """Load selected project details when double-clicked"""
+        selected_item = self.recent_tree.selection()
+        if selected_item:
+            item = self.recent_tree.item(selected_item)
+            project_data = item['values']
+            
+            # Populate the fields
+            self.work_id.delete(0, tk.END)
+            self.work_id.insert(0, project_data[0])
+            
+            # TODO: Fetch full record from database using work_id
+            # and populate all fields
+            
+            # Set fields to readonly initially
+            self.set_fields_readonly(True)
+            self.edit_btn.config(state=tk.NORMAL)
+            self.update_btn.config(state=tk.DISABLED)
 
     def edit_record(self):
         """Enable editing of the record"""
@@ -391,30 +376,22 @@ class ToEventWindow:
         logger.info("Editing record")
 
     def update_record(self):
-        """Update the record"""
+        """Update the record in database"""
         try:
-            # Validate required fields
-            if not self.employee_name.get() or not self.client_name.get():
-                messagebox.showwarning("Warning", "Please fill in all required fields")
+            work_id = self.work_id.get()
+            if not work_id:
+                messagebox.showwarning("Warning", "Work ID is required for update")
                 return
                 
-            project_id = self.project_id.get()
-            if not project_id:
-                messagebox.showwarning("Warning", "Project ID is required for update")
-                return
-                
-            # Here you would save the updated data to your database
-            # For demonstration, we'll just show a message
-            
             # Prepare the data to be saved
             data = {
+                'work_id': work_id,
                 'employee_name': self.employee_name.get(),
                 'location': self.location.get(),
                 'client_name': self.client_name.get(),
                 'setup_date': self.setup_date.get(),
                 'project_name': self.project_name.get(),
                 'event_date': self.event_date.get(),
-                'project_id': project_id,
                 'inventory_items': []
             }
             
@@ -435,8 +412,8 @@ class ToEventWindow:
                 }
                 data['inventory_items'].append(item)
             
-            # In a real app, you would call your database update function here
-            # db_update_record(project_id, data)
+            # TODO: Replace with actual database call
+            # database.update_record(data)
             
             messagebox.showinfo("Success", "Record updated successfully")
             logger.info(f"Record updated: {data}")
@@ -445,6 +422,9 @@ class ToEventWindow:
             self.set_fields_readonly(True)
             self.edit_btn.config(state=tk.NORMAL)
             self.update_btn.config(state=tk.DISABLED)
+            
+            # Refresh recent projects list
+            self.load_recent_projects()
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update record: {str(e)}")
@@ -463,34 +443,28 @@ class ToEventWindow:
 
     def adjust_columns(self):
         """Adjust column widths based on content"""
-        # Calculate max width for each column
         col_widths = [len(header) for header in self.headers]
         
-        # Check all entries in each column
         for row in self.table_entries:
             for col, entry in enumerate(row):
                 content = entry.get()
                 if content:
                     col_widths[col] = max(col_widths[col], len(content))
         
-        # Apply the new widths
         for col, width in enumerate(col_widths):
-            # Add some padding and limit max width
-            adjusted_width = min(width + 5, 50)  # Max width of 50 characters
-            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width * 8)  # Approximate pixel width
+            adjusted_width = min(width + 5, 50)
+            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width * 8)
             
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.xview_moveto(0)  # Reset horizontal scroll to left
+        self.canvas.xview_moveto(0)
 
     def reset_columns(self):
         """Reset columns to their original widths"""
         for col, width in enumerate(self.original_column_widths):
-            self.scrollable_frame.grid_columnconfigure(col, minsize=width * 10)  # Reset to original width
+            self.scrollable_frame.grid_columnconfigure(col, minsize=width * 10)
             
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.xview_moveto(0)  # Reset horizontal scroll to left
+        self.canvas.xview_moveto(0)
 
     def add_table_row(self):
         """Add a new row to the table"""
@@ -504,12 +478,11 @@ class ToEventWindow:
             row_entries.append(entry)
         self.table_entries.append(row_entries)
         
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def remove_table_row(self):
         """Remove the last row from the table"""
-        if len(self.table_entries) <= 1:  # Keep at least one row
+        if len(self.table_entries) <= 1:
             messagebox.showwarning("Warning", "Cannot remove the last row")
             return
             
@@ -517,25 +490,22 @@ class ToEventWindow:
         for entry in last_row:
             entry.destroy()
         
-        # Update the canvas scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def submit_form(self):
         """Handle form submission"""
-        # Validate required fields
-        if not self.employee_name.get() or not self.client_name.get():
+        if not self.employee_name.get() or not self.client_name.get() or not self.work_id.get():
             messagebox.showwarning("Warning", "Please fill in all required fields")
             return
             
-        # Process the data
         data = {
+            'work_id': self.work_id.get(),
             'employee_name': self.employee_name.get(),
             'location': self.location.get(),
             'client_name': self.client_name.get(),
             'setup_date': self.setup_date.get(),
             'project_name': self.project_name.get(),
             'event_date': self.event_date.get(),
-            'project_id': self.project_id.get(),
             'inventory_items': []
         }
         
@@ -556,11 +526,13 @@ class ToEventWindow:
             }
             data['inventory_items'].append(item)
         
-        # In a real app, you would call your database insert function here
-        # db_insert_record(data)
+        # TODO: Replace with actual database call
+        # database.insert_record(data)
         
         messagebox.showinfo("Success", "Form submitted successfully")
         logger.info(f"Form submitted: {data}")
+        
+        self.load_recent_projects()
 
     def update_clock(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -571,4 +543,4 @@ class ToEventWindow:
         """Handle window closing"""
         logger.info("Closing To Event window")
         self.window.destroy()
-        self.parent.deiconify()  # Show parent window
+        self.parent.deiconify()
