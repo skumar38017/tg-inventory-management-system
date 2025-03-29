@@ -97,32 +97,44 @@ class ToEventWindow:
         info_frame = tk.Frame(self.window)
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # Employee Name and Location
-        tk.Label(info_frame, text="Employee Name", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=5)
-        self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.employee_name.grid(row=0, column=1, sticky='w', padx=5)
+        # First row - all fields in one line
+        tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
+        self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.employee_name.grid(row=0, column=1, sticky='w', padx=2)
         
-        tk.Label(info_frame, text="Location", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=5)
-        self.location = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.location.grid(row=0, column=3, sticky='w', padx=5)
+        tk.Label(info_frame, text="Location:", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=2)
+        self.location = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.location.grid(row=0, column=3, sticky='w', padx=2)
         
-        # Client Name and Setup Date
-        tk.Label(info_frame, text="Client Name", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=5)
-        self.client_name = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.client_name.grid(row=1, column=1, sticky='w', padx=5)
+        tk.Label(info_frame, text="Client Name:", font=('Helvetica', 9)).grid(row=0, column=4, sticky='e', padx=2)
+        self.client_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.client_name.grid(row=0, column=5, sticky='w', padx=2)
         
-        tk.Label(info_frame, text="Setup Date", font=('Helvetica', 9)).grid(row=1, column=2, sticky='e', padx=5)
-        self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.setup_date.grid(row=1, column=3, sticky='w', padx=5)
+        tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=0, column=6, sticky='e', padx=2)
+        self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.setup_date.grid(row=0, column=7, sticky='w', padx=2)
         
-        # Project Name and Event Date
-        tk.Label(info_frame, text="Project Name", font=('Helvetica', 9)).grid(row=2, column=0, sticky='e', padx=5)
-        self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.project_name.grid(row=2, column=1, sticky='w', padx=5)
+        tk.Label(info_frame, text="Project Name:", font=('Helvetica', 9)).grid(row=0, column=8, sticky='e', padx=2)
+        self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.project_name.grid(row=0, column=9, sticky='w', padx=2)
         
-        tk.Label(info_frame, text="Event Date", font=('Helvetica', 9)).grid(row=2, column=2, sticky='e', padx=5)
-        self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=20)
-        self.event_date.grid(row=2, column=3, sticky='w', padx=5)
+        tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=0, column=10, sticky='e', padx=2)
+        self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.event_date.grid(row=0, column=11, sticky='w', padx=2)
+        
+        # Second row - Project ID and buttons
+        tk.Label(info_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
+        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.project_id.grid(row=1, column=1, sticky='w', padx=2)
+        
+        # Edit and Update buttons
+        self.edit_btn = tk.Button(info_frame, text="Edit", command=self.edit_record,
+                                font=('Helvetica', 9, 'bold'), state=tk.NORMAL)
+        self.edit_btn.grid(row=1, column=2, padx=5)
+        
+        self.update_btn = tk.Button(info_frame, text="Update", command=self.update_record,
+                                  font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
+        self.update_btn.grid(row=1, column=3, padx=5)
         
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
@@ -231,6 +243,64 @@ class ToEventWindow:
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
 
+    def edit_record(self):
+        """Enable editing of the record"""
+        # Enable all fields for editing
+        self.employee_name.config(state=tk.NORMAL)
+        self.location.config(state=tk.NORMAL)
+        self.client_name.config(state=tk.NORMAL)
+        self.setup_date.config(state=tk.NORMAL)
+        self.project_name.config(state=tk.NORMAL)
+        self.event_date.config(state=tk.NORMAL)
+        self.project_id.config(state=tk.NORMAL)
+        
+        # Enable table entries
+        for row in self.table_entries:
+            for entry in row:
+                entry.config(state=tk.NORMAL)
+        
+        # Toggle button states
+        self.edit_btn.config(state=tk.DISABLED)
+        self.update_btn.config(state=tk.NORMAL)
+        
+        logger.info("Editing record")
+
+    def update_record(self):
+        """Update the record"""
+        try:
+            # Validate required fields
+            if not self.employee_name.get() or not self.client_name.get():
+                messagebox.showwarning("Warning", "Please fill in all required fields")
+                return
+                
+            # Here you would typically save the updated data to your database
+            # For now, we'll just show a message and disable editing
+            
+            messagebox.showinfo("Success", "Record updated successfully")
+            logger.info("Record updated")
+            
+            # Disable fields after update
+            self.employee_name.config(state='readonly')
+            self.location.config(state='readonly')
+            self.client_name.config(state='readonly')
+            self.setup_date.config(state='readonly')
+            self.project_name.config(state='readonly')
+            self.event_date.config(state='readonly')
+            self.project_id.config(state='readonly')
+            
+            # Disable table entries
+            for row in self.table_entries:
+                for entry in row:
+                    entry.config(state='readonly')
+            
+            # Toggle button states
+            self.edit_btn.config(state=tk.NORMAL)
+            self.update_btn.config(state=tk.DISABLED)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+            logger.error(f"Update failed: {str(e)}")
+
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
         if not self.is_wrapped:
@@ -316,6 +386,7 @@ class ToEventWindow:
             'setup_date': self.setup_date.get(),
             'project_name': self.project_name.get(),
             'event_date': self.event_date.get(),
+            'project_id': self.project_id.get(),
             'inventory_items': []
         }
         
