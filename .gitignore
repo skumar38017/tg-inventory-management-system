@@ -1,7 +1,7 @@
 # Created by https://www.toptal.com/developers/gitignore/api/flask,django
 # Edit at https://www.toptal.com/developers/gitignore?templates=flask,django
 .inventory
-
+Project Structure.txt
 ### Django ###
 *.log
 *.pot
