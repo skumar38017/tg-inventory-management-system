@@ -377,13 +377,11 @@ class ToEventWindow:
 
         # Scrollbars
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.submitted_tree.yview)
-        x_scroll = ttk.Scrollbar(frame, orient="horizontal", command=self.submitted_tree.xview)
-        self.submitted_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+        self.submitted_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=y_scroll.set)
 
         # Grid layout
         self.submitted_tree.pack(side="left", fill="both", expand=True)
         y_scroll.pack(side="right", fill="y")
-        x_scroll.pack(side="bottom", fill="x")
 
         # Double-click to load project
         self.submitted_tree.bind("<Double-1>", self.load_submitted_project)
@@ -417,13 +415,11 @@ class ToEventWindow:
 
         # Scrollbars
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.search_tree.yview)
-        x_scroll = ttk.Scrollbar(frame, orient="horizontal", command=self.search_tree.xview)
-        self.search_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+        self.search_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=y_scroll.set)
 
         # Grid layout
         self.search_tree.pack(side="left", fill="both", expand=True)
         y_scroll.pack(side="right", fill="y")
-        x_scroll.pack(side="bottom", fill="x")
 
         # Double-click to load project
         self.search_tree.bind("<Double-1>", self.load_search_result)
