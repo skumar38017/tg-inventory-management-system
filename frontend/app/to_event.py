@@ -5,6 +5,8 @@ import platform
 import logging
 import random
 import string
+import json
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,12 @@ class ToEventWindow:
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
+        
+        # Database file
+        self.db_file = "inventory_data.json"
+        
+        # Initialize database
+        self.initialize_db()
         
         # Hide parent window (optional)
         self.parent.withdraw()
@@ -43,6 +51,57 @@ class ToEventWindow:
         self.load_submitted_forms()
         
         logger.info("To Event window opened successfully")
+
+    def initialize_db(self):
+        """Initialize the JSON database file if it doesn't exist"""
+        if not os.path.exists(self.db_file):
+            with open(self.db_file, 'w') as f:
+                json.dump([], f)
+
+    def save_to_db(self, data):
+        """Save data to the JSON database"""
+        try:
+            with open(self.db_file, 'r') as f:
+                records = json.load(f)
+            
+            # Check if this work_id already exists
+            existing_index = None
+            for i, record in enumerate(records):
+                if record['work_id'] == data['work_id']:
+                    existing_index = i
+                    break
+            
+            if existing_index is not None:
+                # Update existing record
+                records[existing_index] = data
+            else:
+                # Add new record
+                records.append(data)
+            
+            with open(self.db_file, 'w') as f:
+                json.dump(records, f, indent=4)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save to database: {str(e)}")
+            return False
+
+    def load_from_db(self, work_id=None):
+        """Load data from the JSON database"""
+        try:
+            with open(self.db_file, 'r') as f:
+                records = json.load(f)
+            
+            if work_id:
+                for record in records:
+                    if record['work_id'] == work_id:
+                        return record
+                return None
+            else:
+                return records
+        except Exception as e:
+            logger.error(f"Failed to load from database: {str(e)}")
+            return None
 
     def generate_work_id(self):
         """Generate a random WorkID in format PRJ followed by 5 digits"""
@@ -135,12 +194,12 @@ class ToEventWindow:
         info_frame = tk.Frame(self.window)
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # First row - IDs and buttons (now only Project ID)
+        # First row - Work ID and buttons
         tk.Label(info_frame, text="Project ID (Search):", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
         self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_id.grid(row=0, column=1, sticky='w', padx=2)
                 
-        self.fetch_btn = tk.Button(info_frame, text="Search", command=self.fetch_record,
+        self.fetch_btn = tk.Button(info_frame, text="Fetch", command=self.fetch_record,
                                  font=('Helvetica', 9, 'bold'))
         self.fetch_btn.grid(row=0, column=2, padx=5)
         
@@ -177,8 +236,8 @@ class ToEventWindow:
         self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.event_date.grid(row=1, column=11, sticky='w', padx=2)
         
-        # Moved Work ID to here (right-aligned at the end)
-        tk.Label(info_frame, text="Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
+        # Current Work ID display
+        tk.Label(info_frame, text="Current Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
         self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
         self.work_id.grid(row=1, column=13, sticky='w', padx=2)
 
@@ -296,21 +355,25 @@ class ToEventWindow:
 
         # Treeview for submitted forms
         self.submitted_tree = ttk.Treeview(frame, height=10,
-                                         columns=("WorkID", "Employee", "Client", "EventDate", "TotalItems"),
+                                         columns=("WorkID", "Employee", "Location", "ProjectName", "Client", "SetupDate", "EventDate"),
                                          show="headings")
         
         # Configure columns
         self.submitted_tree.heading("WorkID", text="Work ID")
         self.submitted_tree.heading("Employee", text="Employee")
-        self.submitted_tree.heading("Client", text="Client")
+        self.submitted_tree.heading("Location", text="Location")
+        self.submitted_tree.heading("ProjectName", text="Project Name")
+        self.submitted_tree.heading("Client", text="Client Name")
+        self.submitted_tree.heading("SetupDate", text="Setup Date")
         self.submitted_tree.heading("EventDate", text="Event Date")
-        self.submitted_tree.heading("TotalItems", text="Total Items")
         
         self.submitted_tree.column("WorkID", width=100)
         self.submitted_tree.column("Employee", width=150)
-        self.submitted_tree.column("Client", width=150)
+        self.submitted_tree.column("Location", width=100)
+        self.submitted_tree.column("ProjectName", width=100)
+        self.submitted_tree.column("Client", width=100)
+        self.submitted_tree.column("SetupDate", width=100)
         self.submitted_tree.column("EventDate", width=100)
-        self.submitted_tree.column("TotalItems", width=80)
 
         # Scrollbars
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.submitted_tree.yview)
@@ -332,22 +395,24 @@ class ToEventWindow:
 
         # Treeview for search results
         self.search_tree = ttk.Treeview(frame, height=10,
-                                      columns=("WorkID", "ProjectID", "Employee", "Location", "Client", "EventDate"),
+                                      columns=("WorkID", "ProjectName", "Employee", "Location", "Client", "SetupDate", "EventDate"),
                                       show="headings")
         
         # Configure columns
         self.search_tree.heading("WorkID", text="Work ID")
-        self.search_tree.heading("ProjectID", text="Project ID")
+        self.search_tree.heading("ProjectName", text="Project Name")
         self.search_tree.heading("Employee", text="Employee")
         self.search_tree.heading("Location", text="Location")
         self.search_tree.heading("Client", text="Client")
+        self.search_tree.heading("SetupDate", text="Setup Date")
         self.search_tree.heading("EventDate", text="Event Date")
         
         self.search_tree.column("WorkID", width=100)
-        self.search_tree.column("ProjectID", width=100)
+        self.search_tree.column("ProjectName", width=100)
         self.search_tree.column("Employee", width=150)
         self.search_tree.column("Location", width=100)
         self.search_tree.column("Client", width=150)
+        self.search_tree.column("SetupDate", width=100)
         self.search_tree.column("EventDate", width=100)
 
         # Scrollbars
@@ -369,34 +434,20 @@ class ToEventWindow:
         for item in self.submitted_tree.get_children():
             self.submitted_tree.delete(item)
         
-        # TODO: Replace with actual database call
-        # submitted_forms = database.get_all_submitted_forms()
+        records = self.load_from_db()
         
-        # Sample data
-        submitted_forms = [
-            {
-                'work_id': 'PRJ12345',
-                'employee_name': 'John Doe',
-                'client_name': 'ABC Corp',
-                'event_date': '2023-01-20',
-                'total_items': 15
-            },
-            {
-                'work_id': 'PRJ67890',
-                'employee_name': 'Jane Smith',
-                'client_name': 'XYZ Inc',
-                'event_date': '2023-02-15',
-                'total_items': 8
-            }
-        ]
+        if not records:
+            return
         
-        for form in submitted_forms:
+        for record in records:
             self.submitted_tree.insert("", "end", values=(
-                form['work_id'],
-                form['employee_name'],
-                form['client_name'],
-                form['event_date'],
-                form['total_items']
+                record['work_id'],
+                record['employee_name'],
+                record['location'],
+                record['project_name'],
+                record['client_name'],
+                record['setup_date'],
+                record['event_date']
             ))
 
     def load_submitted_project(self, event):
@@ -404,120 +455,121 @@ class ToEventWindow:
         selected = self.submitted_tree.selection()
         if selected:
             item = self.submitted_tree.item(selected)
-            values = item['values']
-            
-            # Populate form fields
-            self.work_id.config(state='normal')
-            self.work_id.delete(0, tk.END)
-            self.work_id.insert(0, values[0])
-            self.work_id.config(state='readonly')
-            
-            self.employee_name.delete(0, tk.END)
-            self.employee_name.insert(0, values[1])
-            
-            self.client_name.delete(0, tk.END)
-            self.client_name.insert(0, values[2])
-            
-            self.event_date.delete(0, tk.END)
-            self.event_date.insert(0, values[3])
-            
-            # TODO: Load inventory items for this work_id
-            
-            # Switch back to form view
-            self.tab_control.select(0)  # First tab is the form
+            work_id = item['values'][0]
+            self.load_project_data(work_id)
 
     def fetch_record(self):
-        """Search records by Project ID and display in Search Results tab"""
-        project_id = self.project_id.get().strip()
-        if not project_id:
-            messagebox.showwarning("Warning", "Please enter a Project ID to search")
+        """Search records by Work ID and display in Search Results tab"""
+        work_id = self.project_id.get().strip()  # Using project_id field to input work_id for search
+        if not work_id:
+            messagebox.showwarning("Warning", "Please enter a Work ID to search")
             return
             
-        try:
-            # TODO: Replace with actual database call
-            # records = database.search_records_by_project_id(project_id)
-            
-            # Sample data - simulate search results
-            records = [
-                {
-                    'work_id': 'PRJ12345',
-                    'project_id': 'EVENT001',
-                    'employee_name': 'John Doe',
-                    'location': 'Gurugram',
-                    'client_name': 'ABC Corp',
-                    'event_date': '2023-01-20'
-                },
-                {
-                    'work_id': 'PRJ67890',
-                    'project_id': 'EVENT001',
-                    'employee_name': 'Jane Smith',
-                    'location': 'Delhi',
-                    'client_name': 'XYZ Inc',
-                    'event_date': '2023-02-15'
-                }
-            ]
-            
-            if not records:
-                messagebox.showinfo("Info", f"No records found for Project ID: {project_id}")
-                return
+        record = self.load_from_db(work_id)
+        
+        if not record:
+            messagebox.showinfo("Info", f"No records found for Work ID: {work_id}")
+            return
                 
-            # Clear existing items in search tab
-            for item in self.search_tree.get_children():
-                self.search_tree.delete(item)
-                
-            # Populate search tab
-            for record in records:
-                self.search_tree.insert("", "end", values=(
-                    record['work_id'],
-                    record['project_id'],
-                    record['employee_name'],
-                    record['location'],
-                    record['client_name'],
-                    record['event_date']
-                ))
+        # Clear existing items in search tab
+        for item in self.search_tree.get_children():
+            self.search_tree.delete(item)
             
-            # Switch to search results tab
-            self.tab_control.select(self.search_tab)
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to search records: {str(e)}")
-            logger.error(f"Search failed: {str(e)}")
+        # Populate search tab with the found record
+        self.search_tree.insert("", "end", values=(
+            record['work_id'],
+            record['project_name'],
+            record['employee_name'],
+            record['location'],
+            record['client_name'],
+            record['setup_date'],
+            record['event_date']
+        ))
+        
+        # Switch to search results tab
+        self.tab_control.select(self.search_tab)
 
     def load_search_result(self, event):
         """Load project from search results when double-clicked"""
         selected = self.search_tree.selection()
         if selected:
             item = self.search_tree.item(selected)
-            values = item['values']
-            
-            # Populate form fields
-            self.work_id.config(state='normal')
-            self.work_id.delete(0, tk.END)
-            self.work_id.insert(0, values[0])
-            self.work_id.config(state='readonly')
-            
-            self.project_id.delete(0, tk.END)
-            self.project_id.insert(0, values[1])
-            
-            self.employee_name.delete(0, tk.END)
-            self.employee_name.insert(0, values[2])
-            
-            self.location.delete(0, tk.END)
-            self.location.insert(0, values[3])
-            
-            self.client_name.delete(0, tk.END)
-            self.client_name.insert(0, values[4])
-            
-            self.event_date.delete(0, tk.END)
-            self.event_date.insert(0, values[5])
-            
-            # TODO: Load inventory items for this work_id
-            
-            # Switch back to form view
-            self.tab_control.select(0)  # First tab is the form
+            work_id = item['values'][0]
+            self.load_project_data(work_id)
+
+    def load_project_data(self, work_id):
+        """Load project data into the form"""
+        record = self.load_from_db(work_id)
+        if not record:
+            messagebox.showerror("Error", f"Record with Work ID {work_id} not found")
+            return
+        
+        # Populate form fields
+        self.work_id.config(state='normal')
+        self.work_id.delete(0, tk.END)
+        self.work_id.insert(0, record['work_id'])
+        self.work_id.config(state='readonly')
+        
+        self.employee_name.delete(0, tk.END)
+        self.employee_name.insert(0, record['employee_name'])
+        
+        self.location.delete(0, tk.END)
+        self.location.insert(0, record['location'])
+        
+        self.client_name.delete(0, tk.END)
+        self.client_name.insert(0, record['client_name'])
+        
+        self.setup_date.delete(0, tk.END)
+        self.setup_date.insert(0, record['setup_date'])
+        
+        self.project_name.delete(0, tk.END)
+        self.project_name.insert(0, record['project_name'])
+        
+        self.event_date.delete(0, tk.END)
+        self.event_date.insert(0, record['event_date'])
+        
+        # Clear existing table entries
+        for row in self.table_entries:
+            for entry in row:
+                entry.delete(0, tk.END)
+        
+        # Add enough rows for all inventory items
+        while len(self.table_entries) < len(record['inventory_items']):
+            self.add_table_row()
+        
+        # Fill in the inventory items
+        for i, item in enumerate(record['inventory_items']):
+            if i >= len(self.table_entries):
+                break
+                
+            row = self.table_entries[i]
+            row[0].insert(0, item['zone_activity'])
+            row[1].insert(0, item['sr_no'])
+            row[2].insert(0, item['inventory'])
+            row[3].insert(0, item['description'])
+            row[4].insert(0, item['quantity'])
+            row[5].insert(0, item['comments'])
+            row[6].insert(0, item['total'])
+            row[7].insert(0, item['units'])
+            row[8].insert(0, item['power_per_unit'])
+            row[9].insert(0, item['total_power'])
+            row[10].insert(0, item['status'])
+            row[11].insert(0, item['poc'])
+        
+        # Switch back to form view
+        self.tab_control.select(0)
+        
+        # Set fields to readonly initially
+        self.set_fields_readonly(True)
+        self.edit_btn.config(state=tk.NORMAL)
+        self.update_btn.config(state=tk.DISABLED)
 
     def edit_record(self):
         """Enable editing of the record"""
+        if not self.work_id.get():
+            messagebox.showwarning("Warning", "No record loaded to edit")
+            return
+            
         self.set_fields_readonly(False)
         self.edit_btn.config(state=tk.DISABLED)
         self.update_btn.config(state=tk.NORMAL)
@@ -533,7 +585,7 @@ class ToEventWindow:
                 
             # Prepare the data to be saved
             data = {
-                'work_id': work_id,
+                'work_id': work_id,  # Work ID never changes
                 'employee_name': self.employee_name.get(),
                 'location': self.location.get(),
                 'client_name': self.client_name.get(),
@@ -560,8 +612,8 @@ class ToEventWindow:
                 }
                 data['inventory_items'].append(item)
             
-            # TODO: Replace with actual database call
-            # database.update_record(data)
+            if not self.save_to_db(data):
+                raise Exception("Failed to save to database")
             
             messagebox.showinfo("Success", "Record updated successfully")
             logger.info(f"Record updated: {data}")
@@ -647,7 +699,7 @@ class ToEventWindow:
             return
             
         data = {
-            'work_id': self.work_id.get(),
+            'work_id': self.work_id.get(),  # Work ID never changes
             'employee_name': self.employee_name.get(),
             'location': self.location.get(),
             'client_name': self.client_name.get(),
@@ -674,8 +726,9 @@ class ToEventWindow:
             }
             data['inventory_items'].append(item)
         
-        # TODO: Replace with actual database call
-        # database.insert_record(data)
+        if not self.save_to_db(data):
+            messagebox.showerror("Error", "Failed to save record")
+            return
         
         messagebox.showinfo("Success", "Form submitted successfully")
         logger.info(f"Form submitted: {data}")
@@ -690,6 +743,7 @@ class ToEventWindow:
 
     def clear_form(self):
         """Clear all form fields"""
+        self.project_id.delete(0, tk.END)
         self.employee_name.delete(0, tk.END)
         self.location.delete(0, tk.END)
         self.client_name.delete(0, tk.END)
