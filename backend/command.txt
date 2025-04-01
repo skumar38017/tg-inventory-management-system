@@ -1,0 +1,82 @@
+1️⃣ Delete all migration files (except __init__.py)
+find . -name "*.pyc" -exec rm -f {} \;
+find . -type d -name "__pycache__" -exec rm -r {} +
+
+
+find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
+find . -path "*/migrations/*.pyc" -delete
+rm db.sqlite3
+
+
+--> Verify Django installation integrity:
+python -c "import django; print(django.__path__)"
+
+--> This should show you where Django is installed. Check that the migrations module exists:
+ls -l $(python -c "import django; print(django.__path__[0] + '/db/migrations')")
+
+
+--------------------------------------------------------------------
+# Completely clear pip cache
+pip cache purge
+
+# Reinstall everything with --no-cache-dir and --force-reinstall
+pip install --no-cache-dir --force-reinstall -r requirements.txt
+
+
+2️⃣ Recreate migrations
+alembic init alembic
+
+alembic revision --autogenerate -m "Initial migration"
+
+
+alembic upgrade head
+alembic history --verbose
+alembic downgrade -1
+
+
+7️⃣ Run Redis
+redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
+redis-cli -h 192.168.192.3 -p 6379 -a Neon-Studioz-Holi-T25 -n 1
+redis-cli -h 192.168.192.3 -p 6379 -a Neon-Studioz-Holi-T25 -n 1 FLUSHDB
+
+
+8️⃣ PostgreSQL
+CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
+CREATE DATABASE "tg-inventory" OWNER "tg-inventory";
+GRANT ALL PRIVILEGES ON DATABASE "tg-inventory" TO "tg-inventory";
+ALTER ROLE "tg-inventory" WITH
+  SUPERUSER
+  CREATEDB
+  CREATEROLE
+  REPLICATION
+  BYPASSRLS;
+
+
+
+9️⃣ PostgreSQL
+psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
+
+python manage.py makemigrations 
+
+
+
+---------------------------------------------------------------
+export PYTHONPATH=$(pwd)
+python -m frontend.app.app
+
+PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
+
+PYTHONPATH=./ alembic upgrade head
+
+
+INSERT INTO public.entry_inventory (
+    inventory_id, product_id, name, material, total_quantity, manufacturer, 
+    purchase_dealer, purchase_date, purchase_amount, repair_quantity, repair_cost, 
+    on_rent, vendor_name, total_rent, rented_inventory_returned, 
+    returned_date, on_event, in_office, in_warehouse, issued_qty, balance_qty, 
+    submitted_by)
+VALUES (
+    'INV123456', 'PRD123456', 'Test Product', 'Material A', '100', 'Manufacturer X', 
+    'Dealer Y', '2025-04-01', 150.0, '5', 50.0, 'Yes', 'Vendor Z', 200.0, 'No', 
+    NULL, 'Test Event', 'Yes', 'No', 'No', '10', '90', 'Admin'
+);
