@@ -3,9 +3,8 @@
 import uuid
 import random
 from sqlalchemy import Column, String, String, Date, Float
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
-from database.base import Base
+from app.database.base import Base
 
 # Helper function to generate random product_id
 def generate_product_id():
