@@ -46,7 +46,7 @@ async def refresh_inventory_item_route(db: AsyncSession = Depends(get_async_db),
     return refresh_data
 
 # CREATE: Add a new entry to the inventory
-@router.post("/create/",
+@router.post("/create-item/",
             response_model=EntryInventoryOut,
             status_code=200,
             summary="Create a new entry in the inventory",
