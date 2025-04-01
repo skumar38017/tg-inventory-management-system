@@ -24,21 +24,15 @@ pip install --no-cache-dir --force-reinstall -r requirements.txt
 
 
 2️⃣ Recreate migrations
+alembic init alembic
 
-python manage.py makemigrations
-python manage.py migrate --fake-initial
+alembic revision --autogenerate -m "Initial migration"
 
-3️⃣ Run the server again
-python manage.py runserver
 
-4️⃣ Run Celery
-python manage.py celery worker --loglevel=info
+alembic upgrade head
+alembic history --verbose
+alembic downgrade -1
 
-5️⃣ Run Celery beat
-python manage.py celery beat --loglevel=info
-
-6️⃣ Run RabbitMQ
-rabbitmq-server
 
 7️⃣ Run Redis
 redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
@@ -69,4 +63,6 @@ python manage.py makemigrations
 ---------------------------------------------------------------
 export PYTHONPATH=$(pwd)
 python -m frontend.app.app
+
+PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
 
