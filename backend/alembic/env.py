@@ -3,8 +3,10 @@ import os
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+from sqlalchemy.ext.declarative import declarative_base
 from app.database.base import Base  # Ensure this imports Base from the correct location
-from app.models import *  # Import all models that are mapped to Base
+from alembic import context
+from app.models.entry_inventory_model import EntryInventory
 
 # Add the project's root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
