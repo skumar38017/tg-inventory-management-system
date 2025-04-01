@@ -100,10 +100,73 @@ class EntryInventoryCreate(EntryInventoryBase):
     def set_created_at(cls, v):
         return v or datetime.now(timezone.utc)
 
-class EntryInventoryUpdate(EntryInventoryBase):
+class EntryInventoryUpdate(BaseModel):
+    name: str
+    material: str
+    total_quantity: str
+    manufacturer: str
+    purchase_dealer: str
+    purchase_date: date
+    purchase_amount: str
+    repair_quantity: Optional[str] = None
+    repair_cost: Optional[str] = None
+    on_rent: str
+    vendor_name: str
+    total_rent: Optional[str] = None
+    rented_inventory_returned: Optional[str] = None
+    returned_date: Optional[date] = None
+    on_event: str
+    in_office: str
+    in_warehouse: str
+    issued_qty: str
+    balance_qty: str
+    submitted_by: str
+    updated_at: Optional[datetime] = None 
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
     @field_validator('updated_at', mode='before')
     def set_updated_at(cls, v):
-        return v or datetime.now(timezone.utc)
+        return datetime.now(timezone.utc)
+    
+class EntryInventoryUpdateOut(EntryInventoryBase):
+    uuid: str
+    sno: str
+    inventory_id: str
+    product_id: str
+    name: str
+    material: Optional[str] = None
+    total_quantity: str
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_amount: Optional[str] = None
+    repair_quantity: Optional[str] = None
+    repair_cost: Optional[str] = None
+    on_rent: str
+    vendor_name: Optional[str] = None
+    total_rent: Optional[str] = None
+    rented_inventory_returned: Optional[str] = None
+    returned_date: Optional[date] = None
+    on_event: str
+    in_office: str
+    in_warehouse: str
+    issued_qty: str
+    balance_qty: str
+    submitted_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()  # For pure date fields
+        }
 
 # Schema for Search EntryInventory (includes invetory_id and timestamp fields)
 class EntryInventorySearch(EntryInventoryBase):

@@ -55,13 +55,12 @@ class EntryInventoryService(EntryInventoryInterface):
             raise HTTPException(status_code=400, detail=str(e))
 
     # READ ALL: Get all inventory entries
-    async def get_all_entries(self, db: AsyncSession, skip: int = 0, limit: int = 100) -> List[EntryInventoryOut]:
+    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[EntryInventoryOut]:
         try:
             result = await db.execute(
                 select(EntryInventory)
                 .order_by(EntryInventory.name)  # Alphabetical order
                 .offset(skip)
-                .limit(limit)
             )
             return result.scalars().all()
         except SQLAlchemyError as e:
@@ -81,27 +80,32 @@ class EntryInventoryService(EntryInventoryInterface):
             raise HTTPException(status_code=500, detail="Database error")
 
     # UPDATE: Update an existing inventory entry {} {Inventory ID}
-    async def update_entry(self, db: AsyncSession, uuid: str, entry_inventory: EntryInventoryUpdate) -> Optional[EntryInventory]:
+    async def update_entry(self, db: AsyncSession, inventory_id: str, update_data: EntryInventoryUpdate):
         try:
             result = await db.execute(
                 select(EntryInventory)
-                .where(EntryInventory.uuid == uuid)
+                .where(EntryInventory.inventory_id == inventory_id)
             )
             entry = result.scalar_one_or_none()
-
+    
             if not entry:
                 return None
-
-            update_data = entry_inventory.model_dump(exclude_unset=True)
-            if 'updated_at' not in update_data or update_data['updated_at'] is None:
-                update_data['updated_at'] = datetime.now(timezone.utc)
-
-            for key, value in update_data.items():
-                setattr(entry, key, value)
-
+    
+            update_dict = update_data.model_dump(exclude_unset=True)
+            IMMUTABLE_FIELDS = ['uuid', 'sno', 'inventory_id', 'product_id', 'created_at']
+    
+            # Update mutable fields
+            for field, value in update_dict.items():
+                if field not in IMMUTABLE_FIELDS:
+                    setattr(entry, field, value)
+            
+            # Always update timestamp
+            entry.updated_at = datetime.now(timezone.utc)
+    
             await db.commit()
             await db.refresh(entry)
             return entry
+            
         except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Database error updating entry: {e}")
