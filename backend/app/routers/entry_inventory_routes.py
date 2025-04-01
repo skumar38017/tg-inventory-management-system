@@ -219,7 +219,7 @@ async def update_inventory_item(
 
 # DELETE: Delete an inventory entry
 @router.delete("/{inventory_id}", 
-               status_code=200,  # You can still use 200 OK
+               status_code=200,
                summary="Delete an entry from the inventory",
                description="This endpoint is used to delete an entry from the inventory. It takes a UUID as a parameter and deletes the entry with the specified UUID.",
                )
@@ -231,12 +231,12 @@ async def delete_inventory_item(
     """Delete an inventory item and return a confirmation message"""
     try:
         # Fetch the item to be deleted first
-        item_to_delete = await service.delete_entry(db, inventory_id)
+        item_to_delete = await service.get_by_inventory_id(db, inventory_id)
         if not item_to_delete:
             raise HTTPException(status_code=404, detail="Inventory item not found")
 
         # Perform the delete operation
-        success = await service.delete_inventory_iten_curd(db, inventory_id)
+        success = await service.delete_entry(db, inventory_id)
         if not success:
             raise HTTPException(status_code=404, detail="Inventory item not found")
 

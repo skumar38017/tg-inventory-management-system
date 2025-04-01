@@ -87,36 +87,36 @@ class EntryInventoryService(EntryInventoryInterface):
                 .where(EntryInventory.inventory_id == inventory_id)
             )
             entry = result.scalar_one_or_none()
-    
+
             if not entry:
                 return None
-    
+
             update_dict = update_data.model_dump(exclude_unset=True)
             IMMUTABLE_FIELDS = ['uuid', 'sno', 'inventory_id', 'product_id', 'created_at']
-    
+
             # Update mutable fields
             for field, value in update_dict.items():
                 if field not in IMMUTABLE_FIELDS:
                     setattr(entry, field, value)
-            
+
             # Always update timestamp
             entry.updated_at = datetime.now(timezone.utc)
-    
+
             await db.commit()
             await db.refresh(entry)
             return entry
-            
+
         except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Database error updating entry: {e}")
             raise HTTPException(status_code=500, detail="Database error")
 
     # DELETE: Delete an inventory entry by  {Inventory ID}
-    async def delete_entry(self, db: AsyncSession, uuid: str) -> bool:
+    async def delete_entry(self, db: AsyncSession, inventory_id: str) -> bool:
         try:
             result = await db.execute(
                 select(EntryInventory)
-                .where(EntryInventory.uuid == uuid)
+                .where(EntryInventory.inventory_id == inventory_id)
             )
             entry = result.scalar_one_or_none()
             
