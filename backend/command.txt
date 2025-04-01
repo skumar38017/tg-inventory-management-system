@@ -1,0 +1,72 @@
+1️⃣ Delete all migration files (except __init__.py)
+find . -name "*.pyc" -exec rm -f {} \;
+find . -type d -name "__pycache__" -exec rm -r {} +
+
+
+find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
+find . -path "*/migrations/*.pyc" -delete
+rm db.sqlite3
+
+
+--> Verify Django installation integrity:
+python -c "import django; print(django.__path__)"
+
+--> This should show you where Django is installed. Check that the migrations module exists:
+ls -l $(python -c "import django; print(django.__path__[0] + '/db/migrations')")
+
+
+--------------------------------------------------------------------
+# Completely clear pip cache
+pip cache purge
+
+# Reinstall everything with --no-cache-dir and --force-reinstall
+pip install --no-cache-dir --force-reinstall -r requirements.txt
+
+
+2️⃣ Recreate migrations
+
+python manage.py makemigrations
+python manage.py migrate --fake-initial
+
+3️⃣ Run the server again
+python manage.py runserver
+
+4️⃣ Run Celery
+python manage.py celery worker --loglevel=info
+
+5️⃣ Run Celery beat
+python manage.py celery beat --loglevel=info
+
+6️⃣ Run RabbitMQ
+rabbitmq-server
+
+7️⃣ Run Redis
+redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
+redis-cli -h 192.168.192.3 -p 6379 -a Neon-Studioz-Holi-T25 -n 1
+redis-cli -h 192.168.192.3 -p 6379 -a Neon-Studioz-Holi-T25 -n 1 FLUSHDB
+
+
+8️⃣ PostgreSQL
+CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
+CREATE DATABASE "tg-inventory" OWNER "tg-inventory";
+GRANT ALL PRIVILEGES ON DATABASE "tg-inventory" TO "tg-inventory";
+ALTER ROLE "tg-inventory" WITH
+  SUPERUSER
+  CREATEDB
+  CREATEROLE
+  REPLICATION
+  BYPASSRLS;
+
+
+
+9️⃣ PostgreSQL
+psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
+
+python manage.py makemigrations 
+
+
+
+---------------------------------------------------------------
+export PYTHONPATH=$(pwd)
+python -m frontend.app.app
+
