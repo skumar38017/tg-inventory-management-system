@@ -35,8 +35,10 @@ class EntryInventoryBase(BaseModel):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
-        from_attributes = True  # Treat SQLAlchemy model as a dict
+        from_attributes = True  # For Pydantic v2 (replaces orm_mode)
+        json_encoders = {
+            datetime: lambda v: v.isoformat()  # Ensure proper JSON serialization
+        } # Treat SQLAlchemy model as a dict
 
     @field_validator('product_id', mode='before')
     def format_product_id(cls, v):
@@ -86,8 +88,11 @@ class EntryInventoryOut(EntryInventoryBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
-        from_attributes = True  # For Pydantic v2 compatibility
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()  # For pure date fields
+        }  # For Pydantic v2 compatibility
 
 # Schema for creating or updating EntryInventory (without UUID and timestamps)
 class EntryInventoryCreate(EntryInventoryBase):

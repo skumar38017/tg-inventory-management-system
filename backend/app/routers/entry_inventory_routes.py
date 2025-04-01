@@ -67,7 +67,7 @@ async def create_inventory_item_route(
             description="This endpoint refreshes and returns all inventory entries in alphabetical order",
             response_model_exclude_unset=True,
             )
-async def refresh_inventory_items(
+async def sync_inventory(
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
