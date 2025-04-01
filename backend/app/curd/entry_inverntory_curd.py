@@ -7,6 +7,7 @@ from backend.app.schema.entry_inventory_schema import EntryInventoryCreate, Entr
 from sqlalchemy.exc import SQLAlchemyError
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 import logging
+from fastapi import APIRouter, HTTPException, Depends
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -14,49 +15,26 @@ logger.setLevel(logging.INFO)
 
 # ------------------------
 # CRUD OPERATIONS
-# ------------------------
+# ------------------------ 
 
 class EntryInventoryService(EntryInventoryInterface):
-    """Service class implementing EntryInventoryInterface""" 
-
-    # CREATE: Add a new entry to the inventory
     async def create_entry_inventory_curd(self, db: AsyncSession, entry_inventory: EntryInventoryCreate):
+        if db is None:
+            raise ValueError("Database session is None")
+        
         try:
-            # Create a new EntryInventory object
-            new_entry = EntryInventory(
-                sno=entry_inventory.sno,
-                inventory_id=entry_inventory.inventory_id,
-                product_id=entry_inventory.product_id,
-                name=entry_inventory.name,
-                material=entry_inventory.material,
-                total_quantity=entry_inventory.total_quantity,
-                manufacturer=entry_inventory.manufacturer,
-                purchase_dealer=entry_inventory.purchase_dealer,
-                purchase_date=entry_inventory.purchase_date,
-                purchase_amount=entry_inventory.purchase_amount,
-                repair_quantity=entry_inventory.repair_quantity,
-                repair_cost=entry_inventory.repair_cost,
-                on_rent=entry_inventory.on_rent,
-                vendor_name=entry_inventory.vendor_name,
-                total_rent=entry_inventory.total_rent,
-                rented_inventory_returned=entry_inventory.rented_inventory_returned,
-                returned_date=entry_inventory.returned_date,
-                on_event=entry_inventory.on_event,
-                in_office=entry_inventory.in_office,
-                in_warehouse=entry_inventory.in_warehouse,
-                issued_qty=entry_inventory.issued_qty,
-                balance_qty=entry_inventory.balance_qty,
-                submitted_by=entry_inventory.submitted_by,
-            )
-
-            async with db.begin():
-                db.add(new_entry)
-                await db.commit()  # Commit asynchronously
-                await db.refresh(new_entry)  # Refresh the object to get auto-generated fields
+            new_entry = EntryInventory(**entry_inventory.dict())
+            db.add(new_entry)
+            await db.commit()
+            await db.refresh(new_entry)
             return new_entry
         except SQLAlchemyError as e:
-            logger.error(f"Error creating entry inventory: {e}")
-            raise e
+            await db.rollback()
+            logger.error(f"Database error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
 
     # READ: Get an inventory entry by its inventry_id
     async def get_inventory_by_inventry_id_curd(self, db: AsyncSession, inventory_id: str):
