@@ -16,7 +16,7 @@ from datetime import date
 class EntryInventoryInterface:
     """Interface for EntryInventory operations."""
     
-    def create_entry_inventory(self, db: Session, entry_inventory: EntryInventoryCreate) -> EntryInventory:
+    def create_entry_inventory_curd(self, db: Session, entry_inventory: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new EntryInventory entry.
         This method will receive an EntryInventoryCreate schema instance

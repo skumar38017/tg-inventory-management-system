@@ -4,7 +4,7 @@ import uuid
 import random
 from sqlalchemy import Column, String, String, Date, Float
 from sqlalchemy.sql import func
-from app.database.base import Base
+from backend.app.database.base import Base
 
 # Helper function to generate random product_id
 def generate_product_id():
@@ -18,7 +18,7 @@ class EntryInventory(Base):
     __tablename__ = "entry_inventory"
     
     uuid = Column(String, default=lambda: str(uuid.uuid4()))
-    sno = Column(String, index=True, autoincrement=True)
+    sno = Column(String, index=True)
     
     # Automatically generate product_id and inventory_id
     product_id = Column(String, index=True, default=generate_product_id, unique=True)
@@ -30,12 +30,12 @@ class EntryInventory(Base):
     manufacturer = Column(String)
     purchase_dealer = Column(String)
     purchase_date = Column(Date)
-    purchase_amount = Column(Float)
+    purchase_amount = Column(String)
     repair_quantity = Column(String)
-    repair_cost = Column(Float)
+    repair_cost = Column(String)
     on_rent = Column(String)
     vendor_name = Column(String)
-    total_rent = Column(Float)
+    total_rent = Column(String)
     rented_inventory_returned = Column(String)
     returned_date = Column(Date)
     on_event = Column(String)

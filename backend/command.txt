@@ -67,3 +67,16 @@ python -m frontend.app.app
 PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
 
 PYTHONPATH=./ alembic upgrade head
+
+
+INSERT INTO public.entry_inventory (
+    inventory_id, product_id, name, material, total_quantity, manufacturer, 
+    purchase_dealer, purchase_date, purchase_amount, repair_quantity, repair_cost, 
+    on_rent, vendor_name, total_rent, rented_inventory_returned, 
+    returned_date, on_event, in_office, in_warehouse, issued_qty, balance_qty, 
+    submitted_by)
+VALUES (
+    'INV123456', 'PRD123456', 'Test Product', 'Material A', '100', 'Manufacturer X', 
+    'Dealer Y', '2025-04-01', 150.0, '5', 50.0, 'Yes', 'Vendor Z', 200.0, 'No', 
+    NULL, 'Test Event', 'Yes', 'No', 'No', '10', '90', 'Admin'
+);
