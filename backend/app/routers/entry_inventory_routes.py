@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, HTTPException, Depends
 from backend.app.database.database import get_async_db
+from datetime import datetime
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdate,
@@ -31,21 +32,6 @@ logger.setLevel(logging.INFO)
 # Asynchronous Endpoints
 # --------------------------
 
-#  Refrech record in UI and show all updated data directly 
-@router.get("/refresh/",
-            response_model=EntryInventoryOut,
-            status_code=200,
-            summary="Refresh an entry in the inventory",
-            description="This endpoint is used to refresh an entry in the inventory. It takes a UUID as a parameter and returns the updated entry.",
-            response_model_exclude_unset=True,
-            )
-async def refresh_inventory_item_route(db: AsyncSession = Depends(get_async_db), service: EntryInventoryService = Depends(get_entry_inventory_service)):
-    print("Refreshing data")
-    refresh_data=await service.list_entry_inventories_curd(db)
-    if not refresh_data:
-        raise HTTPException(status_code=404, detail="EntryInventory not found")
-    return refresh_data
-
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
             response_model=EntryInventoryOut,
@@ -61,7 +47,7 @@ async def create_inventory_item_route(
 ):
     print(f"Creating new item: {item}")
     try:
-        new_item = await service.create_entry_inventory_curd(db, item)
+        new_item = await service.create_entry_inventory(db, item)
         print(f"New item created: {new_item}")
         if not new_item:
             logger.error("Failed to create inventory item: item is None.")
@@ -73,7 +59,34 @@ async def create_inventory_item_route(
         print(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-# READ: Get an inventory entry by its inventory_id
+#  Refrech record in UI and show all updated data directly after clicking {sync} button
+@router.get("/sync/",
+            response_model=List[EntryInventoryOut],  # Changed to List[]
+            status_code=200,
+            summary="Refresh all inventory entries",
+            description="This endpoint refreshes and returns all inventory entries in alphabetical order",
+            response_model_exclude_unset=True,
+            )
+async def refresh_inventory_items(
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    try:
+        entries = await service.list_all_entries(db)
+        if not entries:
+            raise HTTPException(
+                status_code=404,
+                detail="No inventory entries found"
+            )
+        return entries
+    except Exception as e:
+        logger.error(f"Error refreshing inventory: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to refresh inventory data"
+        )
+
+# READ: Get an inventory which is match from inventry ID
 @router.get("/fetch/{inventory_id}",
             response_model=EntryInventoryOut,
             status_code=200,
@@ -81,13 +94,17 @@ async def create_inventory_item_route(
             description="This endpoint is used to get an entry from the inventory by its inventory_id. It takes a inventory_id as a parameter and returns the entry with the specified inventory_id.",
             response_model_exclude_unset=True,
 )
-async def get_inventory_item_route(inventory_id: str, db: AsyncSession = Depends(get_async_db), service: EntryInventoryService = Depends(get_entry_inventory_service)):
-    entry_inventory = await service.get_entry_inventory_by_inventry_id_interface(db, inventory_id=inventory_id)
+async def get_inventory_item(
+    inventory_id: str, 
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    entry_inventory = await service.get_by_inventory_id(db, inventory_id)
     if not entry_inventory:
         raise HTTPException(status_code=404, detail="EntryInventory not found")
     return entry_inventory
 
-# READ ALL: Get all inventory entries
+# READ ALL: Get entire inventory entries direct from database (no search) according in sequence alphabetical order
 @router.get("/getlist",
             response_model=list[EntryInventoryOut],
             status_code=200,
@@ -95,13 +112,15 @@ async def get_inventory_item_route(inventory_id: str, db: AsyncSession = Depends
             description="This endpoint is used to get all entries from the inventory. It returns a list of entries.",
             response_model_exclude_unset=True,
 )
-async def get_all_entire_inventory_route(
+async def get_all_entire_inventory(
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     """Get all inventory items"""
     try:
-        items = await service.get_all_entry_inventory_curd(db)
+        items = await service.get_all_entries(db, skip, limit)
         logger.info(f"Retrieved {len(items)} inventory items")
         return items
     except Exception as e:
@@ -117,21 +136,19 @@ async def get_all_entire_inventory_route(
     description="Search inventory items by various criteria",
     response_model_exclude_unset=True,
 )
-async def search_inventory_route(
-    inventory_id: str,  # This should be a path parameter
-    product_id: Optional[str] = Query(None, description="Product ID to search for"),
-    project_id: Optional[str] = Query(None, description="Project ID to search for"),
+async def search_inventory(
+    inventory_id: str,
+    product_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     """Search inventory items by various criteria"""
     try:
         search_params = EntryInventorySearch(
-            inventory_id=inventory_id,  # Path param
+            inventory_id=inventory_id,
             product_id=product_id,
-            project_id=project_id
         )
-        results = await service.search_inventory_interface(db, search_params)
+        results = await service.search_entries(db, search_params)
         if not results:
             raise HTTPException(status_code=404, detail="No matching items found")
         return results
@@ -148,19 +165,21 @@ async def search_inventory_route(
     description="Get inventory items within a specific date range",
     response_model_exclude_unset=True,
 )
-async def get_inventory_by_date_range_route(
+async def get_inventory_by_date_range(
     from_date: str,
     to_date: str,
+    inventory_id: str,
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     """Get inventory items within a date range"""
     try:
         date_filter = DateRangeFilter(
-            from_date=datetime.strptime(from_date, "%Y-%m-%d"),
-            to_date=datetime.strptime(to_date, "%Y-%m-%d")
+            from_date=datetime.strptime(from_date, "%Y-%m-%d").date(),
+            to_date=datetime.strptime(to_date, "%Y-%m-%d").date(),
+            inventory_id=inventory_id
         )
-        results = await service.get_entry_inventory_by_date_range_curd(db, date_filter)
+        results = await service.get_by_date_range(db, date_filter)
         if not results:
             raise HTTPException(status_code=404, detail="No items found in date range")
         return results
@@ -170,9 +189,6 @@ async def get_inventory_by_date_range_route(
     except Exception as e:
         logger.error(f"Date range filter failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
-    #  -------------------------------------------------------------------------------------------
-
 
 # UPDATE: Update an existing inventory entry
 @router.put("/update/{inventory_id}",
@@ -182,8 +198,13 @@ async def get_inventory_by_date_range_route(
             description="This endpoint is used to update an entry in the inventory. It takes a inventory_id and a JSON payload with the updated fields and values, and returns the updated entry.",
             response_model_exclude_unset=True,
 )
-async def update_inventory_item_route(uuid: str, entry_inventory_update: EntryInventoryUpdate, db: AsyncSession = Depends(get_async_db), service: EntryInventoryService = Depends(get_entry_inventory_service)):
-    updated_entry = await service.update_inventory_item_curd(db, uuid, entry_inventory_update)
+async def update_inventory_item(
+    inventory_id: str, 
+    update_data: EntryInventoryUpdate,
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    updated_entry = await service.update_entry(db, inventory_id, update_data)
     if not updated_entry:
         raise HTTPException(status_code=404, detail="EntryInventory not found")
     return updated_entry
@@ -194,7 +215,7 @@ async def update_inventory_item_route(uuid: str, entry_inventory_update: EntryIn
                summary="Delete an entry from the inventory",
                description="This endpoint is used to delete an entry from the inventory. It takes a UUID as a parameter and deletes the entry with the specified UUID.",
                )
-async def delete_inventory_item_route(
+async def delete_inventory_item(
     inventory_id: str,
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
@@ -202,7 +223,7 @@ async def delete_inventory_item_route(
     """Delete an inventory item and return a confirmation message"""
     try:
         # Fetch the item to be deleted first
-        item_to_delete = await service.get_entry_inventory_by_inventry_id_interface(db, inventory_id)
+        item_to_delete = await service.delete_entry(db, inventory_id)
         if not item_to_delete:
             raise HTTPException(status_code=404, detail="Inventory item not found")
 
@@ -226,12 +247,14 @@ async def delete_inventory_item_route(
             description="This endpoint is used to list all entries from the inventory. It returns a list of entries.",
             response_model_exclude_unset=True,
             )
-async def list_entry_inventories_route(db: AsyncSession = Depends(get_async_db), service: EntryInventoryService = Depends(get_entry_inventory_service)):
+async def list_all_entries(
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
     """List all EntryInventory items (async version)."""
     try:
         # Fetch all the entries from the database
-        entry_inventories = await service.list_entry_inventories_curd(db)
-        
+        entry_inventories = await service.list_all_entries(db)
         # Log the number of retrieved entries
         logger.info(f"Retrieved {len(entry_inventories)} EntryInventories.")
         
