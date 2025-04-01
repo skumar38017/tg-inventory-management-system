@@ -175,16 +175,17 @@ class EntryInventoryService(EntryInventoryInterface):
     #  List all inventory directly from database after clicking {sync} button
     async def list_all_entries(self, db: AsyncSession) -> List[EntryInventoryOut]:
         try:
-            async with db.begin():
-                result = await db.execute(
-                    select(EntryInventory)
-                    .order_by(EntryInventory.name)
-                )
-                entries = result.scalars().all()
-                await db.commit()  # Explicit commit
-                return entries
+            result = await db.execute(
+                select(EntryInventory).order_by(EntryInventory.name)
+            )
+            entries = result.scalars().all()
+
+            # Convert SQLAlchemy models to Pydantic models
+            return [
+                EntryInventoryOut.model_validate(entry)
+                for entry in entries
+            ]
         except SQLAlchemyError as e:
-            await db.rollback()
             logger.error(f"Database error listing entries: {e}")
             raise HTTPException(
                 status_code=500,
