@@ -1,6 +1,7 @@
 #  backend/app/interface/entry_inventory_interface.py
 
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.schema.entry_inventory_schema import (
@@ -16,7 +17,7 @@ from datetime import date
 class EntryInventoryInterface:
     """Interface for EntryInventory operations."""
     
-    def create_entry_inventory_curd(self, db: Session, entry_inventory: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory_curd(self, db: AsyncSession, entry_inventory: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new EntryInventory entry.
         This method will receive an EntryInventoryCreate schema instance

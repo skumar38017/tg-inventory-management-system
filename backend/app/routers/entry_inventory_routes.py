@@ -17,8 +17,8 @@ from backend.app.curd.entry_inverntory_curd import EntryInventoryService
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 
 # Dependency to get the entry inventory service
-def get_entry_inventory_service() -> EntryInventoryInterface:
-    return EntryInventoryInterface()
+def get_entry_inventory_service() -> EntryInventoryService:
+    return EntryInventoryService()
 
 # Set up the router
 router = APIRouter()
@@ -40,6 +40,7 @@ logger.setLevel(logging.INFO)
             response_model_exclude_unset=True,
             )
 async def refresh_inventory_item_route(db: AsyncSession = Depends(get_async_db), service: EntryInventoryService = Depends(get_entry_inventory_service)):
+    print("Refreshing data")
     refresh_data=await service.list_entry_inventories_curd(db)
     if not refresh_data:
         raise HTTPException(status_code=404, detail="EntryInventory not found")
@@ -58,16 +59,19 @@ async def create_inventory_item_route(
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
-    """Create a new inventory item"""
+    print(f"Creating new item: {item}")
     try:
         new_item = await service.create_entry_inventory_curd(db, item)
+        print(f"New item created: {new_item}")
         if not new_item:
+            logger.error("Failed to create inventory item: item is None.")
             raise HTTPException(status_code=400, detail="Failed to create inventory item")
         return new_item
+    
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
+        print(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-
 
 # READ: Get an inventory entry by its inventory_id
 @router.get("/fetch/{inventory_id}",
