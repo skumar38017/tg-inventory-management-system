@@ -199,14 +199,22 @@ async def get_inventory_by_date_range(
             response_model_exclude_unset=True,
 )
 async def update_inventory_item(
-    inventory_id: str, 
+    inventory_id: str,
     update_data: EntryInventoryUpdate,
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
+    """
+    Update inventory item by inventory_id.
+    Immutable fields (uuid, sno, inventory_id, product_id, created_at) cannot be changed.
+    """
+        
     updated_entry = await service.update_entry(db, inventory_id, update_data)
     if not updated_entry:
-        raise HTTPException(status_code=404, detail="EntryInventory not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Inventory item with ID {inventory_id} not found"
+        )
     return updated_entry
 
 # DELETE: Delete an inventory entry
