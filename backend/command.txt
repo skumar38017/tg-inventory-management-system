@@ -66,3 +66,4 @@ python -m frontend.app.app
 
 PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
 
+PYTHONPATH=./ alembic upgrade head
