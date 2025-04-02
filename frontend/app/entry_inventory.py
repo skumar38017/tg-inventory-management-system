@@ -13,9 +13,9 @@ import logging
 #     get_inventory_by_date_range,
 #     get_all_entire_inventory
 #     )
-from .entry_inventory_functions_request import (sync_inventory, 
+from .entry_inventory_api_request import (sync_inventory, 
                             filter_inventory_by_date_range,
-                            add_new_inventory_item
+                            add_new_inventory_item,
                             )
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
@@ -150,7 +150,7 @@ def perform_search():
         for item in results:
             if search_results_listbox:
                 search_results_listbox.insert(tk.END, 
-                    f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
+                    f"{item['Sno']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
                     f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
                     f"{item['Purchase Date']} | {item['Purchase Amount']}")
                 
@@ -162,11 +162,11 @@ def perform_search():
 def create_inventory_item(scrollable_frame, header_labels):
     """Add new inventory items from all rows with comprehensive validation"""
     row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
-    required_fields = ['SNo', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 
-                     'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Submitedby']
+    required_fields = ['Sno', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 'Submitedby']
     checkbox_fields = ['OnRent', 'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse']
     optional_fields = ['ReturnedDate', 'Material', 'Manufacturer', 'PurchaseDealer',
-                      'RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty']
+                      'RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty','PurchaseDate', 'PurchaseAmount', 
+                      'VendorName', 'TotalRent']
     
     # Track if any items were successfully added
     any_success = False
@@ -259,7 +259,10 @@ def create_inventory_item(scrollable_frame, header_labels):
                 f"Returned: {item.get('rented_inventory_returned', 'N/A')} | "
                 f"Balance: {item.get('balance_qty', 'N/A')} | "
                 f"Purchased: {item.get('purchase_date', 'N/A')} | "
+                f"Created At: {item.get('created_at', 'N/A')} | "
+                f"Updated At: {item.get('updated_at', 'N/A')} | "
                 f"submitted_by: {item.get('submitted_by', 'N/A')}"
+                f"BarCode: {item.get('bar_code', 'N/A')} | "
             )
             added_items_listbox.insert(tk.END, display_str)
 
