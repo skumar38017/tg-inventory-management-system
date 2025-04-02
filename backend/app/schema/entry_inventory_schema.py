@@ -3,6 +3,7 @@ from pydantic import BaseModel, field_validator
 from datetime import datetime, date, timezone
 from typing import Optional
 import re
+import json
 
 class EntryInventoryBase(BaseModel):
     product_id: str  
@@ -88,8 +89,7 @@ class EntryInventoryOut(EntryInventoryBase):
     created_at: datetime
     updated_at: datetime
     bar_code: str
-    unique_code: str
-
+    
     class Config:
         from_attributes = True
         json_encoders = {
@@ -193,7 +193,16 @@ class DateRangeFilter(BaseModel):
             date: lambda v: v.isoformat()
         }
 
-class DateRangeFilterOut(EntryInventoryBase):
+class DateRangeFilterOut(EntryInventoryUpdateOut):
+    pass
+
+# Schema for sync inventory
+class SyncInventoryOut(EntryInventoryUpdateOut):
+    pass
+
+# Schema for Store record in Redis after clicking {sync} button
+class StoreInventoryRedis(BaseModel):
+    """Schema for storing inventory in Redis"""
     uuid: str
     sno: str
     inventory_id: str
@@ -223,12 +232,43 @@ class DateRangeFilterOut(EntryInventoryBase):
     bar_code: str
 
     class Config:
-        from_attributes = True
         json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat()  # For pure date fields
+            datetime: lambda v: v.isoformat()
         }
 
-# Schema for sync inventory
-class SyncInventory(EntryInventoryBase):
-    pass
+# Schema to Show record from Redis after clicking {Show All} button
+class InventoryRedisOut(BaseModel):
+    """Schema for retrieving inventory from Redis"""
+
+    uuid: str
+    sno: str
+    inventory_id: str
+    product_id: str
+    name: str
+    material: Optional[str] = None
+    total_quantity: str
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_amount: Optional[str] = None
+    repair_quantity: Optional[str] = None
+    repair_cost: Optional[str] = None
+    on_rent: str
+    vendor_name: Optional[str] = None
+    total_rent: Optional[str] = None
+    rented_inventory_returned: Optional[str] = None
+    returned_date: Optional[date] = None
+    on_event: str
+    in_office: str
+    in_warehouse: str
+    issued_qty: str
+    balance_qty: str
+    submitted_by: str
+    created_at: datetime
+    updated_at: datetime
+    bar_code: str
+
+    @classmethod
+    def from_redis(cls, redis_data: str):
+        data = json.loads(redis_data)
+        return cls(**data)

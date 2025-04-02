@@ -4,6 +4,17 @@ from backend.app.config import REDIS_URL  # Import REDIS_URL from config
 from redis.exceptions import RedisError
 import time
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from backend.app.models.entry_inventory_model import EntryInventory
+from backend.app.schema.entry_inventory_schema import (
+    InventoryRedisOut,
+    StoreInventoryRedis
+)
+from redis import asyncio as aioredis
+import json
+import os
+
 
 # Set up logging to display info and error messages
 logger = logging.getLogger(__name__)
@@ -14,7 +25,18 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 # Create a Redis connection using the URL from the config
-redis_client = redis.from_url(REDIS_URL)
+# Initialize Redis client
+try:
+    logger.info(f"Initializing Redis client with URL: {REDIS_URL}")
+    redis_client = aioredis.from_url(
+        REDIS_URL,  
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5
+    )
+except Exception as e:
+    logger.error(f"Failed to initialize Redis client: {e}")
+    raise
 
 def get_redis_client():
     """Returns the Redis client instance."""
@@ -23,7 +45,7 @@ def get_redis_client():
 
 # Check Redis Connectivity
 def check_redis_connectivity():
-    """Check the connectivity to the Redis server."""
+    """Check Redis connectivity asynchronously."""
     try:
         logger.info("Pinging Redis server to check connectivity...")
         # Ping the Redis server to check if it's available
@@ -36,7 +58,7 @@ def check_redis_connectivity():
 
 # Optional: Retry mechanism for Redis connectivity check
 def check_redis_connectivity_with_retry(retries=3, delay=5):
-    """Check the connectivity to the Redis server with retries."""
+    """Check Redis connectivity with retries."""
     attempt = 0
     while attempt < retries:
         try:
