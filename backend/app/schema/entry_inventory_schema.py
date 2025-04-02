@@ -1,5 +1,4 @@
 #  backend/app/schema/entry_inventory_schema.py
-# backend/app/schema/entry_inventory_schema.py
 from pydantic import BaseModel, field_validator
 from datetime import datetime, date, timezone
 from typing import Optional
@@ -176,10 +175,52 @@ class EntryInventorySearch(EntryInventoryBase):
 class DateRangeFilter(BaseModel):
     from_date: date
     to_date: date
-    inventory_id: str
+
+    @field_validator('to_date')
+    def validate_dates(cls, v: date, info) -> date:
+        if hasattr(info, 'data') and 'from_date' in info.data and v < info.data['from_date']:
+            raise ValueError("To date must be after From date")
+        return v
 
     class Config:
-        orm_mode = True  # Treat SQLAlchemy model as a dict
+        json_encoders = {
+            date: lambda v: v.isoformat()
+        }
+
+class DateRangeFilterOut(EntryInventoryBase):
+    uuid: str
+    sno: str
+    inventory_id: str
+    product_id: str
+    name: str
+    material: Optional[str] = None
+    total_quantity: str
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_amount: Optional[str] = None
+    repair_quantity: Optional[str] = None
+    repair_cost: Optional[str] = None
+    on_rent: str
+    vendor_name: Optional[str] = None
+    total_rent: Optional[str] = None
+    rented_inventory_returned: Optional[str] = None
+    returned_date: Optional[date] = None
+    on_event: str
+    in_office: str
+    in_warehouse: str
+    issued_qty: str
+    balance_qty: str
+    submitted_by: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()  # For pure date fields
+        }
 
 # Schema for sync inventory
 class SyncInventory(EntryInventoryBase):
