@@ -3,12 +3,23 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 import platform
 import logging
-
-from backend.app.routers.inventory import fetch_inventory, add_inventory, search_inventory, get_inventory_by_date_range
+from backend.app.routers.entry_inventory_routes import(
+    create_inventory_item_route, 
+    update_inventory_item,
+    delete_inventory_item,
+    search_inventory, 
+    list_all_entries, 
+    get_inventory_item,
+    get_inventory_by_date_range,
+    get_all_entire_inventory
+    )
+from .entry_inventory_functions_request import sync_inventory
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from .assign_inventory import AssignInventoryWindow
 from .damage_inventory import DamageWindow
+import requests
+from typing import List, Dict
 
 # Configure logging
 logging.basicConfig(
@@ -16,7 +27,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('inventory_system.log')
     ]
 )
 
@@ -52,26 +62,37 @@ def update_inventory_list():
     if search_results_listbox:
         search_results_listbox.delete(0, tk.END)
 
+# Update main inventory listbox with all items by clicking sync button
 def update_main_inventory_list():
     """Update only the main inventory listbox with all items"""
     if inventory_listbox:
         inventory_listbox.delete(0, tk.END)
         try:
-            inventory = fetch_inventory()
+            inventory = sync_inventory() # This now returns formatted data from the API
             display_inventory_items(inventory)
         except Exception as e:
-            logger.error(f"Failed to fetch inventory: {e}")
-            messagebox.showerror("Error", "Could not fetch inventory data")
+            logger.error(f"Failed to Sync inventory: {e}")
+            messagebox.showerror("Error", "Could not Sync inventory data")
 
 def display_inventory_items(items):
-    """Display inventory items in the listbox"""
+    """Display formatted inventory items in the listbox"""
     if inventory_listbox:
         inventory_listbox.delete(0, tk.END)
         for item in items:
-            inventory_listbox.insert(tk.END, 
-                f"{item['S No']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
-                f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
-                f"{item['Purchase Date']} | {item['Purchase Amount']}")
+            # Format the display string
+            display_str = (
+                f"{item['ID']} |{item['Serial No.']} | {item['InventoryID']} | {item['Product ID']} | "
+                f"{item['Name']} | {item['Material']} | {item['Total Quantity']} | "
+                f"{item['Manufacturer']} | {item['Purchase Dealer']} | {item['Purchase Date']} | "
+                f"{item['Purchase Amount']} | {item['Repair Quantity']} | {item['Repair Cost']} | "
+                f"{item['On Rent']} | {item['Vendor Name']} | {item['Total Rent']} | "
+                f"{item['Rented Inventory Returned']} | {item['Returned Date']} | {item['On Event']} | "
+                f"{item['In Office']} | {item['In Warehouse']} | {item['Issued Qty']} | "
+                f"{item['Balance Qty']} | {item['Submitted By']} | {item['Created At']} | "
+                f"{item['Updated At']}"
+            )
+            # Insert the formatted string into the listbox
+            inventory_listbox.insert(tk.END, display_str)
 
 def filter_by_date_range():
     """Filter inventory items by date range"""
@@ -111,7 +132,7 @@ def perform_search():
         search_results_listbox.delete(0, tk.END)
     
     try:
-        results = search_inventory(
+        results = get_inventory_item(
             inventory_id=inventory_id if inventory_id else None,
             project_id=project_id if project_id else None,
             product_id=product_id if product_id else None
@@ -133,7 +154,7 @@ def perform_search():
         messagebox.showerror("Search Error", "Failed to perform search")
 
 #  Add new inventory items from all rows
-def add_inventory_item(scrollable_frame, header_labels):
+def create_inventory_item(scrollable_frame, header_labels):
     """Add new inventory items from all rows"""
     row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
     required_fields = ['SNo', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 
@@ -174,7 +195,7 @@ def add_inventory_item(scrollable_frame, header_labels):
         # Only add if we have data for this row
         if item:
             try:
-                added_item = add_inventory(item)
+                added_item = create_inventory_item_route(item)
                 if added_items_listbox:
                     added_items_listbox.insert(tk.END, 
                         f"{added_item['S No']} | {added_item['InventoryID']} | {added_item['Product ID']} | {added_item['Name']} | "
@@ -344,7 +365,7 @@ Eros City Square
     
     return header_frame
 
-#  Create list frames with notebook tabs
+#  Create list frames with notebook tabs [Inventory List, New Entry, Search Results]
 def create_list_frames(root):
     """Create list frames with notebook tabs"""
     # Calculate 65% of screen height
@@ -395,15 +416,19 @@ def create_list_frames(root):
     right_frame = tk.Frame(date_filter_frame)
     right_frame.pack(side="right", fill="x")
     
-    # Sync button
-    sync_btn = tk.Button(right_frame, text="Sync", command=update_inventory_list,
-                       font=('Helvetica', 9, 'bold'))
+    # Main List Sync Item Container button
+    sync_btn = tk.Button(
+        right_frame, 
+        text="Sync", 
+        command=update_inventory_list,  # This should trigger the full refresh
+        font=('Helvetica', 9, 'bold')
+    )
     sync_btn.pack(side="right", padx=5)
     
     # Separator
     ttk.Separator(inventory_frame, orient='horizontal').pack(fill="x", pady=5)
     
-    # Main List Container
+    # Main List Sync Item Container
     list_container = tk.Frame(inventory_frame)
     list_container.pack(fill="both", expand=True)
     
@@ -530,7 +555,7 @@ def create_list_frames(root):
     add_button = tk.Button(
         button_frame, 
         text="Add Item", 
-        command=lambda: add_inventory_item(scrollable_frame, header_labels),
+        command=lambda: create_inventory_item(scrollable_frame, header_labels),
         font=('Helvetica', 10, 'bold'),
         width=15
     )
