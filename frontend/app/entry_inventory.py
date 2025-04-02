@@ -81,14 +81,14 @@ def display_inventory_items(items):
         for item in items:
             # Format the display string
             display_str = (
-                f"{item['ID']} |{item['Serial No.']} | {item['InventoryID']} | {item['Product ID']} | "
+                f"{item['Vendor Name']} |{item['Serial No.']} | {item['InventoryID']} | {item['Product ID']} | "
                 f"{item['Name']} | {item['Material']} | {item['Total Quantity']} | "
                 f"{item['Manufacturer']} | {item['Purchase Dealer']} | {item['Purchase Date']} | "
                 f"{item['Purchase Amount']} | {item['Repair Quantity']} | {item['Repair Cost']} | "
-                f"{item['On Rent']} | {item['Vendor Name']} | {item['Total Rent']} | "
+                f"{item['On Rent']} | {item['Total Rent']} | "
                 f"{item['Rented Inventory Returned']} | {item['Returned Date']} | {item['On Event']} | "
                 f"{item['In Office']} | {item['In Warehouse']} | {item['Issued Qty']} | "
-                f"{item['Balance Qty']} | {item['Submitted By']} | {item['Created At']} | "
+                f"{item['Balance Qty']} | {item['Submitted By']} | {item['ID']} | {item['Created At']} | "
                 f"{item['Updated At']}"
             )
             # Insert the formatted string into the listbox
@@ -97,23 +97,23 @@ def display_inventory_items(items):
 #  Filter inventory by date range by `filter` button
 def filter_by_date_range():
     """Filter inventory items by date range"""
-    from_date = from_date_entry.get()
-    to_date = to_date_entry.get()
+    from_date_str = from_date_entry.get()
+    to_date_str = to_date_entry.get()
     
-    if not from_date or not to_date:
-        messagebox.showwarning("Warning", "Please select both From and To dates")
-        return
-    
+    if not from_date_str or not to_date_str:
+          messagebox.showwarning("Warning", "Please select both From and To dates")
+          return
     try:
         # Convert dates to proper format if needed
-        from_date_obj = datetime.strptime(from_date, "%Y-%m-%d")
-        to_date_obj = datetime.strptime(to_date, "%Y-%m-%d")
+        from_date_obj = datetime.strptime(from_date_str, "%Y-%m-%d")
+        to_date_obj = datetime.strptime(to_date_str, "%Y-%m-%d")
         
         if from_date_obj > to_date_obj:
             messagebox.showwarning("Warning", "From date cannot be after To date")
             return
             
-        items = filter_inventory_by_date_range(from_date, to_date)
+        # Pass the date strings directly
+        items = filter_inventory_by_date_range(from_date_str, to_date_str)
         display_inventory_items(items)
         
     except ValueError as e:
@@ -123,6 +123,7 @@ def filter_by_date_range():
         logger.error(f"Failed to filter by date range: {e}")
         messagebox.showerror("Error", "Could not filter inventory by date range")
 
+#  Perform inventory search based on search criteria [InventoryID, ProjectID, ProductID]
 def perform_search():
     """Perform inventory search based on search criteria"""
     inventory_id = search_inventory_id_entry.get().strip()
