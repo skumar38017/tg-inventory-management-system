@@ -84,15 +84,15 @@ def display_inventory_items(items):
         for item in items:
             # Format the display string
             display_str = (
-                f"{item['Vendor Name']} |{item['Serial No.']} | {item['InventoryID']} | {item['Product ID']} | "
-                f"{item['Name']} | {item['Material']} | {item['Total Quantity']} | "
+                f"{item['Name']} |{item['Serial No.']} | {item['InventoryID']} | {item['Product ID']} | "
+                f"{item['Vendor Name']} | {item['Material']} | {item['Total Quantity']} | "
                 f"{item['Manufacturer']} | {item['Purchase Dealer']} | {item['Purchase Date']} | "
                 f"{item['Purchase Amount']} | {item['Repair Quantity']} | {item['Repair Cost']} | "
                 f"{item['On Rent']} | {item['Total Rent']} | "
                 f"{item['Rented Inventory Returned']} | {item['Returned Date']} | {item['On Event']} | "
                 f"{item['In Office']} | {item['In Warehouse']} | {item['Issued Qty']} | "
                 f"{item['Balance Qty']} | {item['Submitted By']} | {item['ID']} | {item['Created At']} | "
-                f"{item['Updated At']}"
+                f"{item['Updated At']} | {item['BarCode']} "
             )
             # Insert the formatted string into the listbox
             inventory_listbox.insert(tk.END, display_str)
