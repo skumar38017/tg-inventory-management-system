@@ -160,70 +160,116 @@ def perform_search():
 
 #  Add new inventory items from all rows
 def create_inventory_item(scrollable_frame, header_labels):
-    """Add new inventory items from all rows"""
+    """Add new inventory items from all rows with comprehensive validation"""
     row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
     required_fields = ['SNo', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 
-                      'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Submited by']
-    optional_fields = ['ReturnedDate']
+                     'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Submitedby']
+    checkbox_fields = ['OnRent', 'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse']
+    optional_fields = ['ReturnedDate', 'Material', 'Manufacturer', 'PurchaseDealer',
+                      'RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty']
+    
+    # Track if any items were successfully added
+    any_success = False
+    added_items = []  # Store successfully added items
     
     for row in range(row_count):
-        item = {}
+        item_data = {}
+        has_errors = False
+        
         # Validate required fields for each row
-        # Collect data from each field in the row
-        for key in required_fields:
-            field_name = f"{key.replace(' ', '')}_{row}" if row > 0 else key.replace(' ', '')
+        for field in required_fields:
+            field_name = f"{field}_{row}" if row > 0 else field
             if field_name in entries and isinstance(entries[field_name], tk.Entry):
                 value = entries[field_name].get().strip()
                 if not value:
-                    messagebox.showerror("Error", f"{key} field is required in row {row+1}")
-                    return
-                if key in ['TotalQuantity', 'PurchaseAmount', 'TotalRent']:
+                    messagebox.showerror("Error", f"{field} is required in row {row+1}")
+                    has_errors = True
+                    break
+                
+                # Special handling for numeric fields
+                if field in ['TotalQuantity', 'PurchaseAmount', 'TotalRent']:
                     try:
-                        item[key] = float(value) if '.' in value else int(value)
+                        item_data[field] = float(value) if '.' in value else int(value)
                     except ValueError:
-                        messagebox.showerror("Error", f"{key} must be a number in row {row+1}")
-                        return
+                        messagebox.showerror("Error", f"{field} must be a number in row {row+1}")
+                        has_errors = True
+                        break
                 else:
-                    item[key] = value
+                    item_data[field] = value
         
-        # Get checkbox values for each row
-        for field in ['OnRent', 'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse']:
+        if has_errors:
+            continue  # Skip this row if there were validation errors
+            
+        # Get checkbox values
+        for field in checkbox_fields:
             field_name = f"{field}_{row}" if row > 0 else field
             if field_name in checkbox_vars:
-                item[field] = checkbox_vars[field_name].get()
+                item_data[field] = checkbox_vars[field_name].get()
+            else:
+                item_data[field] = False  # Default value if checkbox doesn't exist
 
-        # Get optional fields for each row
+        # Get optional fields
         for field in optional_fields:
-            field_name = f"{field.replace(' ', '')}_{row}" if row > 0 else field.replace(' ', '')
+            field_name = f"{field}_{row}" if row > 0 else field
             if field_name in entries and isinstance(entries[field_name], tk.Entry):
-                item[field] = entries[field_name].get().strip()
+                value = entries[field_name].get().strip()
+                if value:  # Only add if there's a value
+                    if field in ['RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty']:
+                        try:
+                            item_data[field] = float(value) if '.' in value else int(value)
+                        except ValueError:
+                            messagebox.showwarning("Warning", 
+                                f"Non-numeric value in {field} (row {row+1}), using 0")
+                            item_data[field] = 0
+                    else:
+                        item_data[field] = value
 
-        # Only add if we have data for this row and the item is not empty
-        if item:
+        # Only proceed if we have valid data for this row
+        if item_data:
             try:
-                added_item = add_new_inventory_item(item)
-                if added_items_listbox:
-                    # Format the display string for the listbox
-                    display_str = (
-                        f"{added_item.get('sno', 'N/A')} | "
-                        f"{added_item.get('inventory_id', 'N/A')} | "
-                        f"{added_item.get('product_id', 'N/A')} | "
-                        f"{added_item.get('name', 'N/A')} |"
-                        f"{added_item.get('total_quantity', 'N/A')} | "
-                        f"{'Yes' if added_item.get('purchased', 'N/A') else 'No'} | "
-                        f"{added_item.get('purchase_date', 'N/A')} | "
-                        f"{added_item.get('purchase_amount', 'N/A')}"
-                    )
-                    # Insert the formatted string into the listbox
-                    added_items_listbox.insert(tk.END, display_str)
-                messagebox.showinfo("Success", "Item added successfully")
+                added_item = add_new_inventory_item(item_data)
+                added_items.append(added_item)  # Store for later display
+                any_success = True
+                
             except Exception as e:
-                logger.error(f"Failed to add inventory item from row {row+1}: {e}")
-                messagebox.showerror("Error", f"Could not add item from row {row+1}: {str(e)}")
-    
-    # Clear all fields after adding
-    clear_fields()
-    update_main_inventory_list()
+                logger.error(f"Failed to add item (row {row+1}): {str(e)}")
+                messagebox.showerror("Error", 
+                    f"Failed to add item from row {row+1}\nError: {str(e)}")
+
+    # Display all successfully added items in reverse chronological order (newest first)
+    if any_success and added_items_listbox:
+        # Clear existing items
+        added_items_listbox.delete(0, tk.END)
+        
+        # Sort items by creation date (newest first)
+        sorted_items = sorted(added_items, 
+                            key=lambda x: x.get('created_at', ''),
+                            reverse=True)
+        
+        # Add to listbox with numbering
+        for idx, item in enumerate(sorted_items, start=1):
+            display_str = (
+                f"ID: {idx}. {item.get('uuid', 'N/A')} | "
+                f"Serial No.: {item.get('sno', 'N/A')} | "
+                f"Inventory ID: {item.get('inventory_id', 'N/A')} | "
+                f"Product ID: {item.get('product_id', 'N/A')} | "
+                f"Name: {item.get('name', 'N/A')} | "
+                f"Qty: {item.get('total_quantity', 'N/A')} | "
+                f"On Rent: {item.get('on_rent', 'N/A')} | "
+                f"Returned: {item.get('rented_inventory_returned', 'N/A')} | "
+                f"Balance: {item.get('balance_qty', 'N/A')} | "
+                f"Purchased: {item.get('purchase_date', 'N/A')} | "
+                f"submitted_by: {item.get('submitted_by', 'N/A')}"
+            )
+            added_items_listbox.insert(tk.END, display_str)
+
+    # Only clear and refresh if at least one item was successfully added
+    if any_success:
+        clear_fields()
+        update_main_inventory_list()
+        messagebox.showinfo("Success", f"{len(added_items)} items added successfully")
+    else:
+        messagebox.showwarning("Warning", "No items were added - please check for errors")
 
 #  Add a new row of input fields below the existing ones
 def add_new_row(scrollable_frame, header_labels):

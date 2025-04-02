@@ -6,8 +6,9 @@ from alembic import context
 from sqlalchemy.ext.declarative import declarative_base
 from app.database.base import Base  # Ensure this imports Base from the correct location
 from alembic import context
-from app.models.entry_inventory_model import EntryInventory
+from app.models import EntryInventory as EntryInventory
 
+EntryInventory=EntryInventory()
 # Add the project's root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 

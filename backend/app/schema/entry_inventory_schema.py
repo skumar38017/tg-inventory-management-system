@@ -33,6 +33,8 @@ class EntryInventoryBase(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+    # These fields shouldn't be in the create schema since they're auto-generated
+
     class Config:
         from_attributes = True  # For Pydantic v2 (replaces orm_mode)
         json_encoders = {
@@ -85,6 +87,8 @@ class EntryInventoryOut(EntryInventoryBase):
     submitted_by: str
     created_at: datetime
     updated_at: datetime
+    bar_code: str
+    unique_code: str
 
     class Config:
         from_attributes = True
@@ -98,6 +102,7 @@ class EntryInventoryCreate(EntryInventoryBase):
     @field_validator('created_at', mode='before')
     def set_created_at(cls, v):
         return v or datetime.now(timezone.utc)
+    
 
 class EntryInventoryUpdate(BaseModel):
     name: str
@@ -159,6 +164,7 @@ class EntryInventoryUpdateOut(EntryInventoryBase):
     submitted_by: str
     created_at: datetime
     updated_at: datetime
+    bar_code: str
 
     class Config:
         from_attributes = True
@@ -214,6 +220,7 @@ class DateRangeFilterOut(EntryInventoryBase):
     submitted_by: str
     created_at: datetime
     updated_at: datetime
+    bar_code: str
 
     class Config:
         from_attributes = True
