@@ -2,6 +2,7 @@
 import requests
 from typing import List, Dict
 import logging
+import uuid
 from tkinter import messagebox
 from datetime import datetime, timezone, date
 
@@ -163,37 +164,48 @@ def show_all_inventory():
 def add_new_inventory_item(item_data: dict):
     """Add new inventory items to the database"""
     try:
-        # Map UI field names to API field names
+        # Helper function to format IDs with prefix
+        def format_id(value, prefix):
+            if not value:
+                return prefix + str(uuid.uuid4().hex[:6]).upper()
+            # If already has prefix, return as-is
+            if value.startswith(prefix):
+                return value
+            # If just numbers, add prefix
+            if value.isdigit():
+                return prefix + value
+            # For any other case, add prefix and take first 6 chars
+            return prefix + value[-6:].upper()
+
+        # Map UI field names to API field names with proper defaults
         api_payload = {
-            "product_id": item_data.get('ProductID', ''),
-            "inventory_id": item_data.get('InventoryID', ''),
-            "sno": item_data.get('SNo', ''),
+            "product_id": format_id(item_data.get('ProductID'), 'PRD'),
+            "inventory_id": format_id(item_data.get('InventoryID'), 'INV'),
+            "sno": item_data.get('Sno', 'SN' + str(uuid.uuid4().hex[:8]).upper()),
             "name": item_data.get('Name', ''),
-            "material": item_data.get('Material', ''),
-            "total_quantity": str(item_data.get('TotalQuantity', '')),
+            "material": item_data.get('Material', 'N/A'),
+            "total_quantity": str(item_data.get('TotalQuantity', 0)),
             "manufacturer": item_data.get('Manufacturer', ''),
             "purchase_dealer": item_data.get('PurchaseDealer', ''),
             "purchase_date": item_data.get('PurchaseDate', datetime.now().date().isoformat()),
-            "purchase_amount": str(item_data.get('PurchaseAmount', '')),
-            "repair_quantity": str(item_data.get('RepairQuantity', '')),
-            "repair_cost": str(item_data.get('RepairCost', '')),
+            "purchase_amount": str(item_data.get('PurchaseAmount', 0)),
+            "repair_quantity": str(item_data.get('RepairQuantity', 0)),
+            "repair_cost": str(item_data.get('RepairCost', 0)),
             "on_rent": str(item_data.get('OnRent', False)).lower(),
-            "vendor_name": item_data.get('VendorName', ''),
-            "total_rent": str(item_data.get('TotalRent', '')),
+            "vendor_name": str(item_data.get('VendorName', '')),
+            "total_rent": str(item_data.get('TotalRent', 0)),
             "rented_inventory_returned": str(item_data.get('RentedInventoryReturned', False)).lower(),
             "returned_date": item_data.get('ReturnedDate', ''),
             "on_event": str(item_data.get('OnEvent', False)).lower(),
             "in_office": str(item_data.get('InOffice', False)).lower(),
             "in_warehouse": str(item_data.get('InWarehouse', False)).lower(),
-            "issued_qty": str(item_data.get('IssuedQty', '')),
-            "balance_qty": str(item_data.get('BalanceQty', '')),
-            "submitted_by": item_data.get('Submitedby', ''),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
+            "issued_qty": str(item_data.get('IssuedQty', 0)),
+            "balance_qty": str(item_data.get('BalanceQty', 0)),
+            "submitted_by": item_data.get('Submitedby', 'Anonymous')
         }
 
-        # Remove empty optional fields
-        api_payload = {k: v for k, v in api_payload.items() if v not in ['', None]}
+        # Remove None values to avoid validation errors
+        api_payload = {k: v for k, v in api_payload.items() if v is not None}
 
         # Post the new inventory item to the database
         response = requests.post(
@@ -207,4 +219,4 @@ def add_new_inventory_item(item_data: dict):
         
     except Exception as e:
         logger.error(f"Failed to add new inventory item: {e}")
-        raise Exception("Could not add new inventory item")
+        raise Exception(f"Could not add new inventory item: {str(e)}")

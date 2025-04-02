@@ -82,38 +82,6 @@ async def get_inventory_by_date_range(
             status_code=500,
             detail=str(e)  # Return the actual error message
         )
-    
-# CREATE: Add a new entry to the inventory
-@router.post("/create-item/",
-    response_model=EntryInventoryOut,
-    status_code=200,
-    summary="Create a new entry in the inventory",
-    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
-    response_model_exclude_unset=True,
-)
-async def create_inventory_item_route(
-    item: EntryInventoryCreate,
-    db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
-):
-    try:
-        # Logging input for debugging purposes
-        logger.info(f"Creating new item: {item}")
-
-        # Create inventory item using the service
-        new_item = await service.create_entry_inventory(db, item)
-        logger.info(f"New item created: {new_item}")
-
-        if not new_item:
-            logger.error("Failed to create inventory item: item is None.")
-            raise HTTPException(status_code=400, detail="Failed to create inventory item")
-        
-        return new_item  # Return the created item
-
-    except Exception as e:
-        logger.error(f"Error creating inventory item: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
 
 # Refrech record in UI and show all updated data directly after clicking {sync} button [/sync/]
 @router.post("/sync/",
@@ -225,6 +193,36 @@ async def show_all_redis(
             }
         )
 
+# CREATE: Add a new entry to the inventory
+@router.post("/create-item/",
+    response_model=EntryInventoryOut,
+    status_code=200,
+    summary="Create a new entry in the inventory",
+    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
+    response_model_exclude_unset=True,
+)
+async def create_inventory_item_route(
+    item: EntryInventoryCreate,
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    try:
+        # Logging input for debugging purposes
+        logger.info(f"Creating new item: {item}")
+
+        # Create inventory item using the service
+        new_item = await service.create_entry_inventory(db, item)
+        logger.info(f"New item created: {new_item}")
+
+        if not new_item:
+            logger.error("Failed to create inventory item: item is None.")
+            raise HTTPException(status_code=400, detail="Failed to create inventory item")
+        
+        return new_item  # Return the created item
+
+    except Exception as e:
+        logger.error(f"Error creating inventory item: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 # ________________________________________________________________________________________
 
 # READ: Get an inventory which is match from inventry ID
