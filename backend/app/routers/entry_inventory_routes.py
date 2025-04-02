@@ -59,7 +59,7 @@ async def create_inventory_item_route(
         print(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-#  Refrech record in UI and show all updated data directly after clicking {sync} button
+#  Refrech record in UI and show all updated data directly after clicking {sync} button [/sync/]
 @router.get("/sync/",
             response_model=List[EntryInventoryOut],  # Changed to List[]
             status_code=200,
@@ -72,7 +72,7 @@ async def sync_inventory(
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     try:
-        entries = await service.list_all_entries(db)
+        entries = await service.get_all_entries(db)
         if not entries:
             raise HTTPException(
                 status_code=404,
