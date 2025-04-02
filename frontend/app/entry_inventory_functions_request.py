@@ -55,19 +55,15 @@ def sync_inventory() -> List[Dict]:
         return []
 
 #  Filter inventory by date range by `filter` button
-def filter_inventory_by_date_range(from_date, to_date) -> List[Dict]:
-    """Fetch inventory data filtered by date range from the API and return formatted data"""
+def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
+    """Fetch inventory data filtered by date range from the API"""
     try:
-        # Get the date strings from the Tkinter StringVars
-        from_date_str = from_date.get()
-        to_date_str = to_date.get()
-        
-        # Make the API request
+        # Make the API request with the date strings
         response = requests.get(
             "http://localhost:8000/api/v1/date-range/",
             params={
-                "from_date": from_date_str,
-                "to_date": to_date_str
+                "from_date": from_date,
+                "to_date": to_date
             }
         )
         response.raise_for_status()
