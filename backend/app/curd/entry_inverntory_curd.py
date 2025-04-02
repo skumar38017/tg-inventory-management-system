@@ -2,7 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate, 
@@ -160,16 +160,21 @@ class EntryInventoryService(EntryInventoryInterface):
             logger.error(f"Database error searching entries: {e}")
             raise HTTPException(status_code=500, detail="Database error")
         
-    #  Filter inventory by date range
-    async def get_by_date_range(self, db: AsyncSession, date_range_filter: DateRangeFilter) -> List[EntryInventoryOut]:
+    #  Filter inventory by date range without any `IDs`
+    async def get_by_date_range(
+        self,
+        db: AsyncSession,
+        date_range_filter: DateRangeFilter
+    ) -> List[EntryInventory]:
         try:
+            # Convert dates to datetime at start/end of day
+            start_datetime = datetime.combine(date_range_filter.from_date, time.min)
+            end_datetime = datetime.combine(date_range_filter.to_date, time.max)
+
             result = await db.execute(
                 select(EntryInventory)
-                .where(EntryInventory.purchase_date.between(
-                    date_range_filter.from_date,
-                    date_range_filter.to_date
-                ))
-                .where(EntryInventory.inventory_id == date_range_filter.inventory_id)
+                .where(EntryInventory.created_at.between(start_datetime, end_datetime))
+                .order_by(EntryInventory.created_at)
             )
             return result.scalars().all()
         except SQLAlchemyError as e:

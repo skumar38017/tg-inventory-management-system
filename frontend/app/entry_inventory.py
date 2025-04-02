@@ -3,17 +3,17 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 import platform
 import logging
-from backend.app.routers.entry_inventory_routes import(
-    create_inventory_item_route, 
-    update_inventory_item,
-    delete_inventory_item,
-    search_inventory, 
-    list_all_entries, 
-    get_inventory_item,
-    get_inventory_by_date_range,
-    get_all_entire_inventory
-    )
-from .entry_inventory_functions_request import sync_inventory
+# from backend.app.routers.entry_inventory_routes import(
+#     create_inventory_item_route, 
+#     update_inventory_item,
+#     delete_inventory_item,
+#     search_inventory, 
+#     list_all_entries, 
+#     get_inventory_item,
+#     get_inventory_by_date_range,
+#     get_all_entire_inventory
+#     )
+from .entry_inventory_functions_request import sync_inventory, filter_inventory_by_date_range
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from .assign_inventory import AssignInventoryWindow
@@ -94,6 +94,7 @@ def display_inventory_items(items):
             # Insert the formatted string into the listbox
             inventory_listbox.insert(tk.END, display_str)
 
+#  Filter inventory by date range by `filter` button
 def filter_by_date_range():
     """Filter inventory items by date range"""
     from_date = from_date_entry.get()
@@ -112,7 +113,7 @@ def filter_by_date_range():
             messagebox.showwarning("Warning", "From date cannot be after To date")
             return
             
-        items = get_inventory_by_date_range(from_date, to_date)
+        items = filter_inventory_by_date_range(from_date, to_date)
         display_inventory_items(items)
         
     except ValueError as e:
@@ -380,7 +381,7 @@ def create_list_frames(root):
     inventory_frame = tk.Frame(notebook)
     notebook.add(inventory_frame, text="Inventory List")
     
-    # Date range filter frame
+    # Date range filter frame (only visible when in Inventory List tab) by clicking `filter` button
     date_filter_frame = tk.Frame(inventory_frame)
     date_filter_frame.pack(fill="x", pady=5)
     
