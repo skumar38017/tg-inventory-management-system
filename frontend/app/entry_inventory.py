@@ -4,7 +4,7 @@ from datetime import datetime
 import platform
 import logging
 # from backend.app.routers.entry_inventory_routes import(
-#     create_inventory_item_route, 
+#     add_new_inventory_item, 
 #     update_inventory_item,
 #     delete_inventory_item,
 #     search_inventory, 
@@ -13,7 +13,10 @@ import logging
 #     get_inventory_by_date_range,
 #     get_all_entire_inventory
 #     )
-from .entry_inventory_functions_request import sync_inventory, filter_inventory_by_date_range
+from .entry_inventory_functions_request import (sync_inventory, 
+                            filter_inventory_by_date_range,
+                            add_new_inventory_item
+                            )
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from .assign_inventory import AssignInventoryWindow
@@ -166,6 +169,7 @@ def create_inventory_item(scrollable_frame, header_labels):
     for row in range(row_count):
         item = {}
         # Validate required fields for each row
+        # Collect data from each field in the row
         for key in required_fields:
             field_name = f"{key.replace(' ', '')}_{row}" if row > 0 else key.replace(' ', '')
             if field_name in entries and isinstance(entries[field_name], tk.Entry):
@@ -194,18 +198,28 @@ def create_inventory_item(scrollable_frame, header_labels):
             if field_name in entries and isinstance(entries[field_name], tk.Entry):
                 item[field] = entries[field_name].get().strip()
 
-        # Only add if we have data for this row
+        # Only add if we have data for this row and the item is not empty
         if item:
             try:
-                added_item = create_inventory_item_route(item)
+                added_item = add_new_inventory_item(item)
                 if added_items_listbox:
-                    added_items_listbox.insert(tk.END, 
-                        f"{added_item['S No']} | {added_item['InventoryID']} | {added_item['Product ID']} | {added_item['Name']} | "
-                        f"{added_item['Qty']} | {'Yes' if added_item['Purchase'] else 'No'} | "
-                        f"{added_item['Purchase Date']} | {added_item['Purchase Amount']}")
+                    # Format the display string for the listbox
+                    display_str = (
+                        f"{added_item.get('sno', 'N/A')} | "
+                        f"{added_item.get('inventory_id', 'N/A')} | "
+                        f"{added_item.get('product_id', 'N/A')} | "
+                        f"{added_item.get('name', 'N/A')} |"
+                        f"{added_item.get('total_quantity', 'N/A')} | "
+                        f"{'Yes' if added_item.get('purchased', 'N/A') else 'No'} | "
+                        f"{added_item.get('purchase_date', 'N/A')} | "
+                        f"{added_item.get('purchase_amount', 'N/A')}"
+                    )
+                    # Insert the formatted string into the listbox
+                    added_items_listbox.insert(tk.END, display_str)
+                messagebox.showinfo("Success", "Item added successfully")
             except Exception as e:
-                logger.error(f"Failed to add inventory item: {e}")
-                messagebox.showerror("Error", f"Could not add inventory item from row {row+1}")
+                logger.error(f"Failed to add inventory item from row {row+1}: {e}")
+                messagebox.showerror("Error", f"Could not add item from row {row+1}: {str(e)}")
     
     # Clear all fields after adding
     clear_fields()
@@ -278,7 +292,9 @@ def configure_responsive_grid():
     clock_label.config(font=('Helvetica', 8))
     company_label.config(font=('Helvetica', 7))
 
+# ==============================
 # Child window functions
+# ==============================
 def open_to_event():
     try:
         logger.info("Opening To Event window")
