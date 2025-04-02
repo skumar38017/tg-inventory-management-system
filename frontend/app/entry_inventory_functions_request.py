@@ -3,6 +3,7 @@ import requests
 from typing import List, Dict
 import logging
 from tkinter import messagebox
+from datetime import datetime, timezone, date
 
 logger = logging.getLogger(__name__)
 
@@ -107,3 +108,53 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
         logger.error(f"Failed to fetch inventory by date range: {e}")
         messagebox.showerror("Error", "Could not fetch inventory data by date range")
         return []
+    
+#  Add new inventory items to the database by clicking the `Add Item` button
+def add_new_inventory_item(item_data: dict):
+    """Add new inventory items to the database"""
+    try:
+        # Map UI field names to API field names
+        api_payload = {
+            "product_id": item_data.get('ProductID', ''),
+            "inventory_id": item_data.get('InventoryID', ''),
+            "sno": item_data.get('SNo', ''),
+            "name": item_data.get('Name', ''),
+            "material": item_data.get('Material', ''),
+            "total_quantity": str(item_data.get('TotalQuantity', '')),
+            "manufacturer": item_data.get('Manufacturer', ''),
+            "purchase_dealer": item_data.get('PurchaseDealer', ''),
+            "purchase_date": item_data.get('PurchaseDate', datetime.now().date().isoformat()),
+            "purchase_amount": str(item_data.get('PurchaseAmount', '')),
+            "repair_quantity": str(item_data.get('RepairQuantity', '')),
+            "repair_cost": str(item_data.get('RepairCost', '')),
+            "on_rent": str(item_data.get('OnRent', False)).lower(),
+            "vendor_name": item_data.get('VendorName', ''),
+            "total_rent": str(item_data.get('TotalRent', '')),
+            "rented_inventory_returned": str(item_data.get('RentedInventoryReturned', False)).lower(),
+            "returned_date": item_data.get('ReturnedDate', ''),
+            "on_event": str(item_data.get('OnEvent', False)).lower(),
+            "in_office": str(item_data.get('InOffice', False)).lower(),
+            "in_warehouse": str(item_data.get('InWarehouse', False)).lower(),
+            "issued_qty": str(item_data.get('IssuedQty', '')),
+            "balance_qty": str(item_data.get('BalanceQty', '')),
+            "submitted_by": item_data.get('Submitedby', ''),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+
+        # Remove empty optional fields
+        api_payload = {k: v for k, v in api_payload.items() if v not in ['', None]}
+
+        # Post the new inventory item to the database
+        response = requests.post(
+            url="http://localhost:8000/api/v1/create-item/",
+            headers={"Content-Type": "application/json"},
+            json=api_payload
+        )
+        response.raise_for_status()
+        
+        return response.json()
+        
+    except Exception as e:
+        logger.error(f"Failed to add new inventory item: {e}")
+        raise Exception("Could not add new inventory item")
