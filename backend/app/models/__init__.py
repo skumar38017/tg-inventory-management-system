@@ -1,0 +1,1 @@
+from .entry_inventory_model import EntryInventory 

@@ -44,6 +44,7 @@ def sync_inventory() -> List[Dict]:
                 'Submitted By': item.get('submitted_by', 'N/A'),
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
+                'BarCode': item.get('barcode', 'N/A'),
                 # Add any other fields you want to display
             }
             formatted_data.append(formatted_item)
@@ -99,6 +100,7 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
                 'Submitted By': item.get('submitted_by', 'N/A'),
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
+                'BarCode': item.get('barcode', 'N/A'),
             }
             formatted_data.append(formatted_item)
         
