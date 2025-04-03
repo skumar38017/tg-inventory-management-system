@@ -566,7 +566,7 @@ def create_list_frames(root):
     
     # Header row with field names
     header_labels = [
-        'Sno.', "InventoryID", "ProductID", 'Name', 'Material', 'Total Quantity', 
+        'Sno', "InventoryID", "ProductID", 'Name', 'Material', 'Total Quantity', 
         'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
         'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
         'Rented Inventory Returned', 'Returned Date', 'On Event', 'In Office', 

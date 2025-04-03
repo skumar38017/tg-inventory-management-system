@@ -160,56 +160,74 @@ def show_all_inventory():
         messagebox.showerror("Error", "Could not fetch inventory data by date range")
         return []
 
-#  Add new inventory items to the database by clicking the `Add Item` button
+# Add new inventory items to the database by clicking the `Add Item` button
 def add_new_inventory_item(item_data: dict):
-    """Add new inventory items to the database with user-provided SNO"""
+    """Add new inventory items to the database with proper data formatting"""
     try:
         # Helper function to format IDs with prefix
         def format_id(value, prefix):
             if not value:
                 return prefix + str(uuid.uuid4().hex[:6]).upper()
-            # If already has prefix, return as-is
             if value.startswith(prefix):
                 return value
-            # If just numbers, add prefix
             if value.isdigit():
                 return prefix + value
-            # For any other case, add prefix and take first 6 chars
             return prefix + value[-6:].upper()
 
-        # Validate that SNO is provided by user
-        if 'Sno' not in item_data or not item_data['Sno']:
-            raise ValueError("Serial Number (SNO) is required and must be provided by user")
+        # Handle required fields
+        if not item_data.get('ProductID'):
+            raise ValueError("Product ID is required")
+        if not item_data.get('InventoryID'):
+            raise ValueError("Inventory ID is required")
 
-        # Map UI field names to API field names with proper defaults
+        # Handle SNO
+        sno = item_data.get('Sno') or item_data.get('Sno.')
+        if not sno:
+            sno = 'SN' + str(uuid.uuid4().hex[:8]).upper()
+
+        # Format purchase date
+        purchase_date = item_data.get('PurchaseDate')
+        if not purchase_date:
+            purchase_date = datetime.now().date().isoformat()
+        elif isinstance(purchase_date, str):
+            try:
+                # Convert from various possible date formats to ISO
+                purchase_date = datetime.strptime(purchase_date, '%Y-%m-%d').date().isoformat()
+            except ValueError:
+                purchase_date = datetime.now().date().isoformat()
+
+        # Map UI field names to API field names with proper formatting
         api_payload = {
             "product_id": format_id(item_data.get('ProductID'), 'PRD'),
             "inventory_id": format_id(item_data.get('InventoryID'), 'INV'),
-            "sno": item_data['Sno'],  # Directly use user-provided SNO
-            "name": item_data.get('Name', ''),
-            "material": item_data.get('Material', 'N/A'),
+            "sno": sno,
+            "name": item_data.get('Name'),
+            "material": item_data.get('Material'),
             "total_quantity": str(item_data.get('TotalQuantity', 0)),
-            "manufacturer": item_data.get('Manufacturer', ''),
-            "purchase_dealer": item_data.get('PurchaseDealer', ''),
-            "purchase_date": item_data.get('PurchaseDate', datetime.now().date().isoformat()),
+            "manufacturer": item_data.get('Manufacturer'),
+            "purchase_dealer": item_data.get('PurchaseDealer'),
+            "purchase_date": purchase_date,
             "purchase_amount": str(item_data.get('PurchaseAmount', 0)),
             "repair_quantity": str(item_data.get('RepairQuantity', 0)),
             "repair_cost": str(item_data.get('RepairCost', 0)),
             "on_rent": str(item_data.get('OnRent', False)).lower(),
-            "vendor_name": str(item_data.get('VendorName', '')),
+            "vendor_name": item_data.get('VendorName'),
             "total_rent": str(item_data.get('TotalRent', 0)),
             "rented_inventory_returned": str(item_data.get('RentedInventoryReturned', False)).lower(),
-            "returned_date": item_data.get('ReturnedDate', ''),
+            "returned_date": item_data.get('ReturnedDate'),
             "on_event": str(item_data.get('OnEvent', False)).lower(),
             "in_office": str(item_data.get('InOffice', False)).lower(),
             "in_warehouse": str(item_data.get('InWarehouse', False)).lower(),
             "issued_qty": str(item_data.get('IssuedQty', 0)),
             "balance_qty": str(item_data.get('BalanceQty', 0)),
-            "submitted_by": item_data.get('Submitedby', 'Anonymous')
+            "submitted_by": item_data.get('Submitedby')  # Backend should handle both spellings
         }
 
         # Remove None values to avoid validation errors
         api_payload = {k: v for k, v in api_payload.items() if v is not None}
+
+        # Debug print before sending
+        logger.debug(f"Sending payload: {api_payload}")
 
         # Post the new inventory item to the database
         response = requests.post(
@@ -217,6 +235,13 @@ def add_new_inventory_item(item_data: dict):
             headers={"Content-Type": "application/json"},
             json=api_payload
         )
+        
+        # If we get a 422, log the detailed validation errors
+        if response.status_code == 422:
+            validation_errors = response.json().get('detail', 'No details provided')
+            logger.error(f"Validation errors: {validation_errors}")
+            raise Exception(f"Validation failed: {validation_errors}")
+            
         response.raise_for_status()
         
         return response.json()

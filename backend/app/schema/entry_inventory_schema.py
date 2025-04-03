@@ -10,26 +10,26 @@ class EntryInventoryBase(BaseModel):
     inventory_id: str  
 
     sno: Optional[str] = None
-    name: str
-    material: str
-    total_quantity: str
-    manufacturer: str
-    purchase_dealer: str
+    name: Optional[str] = None
+    material: Optional[str] = None
+    total_quantity: Optional[str] = None
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
     purchase_date: date
-    purchase_amount: str
+    purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: str
-    vendor_name: str
+    on_rent: Optional[str] = None
+    vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
     rented_inventory_returned: Optional[str] = None
     returned_date: Optional[date] = None
-    on_event: str
-    in_office: str
-    in_warehouse: str
-    issued_qty: str
-    balance_qty: str
-    submitted_by: str
+    on_event: Optional[str] = None
+    in_office: Optional[str] = None
+    in_warehouse: Optional[str] = None
+    issued_qty: Optional[str] = None
+    balance_qty: Optional[str] = None
+    submitted_by: Optional[str] = None
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -66,26 +66,26 @@ class EntryInventoryOut(EntryInventoryBase):
     sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: str
+    name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: str
+    on_rent: Optional[str] = None
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
     rented_inventory_returned: Optional[str] = None
     returned_date: Optional[date] = None
-    on_event: str
-    in_office: str
-    in_warehouse: str
-    issued_qty: str
-    balance_qty: str
-    submitted_by: str
+    on_event: Optional[str] = None
+    in_office: Optional[str] = None
+    in_warehouse: Optional[str] = None
+    issued_qty: Optional[str] = None
+    balance_qty: Optional[str] = None
+    submitted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     bar_code: str
@@ -105,27 +105,27 @@ class EntryInventoryCreate(EntryInventoryBase):
     
 
 class EntryInventoryUpdate(BaseModel):
-    name: str
-    material: str
-    total_quantity: str
-    manufacturer: str
-    purchase_dealer: str
-    purchase_date: date
-    purchase_amount: str
+    name: Optional[str] = None
+    material: Optional[str] = None
+    total_quantity: Optional[str] = None
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
+    purchase_date: Optional[date] = None
+    purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: str
-    vendor_name: str
+    on_rent: Optional[str] = None
+    vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
     rented_inventory_returned: Optional[str] = None
     returned_date: Optional[date] = None
-    on_event: str
-    in_office: str
+    on_event: Optional[str] = None
+    in_office: Optional[str] = None
     in_warehouse: str
-    issued_qty: str
-    balance_qty: str
-    submitted_by: str
-    updated_at: Optional[datetime] = None 
+    issued_qty: Optional[str] = None
+    balance_qty: Optional[str] = None
+    submitted_by: Optional[str] = None
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -142,26 +142,26 @@ class EntryInventoryUpdateOut(EntryInventoryBase):
     sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: str
+    name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: str
+    on_rent: Optional[str] = None
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
     rented_inventory_returned: Optional[str] = None
     returned_date: Optional[date] = None
-    on_event: str
-    in_office: str
+    on_event: Optional[str] = None
+    in_office: Optional[str] = None
     in_warehouse: str
-    issued_qty: str
-    balance_qty: str
-    submitted_by: str
+    issued_qty: Optional[str] = None
+    balance_qty: Optional[str] = None
+    submitted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     bar_code: str
@@ -204,29 +204,29 @@ class SyncInventoryOut(EntryInventoryBase):
 class StoreInventoryRedis(BaseModel):
     """Schema for storing inventory in Redis"""
     uuid: str
-    sno: Optional[str] = None  # Changed to properly optional 
+    sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: str
+    name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: str
+    on_rent: Optional[str] = None
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
     rented_inventory_returned: Optional[str] = None
     returned_date: Optional[date] = None
-    on_event: str
-    in_office: str
+    on_event: Optional[str] = None
+    in_office: Optional[str] = None
     in_warehouse: str
-    issued_qty: str
-    balance_qty: str
-    submitted_by: str
+    issued_qty: Optional[str] = None
+    balance_qty: Optional[str] = None
+    submitted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     bar_code: str
@@ -244,26 +244,26 @@ class InventoryRedisOut(BaseModel):
     sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: str
+    name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[str] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: str
+    on_rent: Optional[str] = None
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
     rented_inventory_returned: Optional[str] = None
     returned_date: Optional[date] = None
-    on_event: str
-    in_office: str
+    on_event: Optional[str] = None
+    in_office: Optional[str] = None
     in_warehouse: str
-    issued_qty: str
-    balance_qty: str
-    submitted_by: str
+    issued_qty: Optional[str] = None
+    balance_qty: Optional[str] = None
+    submitted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     bar_code: str
