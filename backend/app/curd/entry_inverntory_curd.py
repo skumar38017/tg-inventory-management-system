@@ -19,6 +19,7 @@ import logging
 from fastapi import HTTPException
 from typing import List, Optional
 from backend.app.database.redisclient import redis_client
+from backend.app import config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,6 +30,8 @@ logger.setLevel(logging.INFO)
 
 class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
+    def __init__(self, base_url: str = config.BASE_URL):
+        self.base_url = base_url  # Your server's base URL
 
     #  Create new entry
     async def create_entry_inventory(self, db: AsyncSession, entry_data: dict) -> EntryInventory:
@@ -43,9 +46,9 @@ class EntryInventoryService(EntryInventoryInterface):
                     if isinstance(val, bool):
                         entry_data[field] = "true" if val else "false"
                     elif isinstance(val, str):
-                        entry_data[field] = val.lower()  # Ensure lowercase
+                        entry_data[field] = val.lower()
                     else:
-                        entry_data[field] = "false"  # Default
+                        entry_data[field] = "false"
 
             # Remove auto-generated fields if present
             for field in ['bar_code', 'unique_code', 'created_at', 'updated_at', 'uuid']:
@@ -57,6 +60,12 @@ class EntryInventoryService(EntryInventoryInterface):
             db.add(new_entry)
             await db.commit()
             await db.refresh(new_entry)
+            # Generate barcode image URL
+            barcode_image_url = f"{self.base_url}/static/barcodes/{new_entry.bar_code}_{new_entry.unique_code}.png"
+
+            # Add the URL to the entry object
+            setattr(new_entry, 'barcode_image_url', barcode_image_url)
+
             return new_entry
     
         except SQLAlchemyError as e:
@@ -216,7 +225,6 @@ class EntryInventoryService(EntryInventoryInterface):
                     vendor_name=entry.vendor_name,
                     total_rent=entry.total_rent,
                     rented_inventory_returned=entry.rented_inventory_returned,
-                    returned_date=entry.returned_date,
                     on_event=entry.on_event,
                     in_office=entry.in_office,
                     in_warehouse=entry.in_warehouse,
@@ -224,6 +232,7 @@ class EntryInventoryService(EntryInventoryInterface):
                     balance_qty=entry.balance_qty,
                     submitted_by=entry.submitted_by,
                     bar_code=entry.bar_code,
+                    barcode_image_url=entry.barcode_image_url,
                     created_at=entry.created_at,
                     updated_at=entry.updated_at
                 )
