@@ -3,6 +3,7 @@ import requests
 from typing import List, Dict
 import logging
 import uuid
+import re
 from tkinter import messagebox
 from datetime import datetime, timezone, date
 
@@ -160,92 +161,109 @@ def show_all_inventory():
         messagebox.showerror("Error", "Could not fetch inventory data by date range")
         return []
 
-# Add new inventory items to the database by clicking the `Add Item` button
+# Add new inventory items to the database with proper data formatting
 def add_new_inventory_item(item_data: dict):
     """Add new inventory items to the database with proper data formatting"""
     try:
-        # Helper function to format IDs with prefix
+        # Helper function to safely get and strip string values
+        def get_stripped(value, default=''):
+            return str(value).strip() if value is not None else default
+
+        # Helper function to format IDs with prefix and validate numbers
         def format_id(value, prefix):
             if not value:
                 return prefix + str(uuid.uuid4().hex[:6]).upper()
-            if value.startswith(prefix):
-                return value
-            if value.isdigit():
-                return prefix + value
-            return prefix + value[-6:].upper()
-
-        # Handle required fields
-        if not item_data.get('ProductID'):
-            raise ValueError("Product ID is required")
-        if not item_data.get('InventoryID'):
-            raise ValueError("Inventory ID is required")
-
-        # Handle SNO
-        sno = item_data.get('Sno') or item_data.get('Sno.')
+            
+            # Remove any existing prefix and validate numbers
+            clean_value = re.sub(r'^[A-Za-z]+', '', str(value))
+            if not clean_value.isdigit():
+                raise ValueError(f"{prefix} ID must contain only numbers after prefix")
+            return prefix + clean_value
+        
+        # Handle SNO - now optional
+        sno = get_stripped(item_data.get('Sno') or item_data.get('sno') or item_data.get('S No'))
         if not sno:
-            sno = 'SN' + str(uuid.uuid4().hex[:8]).upper()
+            sno = ''  # Set to empty string if not provided
 
-        # Format purchase date
-        purchase_date = item_data.get('PurchaseDate')
-        if not purchase_date:
-            purchase_date = datetime.now().date().isoformat()
-        elif isinstance(purchase_date, str):
+        # Handle date fields with validation
+        def format_date(date_str):
+            date_str = get_stripped(date_str)
+            if not date_str:
+                return None
             try:
-                # Convert from various possible date formats to ISO
-                purchase_date = datetime.strptime(purchase_date, '%Y-%m-%d').date().isoformat()
+                return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
             except ValueError:
-                purchase_date = datetime.now().date().isoformat()
+                return None
 
-        # Map UI field names to API field names with proper formatting
+        purchase_date = format_date(item_data.get('PurchaseDate'))
+        returned_date = format_date(item_data.get('ReturnedDate'))
+
+        # Handle numeric fields with validation
+        def format_number(num_str, default=0):
+            num_str = get_stripped(num_str)
+            try:
+                return str(float(num_str)) if num_str else str(default)
+            except ValueError:
+                return str(default)
+
+        # Construct API payload with proper formatting
         api_payload = {
             "product_id": format_id(item_data.get('ProductID'), 'PRD'),
             "inventory_id": format_id(item_data.get('InventoryID'), 'INV'),
             "sno": sno,
-            "name": item_data.get('Name'),
-            "material": item_data.get('Material'),
-            "total_quantity": str(item_data.get('TotalQuantity', 0)),
-            "manufacturer": item_data.get('Manufacturer'),
-            "purchase_dealer": item_data.get('PurchaseDealer'),
-            "purchase_date": purchase_date,
-            "purchase_amount": str(item_data.get('PurchaseAmount', 0)),
-            "repair_quantity": str(item_data.get('RepairQuantity', 0)),
-            "repair_cost": str(item_data.get('RepairCost', 0)),
-            "on_rent": str(item_data.get('OnRent', False)).lower(),
-            "vendor_name": item_data.get('VendorName'),
-            "total_rent": str(item_data.get('TotalRent', 0)),
-            "rented_inventory_returned": str(item_data.get('RentedInventoryReturned', False)).lower(),
-            "returned_date": item_data.get('ReturnedDate'),
-            "on_event": str(item_data.get('OnEvent', False)).lower(),
-            "in_office": str(item_data.get('InOffice', False)).lower(),
-            "in_warehouse": str(item_data.get('InWarehouse', False)).lower(),
-            "issued_qty": str(item_data.get('IssuedQty', 0)),
-            "balance_qty": str(item_data.get('BalanceQty', 0)),
-            "submitted_by": item_data.get('Submitedby')  # Backend should handle both spellings
+            "name": get_stripped(item_data.get('Name')),
+            "material": get_stripped(item_data.get('Material')),
+            "total_quantity": format_number(item_data.get('TotalQuantity')),
+            "manufacturer": get_stripped(item_data.get('Manufacturer')),
+            "purchase_dealer": get_stripped(item_data.get('PurchaseDealer')),
+            "purchase_date": purchase_date,  # Can be None
+            "purchase_amount": format_number(item_data.get('PurchaseAmount')),
+            "repair_quantity": format_number(item_data.get('RepairQuantity')),
+            "repair_cost": format_number(item_data.get('RepairCost')),
+            "on_rent": "true" if item_data.get('OnRent') else "false",
+            "vendor_name": get_stripped(item_data.get('VendorName')),
+            "total_rent": format_number(item_data.get('TotalRent')),
+            "rented_inventory_returned": "true" if item_data.get('RentedInventoryReturned') else "false",
+            "returned_date": returned_date,
+            "on_event": "true" if item_data.get('OnEvent') else "false",
+            "in_office": "true" if item_data.get('InOffice') else "false",
+            "in_warehouse": "true" if item_data.get('InWarehouse') else "false",
+            "issued_qty": format_number(item_data.get('IssuedQty')),
+            "balance_qty": format_number(item_data.get('BalanceQty')),
+            "submitted_by": get_stripped(item_data.get('Submitedby')),
         }
 
-        # Remove None values to avoid validation errors
-        api_payload = {k: v for k, v in api_payload.items() if v is not None}
+        # Remove None values from payload except for required fields
+        payload = {k: v for k, v in payload.items() if v is not None}
 
-        # Debug print before sending
+
         logger.debug(f"Sending payload: {api_payload}")
 
-        # Post the new inventory item to the database
+        # API request with enhanced error handling
         response = requests.post(
             url="http://localhost:8000/api/v1/create-item/",
             headers={"Content-Type": "application/json"},
             json=api_payload
         )
         
-        # If we get a 422, log the detailed validation errors
+        # Parse validation errors
         if response.status_code == 422:
-            validation_errors = response.json().get('detail', 'No details provided')
-            logger.error(f"Validation errors: {validation_errors}")
-            raise Exception(f"Validation failed: {validation_errors}")
+            errors = response.json().get('detail', [])
+            error_msgs = [
+                f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
+                for e in errors if isinstance(e, dict)
+            ] if isinstance(errors, list) else []
+            raise Exception("Validation errors:\n" + "\n".join(error_msgs) if error_msgs else "Unknown validation error")
             
         response.raise_for_status()
-        
         return response.json()
         
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        raise Exception(f"Invalid input: {str(ve)}")
+    except requests.exceptions.RequestException as req_exc:
+        logger.error(f"API request failed: {str(req_exc)}")
+        raise Exception(f"Failed to connect to server: {str(req_exc)}")
     except Exception as e:
-        logger.error(f"Failed to add new inventory item: {e}")
-        raise Exception(f"Could not add new inventory item: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}")
+        raise Exception(f"Could not add inventory item: {str(e)}")

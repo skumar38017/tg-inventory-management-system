@@ -207,19 +207,15 @@ async def create_inventory_item_route(
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     try:
-        # Logging input for debugging purposes
-        logger.info(f"Creating new item: {item}")
+        # Convert to dict and process
+        item_data = item.dict(exclude_unset=True)
+        logger.info(f"New item created: {item_data}")
 
-        # Create inventory item using the service
-        new_item = await service.create_entry_inventory(db, item)
-        logger.info(f"New item created: {new_item}")
-
-        if not new_item:
+        if not item_data:
             logger.error("Failed to create inventory item: item is None.")
             raise HTTPException(status_code=400, detail="Failed to create inventory item")
         
-        return new_item  # Return the created item
-
+        return await service.create_entry_inventory(db, item_data)
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
