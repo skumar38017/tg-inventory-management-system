@@ -46,6 +46,7 @@ class EntryInventory(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     bar_code = Column(String, unique=True, nullable=False)
     unique_code = Column(String, unique=True, nullable=False)
+    barcode_image_url = Column(String, nullable=True)
     
     __table_args__ = (
         Index('ix_entry_inventory_created_at', 'created_at'),
@@ -82,70 +83,92 @@ class EntryInventory(Base):
 
 
     def create_barcode_image(self, bar_code: str, unique_code: str, save_path: str = 'static/barcodes') -> str:
+        # Use a simpler approach with default writer
+        from barcode.writer import ImageWriter
+        from PIL import Image, ImageDraw, ImageFont
+        
         """Generate barcode image with both codes"""
         os.makedirs(save_path, exist_ok=True)
 
-        # Use a simpler approach with default writer
-        from barcode.writer import ImageWriter
+        # Custom writer class for transparent background
+        class TransparentImageWriter(ImageWriter):
+            def __init__(self):
+                super().__init__()
+                self.background = 'transparent'
+                self.foreground = 'black'
+                self.text = ''
 
-        # Customize the writer options
+        # Writer options
         writer_options = {
             'module_width': 0.4,
             'module_height': 15,
             'font_size': 12,
             'text_distance': 5,
             'quiet_zone': 10,
-            'write_text': False  # We'll handle text manually
+            'write_text': False
         }
 
         # Generate the barcode
-        code = Code128(bar_code, writer=ImageWriter())
+        code = Code128(bar_code, writer=TransparentImageWriter())
 
-        # Save to file
-        filename = os.path.join(save_path, f"{bar_code}_{unique_code}")
-        full_path = code.save(filename, writer_options)
+        # Create the filename with .png extension
+        filename = os.path.join(save_path, f"{bar_code}_{unique_code}.png")
 
-        # Now add the text manually using PIL
-        from PIL import Image, ImageDraw, ImageFont
+        # Temporary file path (will be deleted later)
+        temp_path = filename + '.temp'
+
         try:
-            img = Image.open(full_path)
-            draw = ImageDraw.Draw(img)
+            # Save to temporary file first
+            code.save(temp_path, writer_options)
 
-            # Use default font or specify a path to a TTF file
-            try:
-                font = ImageFont.truetype("arial.ttf", 12)
-            except:
-                font = ImageFont.load_default()
+            # Open and process the image
+            with Image.open(temp_path) as img:
+                # Convert to RGBA if needed
+                if img.mode != 'RGBA':
+                    img = img.convert('RGBA')
 
-            # Calculate text positions
-            width, height = img.size
-            text_ypos = height - 30
+                # Create transparent image
+                transparent_img = Image.new('RGBA', img.size, (0, 0, 0, 0))
+                transparent_img.paste(img, (0, 0), img)
 
-            # Draw both codes
-            draw.text(
-                (width/2, text_ypos),
-                f"ID: {bar_code}",
-                font=font,
-                fill="black",
-                anchor="ms"
-            )
-            draw.text(
-                (width/2, text_ypos + 15),
-                f"UID: {unique_code}",
-                font=font,
-                fill="black",
-                anchor="ms"
-            )
+                # Draw text
+                draw = ImageDraw.Draw(transparent_img)
+                try:
+                    font = ImageFont.truetype("arial.ttf", 12)
+                except:
+                    font = ImageFont.load_default()
 
-            # Save the modified image
-            img.save(full_path)
-            return full_path
+                width, height = transparent_img.size
+                text_ypos = height - 30
+
+                draw.text(
+                    (width/2, text_ypos),
+                    f"ID: {bar_code}",
+                    font=font,
+                    fill="black",
+                    anchor="ms"
+                )
+                draw.text(
+                    (width/2, text_ypos + 15),
+                    f"UID: {unique_code}",
+                    font=font,
+                    fill="black",
+                    anchor="ms"
+                )
+
+                # Save final image (overwrites if exists)
+                transparent_img.save(filename, format='PNG')
+
+            return filename
 
         except Exception as e:
-            # If text addition fails, at least we have the barcode
-            logger.error(f"Error adding text to barcode: {e}")
-            return full_path
-        
+            logger.error(f"Error creating barcode: {e}")
+            raise
+        finally:
+            # Clean up temporary file if it exists
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
     def verify_code_relationship(self) -> bool:
         """Verify that unique_code correctly signs the bar_code"""
         expected_unique = hashlib.blake2b(

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from backend.app.database.database import check_db_connectivity, check_sync_db_connectivity_with_retry, check_async_db_connectivity_with_retry
 from backend.app.database.redisclient import check_redis_connectivity_with_retry
 from backend.app.routers import entry_inventory_routes  # Import the router for entry inventory
+from fastapi.staticfiles import StaticFiles
 
 # Set up logging for the main script
 logger = logging.getLogger(__name__)
@@ -32,6 +33,10 @@ async def index():
     """
     logger.info("Root endpoint accessed.")
     return {"message": "Ticket Management System"}
+
+
+# Mount the static files directory
+app.mount("/static/barcodes", StaticFiles(directory="static/barcodes"), name="static")
 
 @app.on_event("startup")
 async def startup_event():

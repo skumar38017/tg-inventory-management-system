@@ -43,7 +43,7 @@ class EntryInventoryBase(BaseModel):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
         }
-
+    
     @field_validator('product_id', mode='before')
     def format_product_id(cls, v):
         if v is None:
@@ -108,6 +108,11 @@ class EntryInventoryOut(EntryInventoryBase):
     created_at: datetime
     updated_at: datetime
     bar_code: str
+    barcode_image_url: Optional[str] = None  # Add this new field
+
+    @validator('barcode_image_url', pre=True)
+    def clean_barcode_url(cls, v):
+        return v.replace('\"', '')
     
     class Config:
         from_attributes = True
@@ -150,10 +155,13 @@ class EntryInventoryUpdate(BaseModel):
         return datetime.now(timezone.utc)
     
 class EntryInventoryUpdateOut(EntryInventoryBase):
+    pass
+    
+class EntryInventoryOut(EntryInventoryBase):
     uuid: str
-    sno: Optional[str] = None  # Changed to properly optional
-    inventory_id: str
-    product_id: str
+    product_id: str  
+    inventory_id: str  
+    sno: Optional[str] = None
     name: str
     material: Optional[str] = None
     total_quantity: str
@@ -163,25 +171,25 @@ class EntryInventoryUpdateOut(EntryInventoryBase):
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = "false"  # Default value
+    on_rent: Optional[str] = "false"
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = "false"  # Default value
-    on_event: Optional[str] = "false"  # Default value
-    in_office: Optional[str] = "false"  # Default value
-    in_warehouse: Optional[str] = "false"  # Default value
+    rented_inventory_returned: Optional[str] = "false"
+    on_event: Optional[str] = "false"
+    in_office: Optional[str] = "false"
+    in_warehouse: Optional[str] = "false"
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
     submitted_by: str
     created_at: datetime
     updated_at: datetime
-    bar_code: str
-
+    barcode_image_url: Optional[str] = None  # Add this new field
+    
     class Config:
         from_attributes = True
         json_encoders = {
             datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat()  # For pure date fields
+            date: lambda v: v.isoformat()
         }
 
 # Schema for Search EntryInventory (includes invetory_id and timestamp fields)
@@ -240,6 +248,7 @@ class StoreInventoryRedis(BaseModel):
     created_at: datetime
     updated_at: datetime
     bar_code: str
+    barcode_image_url: Optional[str] = None  # Add this new field
 
     class Config:
         json_encoders = {
@@ -275,7 +284,7 @@ class InventoryRedisOut(BaseModel):
     submitted_by: str
     created_at: datetime
     updated_at: datetime
-    bar_code: str
+    barcode_image_url: Optional[str] = None  # Add this new field
 
     @classmethod
     def from_redis(cls, redis_data: str):
