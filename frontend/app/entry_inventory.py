@@ -2,17 +2,10 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime
 import platform
+import uuid
+import re
 import logging
-# from backend.app.routers.entry_inventory_routes import(
-#     add_new_inventory_item, 
-#     update_inventory_item,
-#     delete_inventory_item,
-#     search_inventory, 
-#     list_all_entries, 
-#     get_inventory_item,
-#     get_inventory_by_date_range,
-#     get_all_entire_inventory
-#     )
+
 from .entry_inventory_api_request import (sync_inventory, 
                             filter_inventory_by_date_range,
                             add_new_inventory_item,
@@ -158,63 +151,72 @@ def perform_search():
         logger.error(f"Search failed: {e}")
         messagebox.showerror("Search Error", "Failed to perform search")
 
-#  Add new inventory items from all rows
+# Add new inventory items from all rows
 def create_inventory_item(scrollable_frame, header_labels):
     """Add new inventory items from all rows with comprehensive validation"""
     row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
-    required_fields = ['Sno', 'InventoryID', 'ProductID', 'Name', 'TotalQuantity', 'Submitedby']
+    required_fields = ['InventoryID', 'ProductID', 'Name', 'TotalQuantity', 'Submitedby']
     checkbox_fields = ['OnRent', 'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse']
     optional_fields = ['ReturnedDate', 'Material', 'Manufacturer', 'PurchaseDealer',
-                      'RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty','PurchaseDate', 'PurchaseAmount', 
-                      'VendorName', 'TotalRent']
+                     'RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty','PurchaseDate', 'PurchaseAmount', 
+                     'VendorName', 'TotalRent','Sno']
     
-    # Track if any items were successfully added
     any_success = False
-    added_items = []  # Store successfully added items
+    added_items = []
     
     for row in range(row_count):
         item_data = {}
         has_errors = False
         
-        # Validate required fields for each row
+        # Helper function to safely get and clean field values
+        def get_field_value(field_name, default=''):
+            if field_name in entries and isinstance(entries[field_name], tk.Entry):
+                value = entries[field_name].get()
+                return value.strip() if value is not None else default
+            return default
+
+        # Validate required fields
         for field in required_fields:
             field_name = f"{field}_{row}" if row > 0 else field
-            if field_name in entries and isinstance(entries[field_name], tk.Entry):
-                value = entries[field_name].get().strip()
-                if not value:
-                    messagebox.showerror("Error", f"{field} is required in row {row+1}")
+            value = get_field_value(field_name)
+            
+            if not value:
+                messagebox.showerror("Error", f"{field} is required in row {row+1}")
+                has_errors = True
+                break
+                
+            if field in ['TotalQuantity']:
+                try:
+                    item_data[field] = float(value) if '.' in value else int(value)
+                except ValueError:
+                    messagebox.showerror("Error", f"{field} must be a number in row {row+1}")
                     has_errors = True
                     break
-                
-                # Special handling for numeric fields
-                if field in ['TotalQuantity', 'PurchaseAmount', 'TotalRent']:
-                    try:
-                        item_data[field] = float(value) if '.' in value else int(value)
-                    except ValueError:
-                        messagebox.showerror("Error", f"{field} must be a number in row {row+1}")
+            else:
+                item_data[field] = value
+        
+        # Validate ID formats contain only numbers
+        if not has_errors:
+            for id_field in ['ProductID', 'InventoryID']:
+                if id_field in item_data:
+                    value = str(item_data[id_field])
+                    clean_value = value.replace('PRD','').replace('INV','')
+                    if not clean_value.isdigit():
+                        messagebox.showerror("Error", 
+                            f"{id_field} must contain only numbers (with optional PRD/INV prefix) in row {row+1}")
                         has_errors = True
                         break
-                else:
-                    item_data[field] = value
         
         if has_errors:
-            continue  # Skip this row if there were validation errors
+            continue
             
-        # Get checkbox values
-        for field in checkbox_fields:
-            field_name = f"{field}_{row}" if row > 0 else field
-            if field_name in checkbox_vars:
-                item_data[field] = checkbox_vars[field_name].get()
-            else:
-                item_data[field] = False  # Default value if checkbox doesn't exist
-
-        # Get optional fields
+        # Handle optional fields
         for field in optional_fields:
             field_name = f"{field}_{row}" if row > 0 else field
             if field_name in entries and isinstance(entries[field_name], tk.Entry):
                 value = entries[field_name].get().strip()
-                if value:  # Only add if there's a value
-                    if field in ['RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty']:
+                if value:
+                    if field in ['RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty', 'PurchaseAmount', 'TotalRent']:
                         try:
                             item_data[field] = float(value) if '.' in value else int(value)
                         except ValueError:
@@ -223,32 +225,33 @@ def create_inventory_item(scrollable_frame, header_labels):
                             item_data[field] = 0
                     else:
                         item_data[field] = value
-
-        # Only proceed if we have valid data for this row
+        
+        # Handle checkboxes
+        for field in checkbox_fields:
+            field_name = f"{field}_{row}" if row > 0 else field
+            if field_name in checkbox_vars:
+                item_data[field] = checkbox_vars[field_name].get()
+        
         if item_data:
             try:
-                added_item = add_new_inventory_item(item_data)
-                added_items.append(added_item)  # Store for later display
-                any_success = True
+                # Convert checkbox values to strings
+                for field in checkbox_fields:
+                    if field in item_data:
+                        item_data[field] = "true" if item_data[field] else "false"
                 
+                added_item = add_new_inventory_item(item_data)
+                added_items.append(added_item)
+                any_success = True
             except Exception as e:
                 logger.error(f"Failed to add item (row {row+1}): {str(e)}")
-                messagebox.showerror("Error", 
-                    f"Failed to add item from row {row+1}\nError: {str(e)}")
+                messagebox.showerror("Error", f"Failed to add item from row {row+1}\nError: {str(e)}")
 
-    # Display all successfully added items in reverse chronological order (newest first)
-    if any_success and added_items_listbox:
-        # Clear existing items
-        added_items_listbox.delete(0, tk.END)
-        
-        # Sort items by creation date (newest first)
-        sorted_items = sorted(added_items, 
-                            key=lambda x: x.get('created_at', ''),
-                            reverse=True)
-        
-        # Add to listbox with numbering
-        for idx, item in enumerate(sorted_items, start=1):
-            display_str = (
+    # Display results and clear fields if any success
+    if any_success:
+        if added_items_listbox:
+            added_items_listbox.delete(0, tk.END)
+            for idx, item in enumerate(added_items, start=1):
+                display_str = (
                 f"ID: {idx}. {item.get('uuid', 'N/A')} | "
                 f"Serial No.: {item.get('sno', 'N/A')} | "
                 f"Inventory ID: {item.get('inventory_id', 'N/A')} | "
@@ -265,15 +268,13 @@ def create_inventory_item(scrollable_frame, header_labels):
                 f"BarCode: {item.get('bar_code', 'N/A')} | "
             )
             added_items_listbox.insert(tk.END, display_str)
-
-    # Only clear and refresh if at least one item was successfully added
-    if any_success:
+        
         clear_fields()
         update_main_inventory_list()
         messagebox.showinfo("Success", f"{len(added_items)} items added successfully")
     else:
         messagebox.showwarning("Warning", "No items were added - please check for errors")
-
+        
 #  Add a new row of input fields below the existing ones
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row of input fields below the existing ones"""
@@ -321,6 +322,7 @@ def remove_last_row(scrollable_frame):
             for key in list(checkbox_vars.keys()):
                 if key.endswith(f"_{max_row}"):
                     del checkbox_vars[key]
+
 def update_clock():
     """Update the clock label with current time"""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

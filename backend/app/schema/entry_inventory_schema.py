@@ -3,44 +3,46 @@ from pydantic import BaseModel, field_validator
 from datetime import datetime, date, timezone
 from typing import Optional
 import re
+from pydantic import validator
 import json
-
+ 
 class EntryInventoryBase(BaseModel):
     product_id: str  
     inventory_id: str  
-
     sno: Optional[str] = None
-    name: Optional[str] = None
+    name: str
     material: Optional[str] = None
-    total_quantity: Optional[str] = None
+    total_quantity: str
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
-    purchase_date: date
+    purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: str = "false"  # Changed to non-optional with default
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    returned_date: Optional[date] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: Optional[str] = None
+    rented_inventory_returned: str = "false"  # Changed to non-optional with default
+    returned_date: Optional[date] = None  # Added this missing field
+    on_event: str = "false"  # Changed to non-optional with default
+    in_office: str = "false"  # Changed to non-optional with default
+    in_warehouse: str = "false"  # Changed to non-optional with default
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by: str
 
+    # These should NOT be in the create schema
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     # These fields shouldn't be in the create schema since they're auto-generated
 
     class Config:
-        from_attributes = True  # For Pydantic v2 (replaces orm_mode)
+        extra = "forbid"  # Strict validation
         json_encoders = {
-            datetime: lambda v: v.isoformat()  # Ensure proper JSON serialization
-        } # Treat SQLAlchemy model as a dict
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
+        }
 
     @field_validator('product_id', mode='before')
     def format_product_id(cls, v):
@@ -59,33 +61,50 @@ class EntryInventoryBase(BaseModel):
         if not clean_id.isdigit():
             raise ValueError("Inventory ID must contain only numbers after prefix")
         return f"INV{clean_id}"
+    
+    @field_validator('created_at', 'updated_at', mode='before')
+    def set_timestamps(cls, v):
+        return datetime.now(timezone.utc)  # Auto-set if not provided
+    
+# Schema for creating or updating EntryInventory (without UUID and timestamps)
+class EntryInventoryCreate(EntryInventoryBase):
+    # Remove fields that should be auto-generated
+    class Config:
+        exclude = {'created_at', 'updated_at', 'uuid', 'bar_code'}
+        
+    @validator('on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse', pre=True)
+    def validate_booleans(cls, v):
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, str):
+            return v.lower()
+        return "false"
 
 # Schema for reading EntryInventory (includes inventory_id and timestamp fields)
 class EntryInventoryOut(EntryInventoryBase):
     uuid: str
-    sno: Optional[str] = None  # Changed to properly optional
-    inventory_id: str
-    product_id: str
-    name: Optional[str] = None
+    product_id: str  
+    inventory_id: str  
+    sno: Optional[str] = None
+    name: str
     material: Optional[str] = None
-    total_quantity: Optional[str] = None
+    total_quantity: str
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    returned_date: Optional[date] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: Optional[str] = None
+    rented_inventory_returned: Optional[str] = "false"  # Default value
+    on_event: Optional[str] = "false"  # Default value
+    in_office: Optional[str] = "false"  # Default value
+    in_warehouse: Optional[str] = "false"  # Default value
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by: str
     created_at: datetime
     updated_at: datetime
     bar_code: str
@@ -96,35 +115,28 @@ class EntryInventoryOut(EntryInventoryBase):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()  # For pure date fields
         } # For Pydantic v2 compatibility
-
-# Schema for creating or updating EntryInventory (without UUID and timestamps)
-class EntryInventoryCreate(EntryInventoryBase):
-    @field_validator('created_at', mode='before')
-    def set_created_at(cls, v):
-        return v or datetime.now(timezone.utc)
-    
-
+   
 class EntryInventoryUpdate(BaseModel):
-    name: Optional[str] = None
+    name: str
     material: Optional[str] = None
-    total_quantity: Optional[str] = None
+    total_quantity: str
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    returned_date: Optional[date] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: str
+    rented_inventory_returned: Optional[str] = "false"  # Default value
+    on_event: Optional[str] = "false"  # Default value
+    in_office: Optional[str] = "false"  # Default value
+    in_warehouse: Optional[str] = "false"  # Default value
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by: str
+    submitted_by: str
     updated_at: datetime
 
     class Config:
@@ -142,26 +154,25 @@ class EntryInventoryUpdateOut(EntryInventoryBase):
     sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: Optional[str] = None
+    name: str
     material: Optional[str] = None
-    total_quantity: Optional[str] = None
+    total_quantity: str
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    returned_date: Optional[date] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: str
+    rented_inventory_returned: Optional[str] = "false"  # Default value
+    on_event: Optional[str] = "false"  # Default value
+    in_office: Optional[str] = "false"  # Default value
+    in_warehouse: Optional[str] = "false"  # Default value
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by: str
     created_at: datetime
     updated_at: datetime
     bar_code: str
@@ -207,26 +218,25 @@ class StoreInventoryRedis(BaseModel):
     sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: Optional[str] = None
+    name: str
     material: Optional[str] = None
-    total_quantity: Optional[str] = None
+    total_quantity: str
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    returned_date: Optional[date] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: str
+    rented_inventory_returned: Optional[str] = "false"  # Default value
+    on_event: Optional[str] = "false"  # Default value
+    in_office: Optional[str] = "false"  # Default value
+    in_warehouse: Optional[str] = "false"  # Default value
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by: str
     created_at: datetime
     updated_at: datetime
     bar_code: str
@@ -244,26 +254,25 @@ class InventoryRedisOut(BaseModel):
     sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
-    name: Optional[str] = None
+    name: str
     material: Optional[str] = None
-    total_quantity: Optional[str] = None
+    total_quantity: str
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    returned_date: Optional[date] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: str
+    rented_inventory_returned: Optional[str] = "false"  # Default value
+    on_event: Optional[str] = "false"  # Default value
+    in_office: Optional[str] = "false"  # Default value
+    in_warehouse: Optional[str] = "false"  # Default value
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
-    submitted_by: Optional[str] = None
+    submitted_by: str
     created_at: datetime
     updated_at: datetime
     bar_code: str
