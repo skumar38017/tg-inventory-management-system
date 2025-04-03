@@ -63,7 +63,7 @@ class EntryInventoryBase(BaseModel):
 # Schema for reading EntryInventory (includes inventory_id and timestamp fields)
 class EntryInventoryOut(EntryInventoryBase):
     uuid: str
-    sno: str
+    sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
     name: str
@@ -95,7 +95,7 @@ class EntryInventoryOut(EntryInventoryBase):
         json_encoders = {
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()  # For pure date fields
-        }  # For Pydantic v2 compatibility
+        } # For Pydantic v2 compatibility
 
 # Schema for creating or updating EntryInventory (without UUID and timestamps)
 class EntryInventoryCreate(EntryInventoryBase):
@@ -139,7 +139,7 @@ class EntryInventoryUpdate(BaseModel):
     
 class EntryInventoryUpdateOut(EntryInventoryBase):
     uuid: str
-    sno: str
+    sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
     name: str
@@ -204,7 +204,7 @@ class SyncInventoryOut(EntryInventoryBase):
 class StoreInventoryRedis(BaseModel):
     """Schema for storing inventory in Redis"""
     uuid: str
-    sno: Optional[str] = None 
+    sno: Optional[str] = None  # Changed to properly optional 
     inventory_id: str
     product_id: str
     name: str
@@ -241,7 +241,7 @@ class InventoryRedisOut(BaseModel):
     """Schema for retrieving inventory from Redis"""
 
     uuid: str
-    sno: Optional[str] = None 
+    sno: Optional[str] = None  # Changed to properly optional
     inventory_id: str
     product_id: str
     name: str

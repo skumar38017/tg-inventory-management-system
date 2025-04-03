@@ -162,7 +162,7 @@ def show_all_inventory():
 
 #  Add new inventory items to the database by clicking the `Add Item` button
 def add_new_inventory_item(item_data: dict):
-    """Add new inventory items to the database"""
+    """Add new inventory items to the database with user-provided SNO"""
     try:
         # Helper function to format IDs with prefix
         def format_id(value, prefix):
@@ -177,11 +177,15 @@ def add_new_inventory_item(item_data: dict):
             # For any other case, add prefix and take first 6 chars
             return prefix + value[-6:].upper()
 
+        # Validate that SNO is provided by user
+        if 'Sno' not in item_data or not item_data['Sno']:
+            raise ValueError("Serial Number (SNO) is required and must be provided by user")
+
         # Map UI field names to API field names with proper defaults
         api_payload = {
             "product_id": format_id(item_data.get('ProductID'), 'PRD'),
             "inventory_id": format_id(item_data.get('InventoryID'), 'INV'),
-            "sno": item_data.get('Sno', 'SN' + str(uuid.uuid4().hex[:8]).upper()),
+            "sno": item_data['Sno'],  # Directly use user-provided SNO
             "name": item_data.get('Name', ''),
             "material": item_data.get('Material', 'N/A'),
             "total_quantity": str(item_data.get('TotalQuantity', 0)),
