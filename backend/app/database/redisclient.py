@@ -74,3 +74,4 @@ def check_redis_connectivity_with_retry(retries=3, delay=5):
             time.sleep(delay)
     logger.error("Redis connection failed after all retries.")
     return False
+

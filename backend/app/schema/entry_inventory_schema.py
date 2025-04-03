@@ -193,18 +193,18 @@ class DateRangeFilter(BaseModel):
             date: lambda v: v.isoformat()
         }
 
-class DateRangeFilterOut(EntryInventoryUpdateOut):
+class DateRangeFilterOut(EntryInventoryBase):
     pass
 
 # Schema for sync inventory
-class SyncInventoryOut(EntryInventoryUpdateOut):
+class SyncInventoryOut(EntryInventoryBase):
     pass
 
 # Schema for Store record in Redis after clicking {sync} button
 class StoreInventoryRedis(BaseModel):
     """Schema for storing inventory in Redis"""
     uuid: str
-    sno: str
+    sno: Optional[str] = None 
     inventory_id: str
     product_id: str
     name: str
@@ -241,7 +241,7 @@ class InventoryRedisOut(BaseModel):
     """Schema for retrieving inventory from Redis"""
 
     uuid: str
-    sno: str
+    sno: Optional[str] = None 
     inventory_id: str
     product_id: str
     name: str
