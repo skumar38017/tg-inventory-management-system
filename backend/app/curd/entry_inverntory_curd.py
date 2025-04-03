@@ -76,15 +76,15 @@ class EntryInventoryService(EntryInventoryInterface):
 
             result = await db.execute(
                 select(EntryInventory)
-                .where(EntryInventory.created_at.between(start_datetime, end_datetime))
-                .order_by(EntryInventory.created_at)
+                .where(EntryInventory.updated_at.between(start_datetime, end_datetime))
+                .order_by(EntryInventory.updated_at)
             )
-            return result.scalars().all()
+            entries = result.scalars().all()
+              # Convert to Pydantic models with proper null handling
+            return [EntryInventoryOut.from_orm(entry) for entry in entries]
         except SQLAlchemyError as e:
             logger.error(f"Database error filtering by date: {e}")
             raise HTTPException(status_code=500, detail="Database error")
-
-
 
     # READ ALL: Get all inventory entries
     async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[EntryInventoryOut]:
