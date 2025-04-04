@@ -72,9 +72,7 @@ class ToEventInventoryCreate(ToEventInventoryBase):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
         }
-
-
-    
+ 
 class ToEventInventoryOut(ToEventInventoryBase):
     uuid: str
     project_id: Optional[str] = None
@@ -115,6 +113,9 @@ class ToEventInventoryOut(ToEventInventoryBase):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()  # For pure date fields
         }
+
+class ToEventInventoryUpload(ToEventInventoryOut):
+    pass
 
 class ToEventInventoryUpdate(BaseModel):
     employee_name: Optional[str] = None
@@ -221,3 +222,7 @@ class ToEventRedisOut(BaseModel):
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)
         return cls(**data)
+    
+    @validator('project_barcode_image_url', pre=True)
+    def empty_to_none(cls, v):
+        return None if v == '' else v

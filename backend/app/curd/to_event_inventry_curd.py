@@ -10,6 +10,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryBase,
     ToEventInventoryUpdate,
     ToEventInventoryUpdateOut,
+    ToEventInventoryUpload,
     ToEventRedis,
     ToEventRedisOut,
 )
@@ -21,6 +22,7 @@ from typing import List, Optional
 from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
+import json
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
 
@@ -36,6 +38,66 @@ class ToEventInventoryService(ToEventInventoryInterface):
         self.base_url = base_url
         self.barcode_generator = BarcodeGenerator()
 
+
+    # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
+    async def upload_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+        try:
+            redis_keys = await redis_client.keys("to_event_inventory:*")
+            uploaded_entries = []
+
+            for key in redis_keys:
+                try:
+                    redis_data = await redis_client.get(key)
+                    entry_data = json.loads(redis_data)
+
+                    # Handle empty image URLs
+                    if entry_data.get('project_barcode_image_url') == '':
+                        entry_data['project_barcode_image_url'] = None
+
+                    redis_entry = ToEventRedisOut(**entry_data)
+
+                    # Try to update existing record first
+                    existing = await db.execute(
+                        select(ToEventInventory)
+                        .where(ToEventInventory.uuid == redis_entry.uuid)
+                    )
+                    existing = existing.scalar_one_or_none()
+
+                    if existing:
+                        # Update logic
+                        for field, value in redis_entry.dict().items():
+                            if hasattr(existing, field) and field != "uuid":
+                                setattr(existing, field, value)
+                    else:
+                        # Insert new record with error handling
+                        try:
+                            new_entry = ToEventInventory(**redis_entry.dict())
+                            db.add(new_entry)
+                            await db.flush()  # Test the insert immediately
+                        except Exception as e:
+                            logger.warning(f"Skipping duplicate entry {redis_entry.uuid}: {str(e)}")
+                            continue
+                        
+                    uploaded_entries.append(redis_entry)
+
+                except Exception as e:
+                    logger.error(f"Error processing {key}: {str(e)}")
+                    continue
+
+            await db.commit()
+            return sorted(uploaded_entries, key=lambda x: x.name or "")
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error during upload: {e}")
+            await db.rollback()
+            raise HTTPException(status_code=500, detail="Database error during upload")
+        except Exception as e:
+            logger.error(f"Unexpected error during upload: {e}")
+            raise HTTPException(status_code=500, detail="Failed to upload data from Redis")
+    
+
+# ------------------------------------------------------------------------------------------------
+    #  Create new entry of inventory for to_event which is directly stored in redis
     async def create_to_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate):
         try:
             # Convert to dict and clean data
@@ -104,7 +166,6 @@ class ToEventInventoryService(ToEventInventoryInterface):
             logger.error(f"Redis storage failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to create inventory: {str(e)}")
     
-        
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def get_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
         try:
@@ -129,3 +190,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except SQLAlchemyError as e:
             logger.error(f"Database error fetching entry: {e}")
             raise HTTPException(status_code=500, detail="Database error")
+        
+# # Dependency function
+# def get_to_event_service():
+#     return ToEventInventoryService()
