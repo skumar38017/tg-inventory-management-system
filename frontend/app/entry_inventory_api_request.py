@@ -2,6 +2,7 @@
 import requests
 from typing import List, Dict
 import logging
+import tkinter as tk
 import uuid
 import re
 from tkinter import messagebox
@@ -163,107 +164,114 @@ def show_all_inventory():
 
 # Add new inventory items to the database with proper data formatting
 def add_new_inventory_item(item_data: dict):
-    """Add new inventory items to the database with proper data formatting"""
+    """Inventory item creation with all fields optional"""
     try:
-        # Helper function to safely get and strip string values
-        def get_stripped(value, default=''):
-            return str(value).strip() if value is not None else default
-
-        # Helper function to format IDs with prefix and validate numbers
-        def format_id(value, prefix):
-            if not value:
-                return prefix + str(uuid.uuid4().hex[:6]).upper()
-            
-            # Remove any existing prefix and validate numbers
-            clean_value = re.sub(r'^[A-Za-z]+', '', str(value))
-            if not clean_value.isdigit():
-                raise ValueError(f"{prefix} ID must contain only numbers after prefix")
-            return prefix + clean_value
+        # Helper function to clean input values
+        def clean_value(value):
+            if value is None or str(value).strip() == '':
+                return None
+            return str(value).strip()
         
-        # Handle SNO - now optional
-        sno = get_stripped(item_data.get('Sno') or item_data.get('sno') or item_data.get('S No'))
-        if not sno:
-            sno = ''  # Set to empty string if not provided
-
-        # Handle date fields with validation
-        def format_date(date_str):
-            date_str = get_stripped(date_str)
-            if not date_str:
-                return None
+        # Helper function for numeric fields (as strings)
+        def clean_number_str(value):
             try:
-                return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
-            except ValueError:
+                if value is None or str(value).strip() == '':
+                    return None
+                # Convert to number first to validate, then back to string
+                num = float(value) if '.' in str(value) else int(float(value))
+                return str(num)
+            except (ValueError, TypeError):
+                return None
+        
+        # Helper function for boolean fields
+        def clean_boolean(value):
+            if value is None:
+                return None
+            if isinstance(value, bool):
+                return value
+            if str(value).lower() in ('true', 'yes', '1'):
+                return True
+            if str(value).lower() in ('false', 'no', '0'):
+                return False
+            return None
+        
+        # Helper function for date fields
+        def clean_date(date_str):
+            try:
+                if date_str:
+                    return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
+                return None
+            except (ValueError, TypeError):
                 return None
 
-        purchase_date = format_date(item_data.get('PurchaseDate'))
-        returned_date = format_date(item_data.get('ReturnedDate'))
+        # Clean IDs - remove non-numeric characters but keep as strings
+        product_id = clean_value(item_data.get('ProductID'))
+        inventory_id = clean_value(item_data.get('InventoryID'))
+        if product_id:
+            product_id = ''.join(c for c in product_id if c.isdigit())
+        if inventory_id:
+            inventory_id = ''.join(c for c in inventory_id if c.isdigit())
 
-        # Handle numeric fields with validation
-        def format_number(num_str, default=0):
-            num_str = get_stripped(num_str)
-            try:
-                return str(float(num_str)) if num_str else str(default)
-            except ValueError:
-                return str(default)
-
-        # Construct API payload with proper formatting
-        api_payload = {
-            "product_id": format_id(item_data.get('ProductID'), ' '),
-            "inventory_id": format_id(item_data.get('InventoryID'), ' '),
-            "sno": sno,
-            "name": get_stripped(item_data.get('Name')),
-            "material": get_stripped(item_data.get('Material')),
-            "total_quantity": format_number(item_data.get('TotalQuantity')),
-            "manufacturer": get_stripped(item_data.get('Manufacturer')),
-            "purchase_dealer": get_stripped(item_data.get('PurchaseDealer')),
-            "purchase_date": purchase_date,  # Can be None
-            "purchase_amount": format_number(item_data.get('PurchaseAmount')),
-            "repair_quantity": format_number(item_data.get('RepairQuantity')),
-            "repair_cost": format_number(item_data.get('RepairCost')),
-            "on_rent": "true" if item_data.get('OnRent') else "false",
-            "vendor_name": get_stripped(item_data.get('VendorName')),
-            "total_rent": format_number(item_data.get('TotalRent')),
-            "rented_inventory_returned": "true" if item_data.get('RentedInventoryReturned') else "false",
-            "returned_date": returned_date,
-            "on_event": "true" if item_data.get('OnEvent') else "false",
-            "in_office": "true" if item_data.get('InOffice') else "false",
-            "in_warehouse": "true" if item_data.get('InWarehouse') else "false",
-            "issued_qty": format_number(item_data.get('IssuedQty')),
-            "balance_qty": format_number(item_data.get('BalanceQty')),
-            "submitted_by": get_stripped(item_data.get('Submitedby')),
+        # Payload construction - all fields optional
+        payload = {
+            # Basic information
+            "product_id": product_id,
+            "inventory_id": inventory_id,
+            "sno": clean_value(item_data.get('Sno')),
+            "name": clean_value(item_data.get('Name')),
+            "material": clean_value(item_data.get('Material')),
+            "manufacturer": clean_value(item_data.get('Manufacturer')),
+            "submitted_by": clean_value(item_data.get('Submitedby')),
+            
+            # Quantity information (as strings)
+            "total_quantity": clean_number_str(item_data.get('TotalQuantity')),
+            "issued_qty": clean_number_str(item_data.get('IssuedQty')),
+            "balance_qty": clean_number_str(item_data.get('BalanceQty')),
+            "repair_quantity": clean_number_str(item_data.get('RepairQuantity')),
+            
+            # Purchase information
+            "purchase_dealer": clean_value(item_data.get('PurchaseDealer')),
+            "purchase_date": clean_date(item_data.get('PurchaseDate')),
+            "purchase_amount": clean_number_str(item_data.get('PurchaseAmount')),
+            "repair_cost": clean_number_str(item_data.get('RepairCost')),
+            
+            # Rental information
+            "vendor_name": clean_value(item_data.get('VendorName')),
+            "total_rent": clean_number_str(item_data.get('TotalRent')),
+            "returned_date": clean_date(item_data.get('ReturnedDate')),
+            
+            # Status flags
+            "on_rent": clean_boolean(item_data.get('OnRent')),
+            "rented_inventory_returned": clean_boolean(item_data.get('RentedInventoryReturned')),
+            "on_event": clean_boolean(item_data.get('OnEvent')),
+            "in_office": clean_boolean(item_data.get('InOffice')),
+            "in_warehouse": clean_boolean(item_data.get('InWarehouse'))
         }
 
-        # Remove None values from payload except for required fields
+        # Remove None values to keep payload clean
         payload = {k: v for k, v in payload.items() if v is not None}
 
+        logger.debug(f"Sending payload: {payload}")
 
-        logger.debug(f"Sending payload: {api_payload}")
-
-        # API request with enhanced error handling
+        # API request
         response = requests.post(
             url="http://localhost:8000/api/v1/create-item/",
             headers={"Content-Type": "application/json"},
-            json=api_payload
+            json=payload
         )
         
-        # Parse validation errors
+        # Handle response
         if response.status_code == 422:
             errors = response.json().get('detail', [])
-            error_msgs = [
+            error_msgs = "\n".join(
                 f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
                 for e in errors if isinstance(e, dict)
-            ] if isinstance(errors, list) else []
-            raise Exception("Validation errors:\n" + "\n".join(error_msgs) if error_msgs else "Unknown validation error")
+            )
+            raise Exception(f"Validation errors:\n{error_msgs}")
             
         response.raise_for_status()
         return response.json()
         
-    except ValueError as ve:
-        logger.error(f"Validation error: {str(ve)}")
-        raise Exception(f"Invalid input: {str(ve)}")
-    except requests.exceptions.RequestException as req_exc:
-        logger.error(f"API request failed: {str(req_exc)}")
-        raise Exception(f"Failed to connect to server: {str(req_exc)}")
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Error adding item: {str(e)}")
         raise Exception(f"Could not add inventory item: {str(e)}")
