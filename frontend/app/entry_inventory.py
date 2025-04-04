@@ -9,6 +9,7 @@ import logging
 from .entry_inventory_api_request import (sync_inventory, 
                             filter_inventory_by_date_range,
                             add_new_inventory_item,
+                            search_inventory_by_id
                             )
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
@@ -121,35 +122,40 @@ def filter_by_date_range():
 
 #  Perform inventory search based on search criteria [InventoryID, ProjectID, ProductID]
 def perform_search():
-    """Perform inventory search based on search criteria"""
+    """Perform inventory search based on exactly one ID"""
     inventory_id = search_inventory_id_entry.get().strip()
     project_id = search_project_id_entry.get().strip()
     product_id = search_product_id_entry.get().strip()
     
+    # Clear previous results
     if search_results_listbox:
         search_results_listbox.delete(0, tk.END)
     
     try:
-        results = get_inventory_item(
-            inventory_id=inventory_id if inventory_id else None,
-            project_id=project_id if project_id else None,
-            product_id=product_id if product_id else None
+        results = search_inventory_by_id(
+            inventory_id=inventory_id,
+            project_id=project_id,
+            product_id=product_id
         )
         
         if not results:
             messagebox.showinfo("Search Results", "No matching items found")
             return
             
+        # Display results in the listbox
         for item in results:
-            if search_results_listbox:
-                search_results_listbox.insert(tk.END, 
-                    f"{item['Sno']} | {item['InventoryID']} | {item['Product ID']} | {item['Name']} | "
-                    f"{item['Qty']} | {'Yes' if item['Purchase'] else 'No'} | "
-                    f"{item['Purchase Date']} | {item['Purchase Amount']}")
+            display_text = (
+                f"{item['Sno']} | {item['InventoryID']} | {item['Product ID']} | "
+                f"{item['Name']} | Qty: {item['Qty']} | "
+                f"Purchase: {item['Purchase Date']} | "
+                f"Amount: {item['Purchase Amount']} |"
+                f"Barcode: {item['BacodeUrl']} |"
+            )
+            search_results_listbox.insert(tk.END, display_text)
                 
     except Exception as e:
         logger.error(f"Search failed: {e}")
-        messagebox.showerror("Search Error", "Failed to perform search")
+        messagebox.showerror("Search Error", f"Failed to perform search: {str(e)}")
 
 # Add new inventory items from all rows
 def create_inventory_item(scrollable_frame, header_labels):

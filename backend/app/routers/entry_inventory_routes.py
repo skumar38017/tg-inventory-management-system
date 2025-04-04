@@ -262,34 +262,59 @@ async def get_all_entire_inventory(
         logger.error(f"Error fetching inventory items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-#  Search inventory items by various criteria
+#  Search inventory items by various criteria {Product ID, Inventory ID, Project ID}
 @router.get(
-    "/search/{inventory_id}",
+    "/search/",
     response_model=List[EntryInventoryOut],
     status_code=200,
     summary="Search inventory items",
-    description="Search inventory items by various criteria",
+    description="Search inventory items by Inventory ID, Product ID, or Project ID (exactly one required)",
     response_model_exclude_unset=True,
 )
 async def search_inventory(
-    inventory_id: str,
-    product_id: Optional[str] = Query(None),
+    inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
+    product_id: Optional[str] = Query(None, description="Product ID to search for"),
+    project_id: Optional[str] = Query(None, description="Project ID to search for"),
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
-    """Search inventory items by various criteria"""
+    """
+    Search inventory items by exactly one of:
+    - Inventory ID
+    - Product ID
+    - Project ID
+    """
     try:
+        # Convert empty strings to None
+        inventory_id = inventory_id if inventory_id else None
+        product_id = product_id if product_id else None
+        project_id = project_id if project_id else None
+
+        # Validate exactly one search parameter is provided
+        provided_params = [p for p in [inventory_id, product_id, project_id] if p is not None]
+        if len(provided_params) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Exactly one search parameter (inventory_id, product_id, or project_id) must be provided"
+            )
+
         search_params = EntryInventorySearch(
             inventory_id=inventory_id,
             product_id=product_id,
+            project_id=project_id
         )
+        
         results = await service.search_entries(db, search_params)
         if not results:
             raise HTTPException(status_code=404, detail="No matching items found")
+        
         return results
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error during search")
     
     
 # UPDATE: Update an existing inventory entry
