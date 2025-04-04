@@ -18,6 +18,15 @@ from datetime import date
 class ToEventInventoryInterface:
     """Interface for ToEventInventory operations with immutable core fields."""
     
+    # # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
+    async def upload_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+        """
+        Upload all `to_event_inventory` entries from local Redis to the database.
+        Returns a list of ToEventRedisOut schema instances.
+        """
+        raise NotImplementedError
+   
+   
     async def create_to_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate) -> ToEventInventory:
         """
         Create a new ToEventInventory entry.

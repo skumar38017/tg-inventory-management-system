@@ -13,6 +13,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryOut,
     ToEventInventoryBase,
     ToEventInventoryUpdateOut,
+    ToEventInventoryUpload,
     ToEventRedis,
     ToEventRedisOut,
 )
@@ -33,6 +34,27 @@ logger.setLevel(logging.INFO)
 # --------------------------
 # Asynchronous Endpoints
 # --------------------------
+
+
+#  Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
+@router.post("/to_event-upload-data/",
+    response_model=List[ToEventRedisOut],
+    status_code=200,
+    summary="Upload all entries from Redis to database",
+    description="Uploads all to_event_inventory entries from local Redis to the database",
+)
+async def upload_inventory_item_route(
+    db: AsyncSession = Depends(get_async_db),
+    service: ToEventInventoryService = Depends(get_to_event_service)
+):
+    try:
+        logger.info("Upload request received")
+        return await service.upload_to_event_inventory(db)
+    except Exception as e:
+        logger.error(f"Error uploading inventory items: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ----------------------------------------------------------------------------------------
 
 # CREATE: Add a new to_event entry inventory store in directly in redis
 @router.post("/to_event-create-item/",
