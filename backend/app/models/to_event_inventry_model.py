@@ -55,3 +55,4 @@ class ToEventInventory(Base):
 
     def __init__(self, **kwargs: Dict[str, Any]) -> None:
         super().__init__(**kwargs)
+

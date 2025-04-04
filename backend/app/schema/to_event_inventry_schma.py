@@ -28,6 +28,7 @@ class ToEventInventoryBase(BaseModel):
     status: Optional[str] = None
     poc: Optional[str] = None
     submitted_by: Optional[str] = None
+ 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -45,7 +46,7 @@ class ToEventInventoryBase(BaseModel):
         clean_id = re.sub(r'^PRJ', '', str(v))
         if not clean_id.isdigit():
             raise ValueError("Product ID must contain only numbers after prefix")
-        return f"PRD{clean_id}"
+        return f"PRJ{clean_id}"
 
     @field_validator('created_at', 'updated_at', mode='before')
     def set_timestamps(cls, v):
@@ -99,7 +100,10 @@ class ToEventInventoryOut(ToEventInventoryBase):
     submitted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    project_barcode_image_url: Optional[str] = None  
+    bar_code: Optional[str] = None
+    project_barcode: Optional[str] = None
+    project_barcode_unique_code: Optional[str] = None
+    project_barcode_image_url: Optional[str] = None
 
     @validator('project_barcode_image_url', pre=True)
     def clean_barcode_url(cls, v):
@@ -209,6 +213,8 @@ class ToEventRedisOut(BaseModel):
     submitted_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    project_barcode: Optional[str] = None
+    project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None  # Add this new field
 
     @classmethod
