@@ -39,7 +39,7 @@ class EntryInventoryService(EntryInventoryInterface):
             raise ValueError("Database session is None")
         
         try:
-            # Convert boolean fields to string "true"/"false" (keep as strings)
+            # Convert boolean fields to string "true"/"false"
             for field in ['on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse']:
                 if field in entry_data:
                     val = entry_data[field]
@@ -49,7 +49,7 @@ class EntryInventoryService(EntryInventoryInterface):
                         entry_data[field] = val.lower()
                     else:
                         entry_data[field] = "false"
-
+    
             # Remove auto-generated fields if present
             for field in ['bar_code', 'unique_code', 'created_at', 'updated_at', 'uuid']:
                 entry_data.pop(field, None)
@@ -60,14 +60,9 @@ class EntryInventoryService(EntryInventoryInterface):
             db.add(new_entry)
             await db.commit()
             await db.refresh(new_entry)
-            # Generate barcode image URL
-            barcode_image_url = f"{self.base_url}/static/barcodes/{new_entry.bar_code}_{new_entry.unique_code}.png"
-
-            # Add the URL to the entry object
-            setattr(new_entry, 'barcode_image_url', barcode_image_url)
-
+            
             return new_entry
-    
+        
         except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Database error: {str(e)}")

@@ -33,11 +33,6 @@ async def index():
     """
     logger.info("Root endpoint accessed.")
     return {"message": "Ticket Management System"}
-
-
-# Mount the static files directory
-app.mount("/static/barcodes", StaticFiles(directory="static/barcodes"), name="static")
-
 @app.on_event("startup")
 async def startup_event():
     """

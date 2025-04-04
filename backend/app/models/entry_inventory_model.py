@@ -46,7 +46,7 @@ class EntryInventory(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     bar_code = Column(String, unique=True, nullable=False)
     unique_code = Column(String, unique=True, nullable=False)
-    barcode_image_url = Column(String, nullable=True)
+    barcode_image_url = Column(String, nullable=True, default=None)
     
     __table_args__ = (
         Index('ix_entry_inventory_created_at', 'created_at'),
@@ -80,94 +80,6 @@ class EntryInventory(Base):
         ).hexdigest().upper()
         
         return bar_code, unique_code
-
-
-    def create_barcode_image(self, bar_code: str, unique_code: str, save_path: str = 'static/barcodes') -> str:
-        # Use a simpler approach with default writer
-        from barcode.writer import ImageWriter
-        from PIL import Image, ImageDraw, ImageFont
-        
-        """Generate barcode image with both codes"""
-        os.makedirs(save_path, exist_ok=True)
-
-        # Custom writer class for transparent background
-        class TransparentImageWriter(ImageWriter):
-            def __init__(self):
-                super().__init__()
-                self.background = 'transparent'
-                self.foreground = 'black'
-                self.text = ''
-
-        # Writer options
-        writer_options = {
-            'module_width': 0.4,
-            'module_height': 15,
-            'font_size': 12,
-            'text_distance': 5,
-            'quiet_zone': 10,
-            'write_text': False
-        }
-
-        # Generate the barcode
-        code = Code128(bar_code, writer=TransparentImageWriter())
-
-        # Create the filename with .png extension
-        filename = os.path.join(save_path, f"{bar_code}_{unique_code}.png")
-
-        # Temporary file path (will be deleted later)
-        temp_path = filename + '.temp'
-
-        try:
-            # Save to temporary file first
-            code.save(temp_path, writer_options)
-
-            # Open and process the image
-            with Image.open(temp_path) as img:
-                # Convert to RGBA if needed
-                if img.mode != 'RGBA':
-                    img = img.convert('RGBA')
-
-                # Create transparent image
-                transparent_img = Image.new('RGBA', img.size, (0, 0, 0, 0))
-                transparent_img.paste(img, (0, 0), img)
-
-                # Draw text
-                draw = ImageDraw.Draw(transparent_img)
-                try:
-                    font = ImageFont.truetype("arial.ttf", 12)
-                except:
-                    font = ImageFont.load_default()
-
-                width, height = transparent_img.size
-                text_ypos = height - 30
-
-                draw.text(
-                    (width/2, text_ypos),
-                    f"ID: {bar_code}",
-                    font=font,
-                    fill="black",
-                    anchor="ms"
-                )
-                draw.text(
-                    (width/2, text_ypos + 15),
-                    f"UID: {unique_code}",
-                    font=font,
-                    fill="black",
-                    anchor="ms"
-                )
-
-                # Save final image (overwrites if exists)
-                transparent_img.save(filename, format='PNG')
-
-            return filename
-
-        except Exception as e:
-            logger.error(f"Error creating barcode: {e}")
-            raise
-        finally:
-            # Clean up temporary file if it exists
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
 
     def verify_code_relationship(self) -> bool:
         """Verify that unique_code correctly signs the bar_code"""
@@ -236,7 +148,6 @@ class EntryInventory(Base):
     def __repr__(self) -> str:
         return f"<EntryInventory(uuid={self.uuid}, name={self.name}, product_id={self.product_id})>"
 
-# Event listener for automatic code generation
 @event.listens_for(EntryInventory, 'before_insert')
 def generate_linked_codes(mapper, connection, target):
     # Generate linked codes using instance method
@@ -255,6 +166,3 @@ def generate_linked_codes(mapper, connection, target):
     # Assign codes
     target.bar_code = bar_code
     target.unique_code = unique_code
-    
-    # Generate barcode image
-    target.create_barcode_image(bar_code, unique_code)
