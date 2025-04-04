@@ -184,7 +184,6 @@ class EntryInventoryOut(EntryInventoryBase):
     created_at: datetime
     updated_at: datetime
     bar_code: str
-    unique_code: str
     barcode_image_url: Optional[str] = None  # Add this new field
     
     class Config:
@@ -195,8 +194,21 @@ class EntryInventoryOut(EntryInventoryBase):
         }
 
 # Schema for Search EntryInventory (includes invetory_id and timestamp fields)
-class EntryInventorySearch(EntryInventoryBase):
-    pass
+class EntryInventorySearch(BaseModel):
+    """Schema for searching inventory items"""
+    inventory_id: Optional[str] = None
+    product_id: Optional[str] = None
+    project_id: Optional[str] = None
+
+
+    @field_validator('*')
+    def check_empty_strings(cls, v):
+        if v == "":
+            return None
+        return v
+
+    class Config:
+        extra = "forbid"  # Prevent extra fields
 
 # Schema for search date range filter
 class DateRangeFilter(BaseModel):

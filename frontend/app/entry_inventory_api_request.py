@@ -48,6 +48,7 @@ def sync_inventory() -> List[Dict]:
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
                 'BarCode': item.get('bar_code', 'N/A'),
+                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
                 # Add any other fields you want to display
             }
             formatted_data.append(formatted_item)
@@ -104,6 +105,7 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
                 'BarCode': item.get('bar_code', 'N/A'),
+                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
             }
             formatted_data.append(formatted_item)
         
@@ -152,6 +154,7 @@ def show_all_inventory():
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
                 'BarCode': item.get('bar_code', 'N/A'),
+                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
             }
             formatted_data.append(formatted_item)
         
@@ -275,3 +278,73 @@ def add_new_inventory_item(item_data: dict):
     except Exception as e:
         logger.error(f"Error adding item: {str(e)}")
         raise Exception(f"Could not add inventory item: {str(e)}")
+    
+# Search for an item by [inventory_id, product_id, Project_id] by clicking search
+def search_inventory_by_id(inventory_id: str = None, product_id: str = None, project_id: str = None) -> List[Dict]:
+    """Fetch inventory data filtered by a single ID from the API"""
+    try:
+        # Validate that exactly one ID is provided
+        provided_ids = [id for id in [inventory_id, product_id, project_id] if id]
+        if len(provided_ids) != 1:
+            raise ValueError("Please provide exactly one ID (Inventory ID, Product ID, or Project ID) for searching")
+        
+        # Prepare query parameters
+        params = {}
+        if inventory_id:
+            params['inventory_id'] = inventory_id
+        elif product_id:
+            params['product_id'] = product_id
+        else:
+            params['project_id'] = project_id
+
+        # Make the API request with the parameter
+        response = requests.get(
+            "http://localhost:8000/api/v1/search/",
+            params=params
+        )
+        response.raise_for_status()
+        
+        # Map backend fields to frontend display names
+        formatted_data = []
+        for item in response.json():
+            formatted_item = {
+                'Sno': item.get('sno', 'N/A'),
+                'InventoryID': item.get('inventory_id', 'N/A'),
+                'Product ID': item.get('product_id', 'N/A'),
+                'Name': item.get('name', 'N/A'),
+                'Material': item.get('material', 'N/A'),
+                'Qty': item.get('total_quantity', 'N/A'),
+                'Manufacturer': item.get('manufacturer', 'N/A'),
+                'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
+                'Purchase Date': item.get('purchase_date', 'N/A'),
+                'Purchase Amount': item.get('purchase_amount', 'N/A'),
+                'Repair Quantity': item.get('repair_quantity', 'N/A'),
+                'Repair Cost': item.get('repair_cost', 'N/A'),
+                'On Rent': 'Yes' if item.get('on_rent') else 'No',
+                'Vendor Name': item.get('vendor_name', 'N/A'),
+                'Total Rent': item.get('total_rent', 'N/A'),
+                'Rented Inventory Returned': 'Yes' if item.get('rented_inventory_returned') else 'No',
+                'Returned Date': item.get('returned_date', 'N/A'),
+                'On Event': 'Yes' if item.get('on_event') else 'No',
+                'In Office': 'Yes' if item.get('in_office') else 'No',
+                'In Warehouse': 'Yes' if item.get('in_warehouse') else 'No',
+                'Issued Qty': item.get('issued_qty', 'N/A'),
+                'Balance Qty': item.get('balance_qty', 'N/A'),
+                'Submitted By': item.get('submitted_by', 'N/A'),
+                'Created At': item.get('created_at', 'N/A'),
+                'Updated At': item.get('updated_at', 'N/A'),
+                'BarCode': item.get('bar_code', 'N/A'),
+                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
+            }
+            formatted_data.append(formatted_item)
+        
+        return formatted_data
+    
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch inventory by ID: {e}")
+        messagebox.showerror("Error", "Could not fetch inventory data")
+        return []
+    except ValueError as e:
+        logger.error(f"Search validation error: {e}")
+        messagebox.showwarning("Search Error", str(e))
+        return []

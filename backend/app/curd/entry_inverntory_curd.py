@@ -37,7 +37,7 @@ class EntryInventoryService(EntryInventoryInterface):
     async def create_entry_inventory(self, db: AsyncSession, entry_data: dict) -> EntryInventory:
         if db is None:
             raise ValueError("Database session is None")
-        
+
         try:
             # Convert boolean fields to string "true"/"false"
             for field in ['on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse']:
@@ -49,20 +49,20 @@ class EntryInventoryService(EntryInventoryInterface):
                         entry_data[field] = val.lower()
                     else:
                         entry_data[field] = "false"
-    
+
             # Remove auto-generated fields if present
             for field in ['bar_code', 'unique_code', 'created_at', 'updated_at', 'uuid']:
                 entry_data.pop(field, None)
-        
+
             # Create new instance
             new_entry = EntryInventory(**entry_data)
-            
+
             db.add(new_entry)
             await db.commit()
             await db.refresh(new_entry)
-            
+
             return new_entry
-        
+
         except SQLAlchemyError as e:
             await db.rollback()
             logger.error(f"Database error: {str(e)}")
@@ -171,22 +171,39 @@ class EntryInventoryService(EntryInventoryInterface):
             logger.error(f"Database error deleting entry: {e}")
             raise HTTPException(status_code=500, detail="Database error")
         
-    #  Search inventory items by various criteria {Product ID, Inventory ID}
-    async def search_entries(self, db: AsyncSession, search_filter: EntryInventorySearch) -> List[EntryInventoryOut]:
+    # Search inventory items by various criteria {Product ID, Inventory ID, Project ID}
+    async def search_entries(
+        self, 
+        db: AsyncSession, 
+        search_filter: EntryInventorySearch
+    ) -> List[EntryInventoryOut]:
+        """
+        Search inventory entries by exactly one of:
+        - inventory_id
+        - product_id
+        - project_id
+        """
         try:
             query = select(EntryInventory)
-            
+
             if search_filter.inventory_id:
                 query = query.where(EntryInventory.inventory_id == search_filter.inventory_id)
-            if search_filter.product_id:
+            elif search_filter.product_id:
                 query = query.where(EntryInventory.product_id == search_filter.product_id)
-            # Add other filters as needed
-                
+            else:  # project_id
+                query = query.where(EntryInventory.project_id == search_filter.project_id)
+
             result = await db.execute(query)
-            return result.scalars().all()
+            entries = result.scalars().all()
+
+            return [EntryInventoryOut.from_orm(entry) for entry in entries]
+
         except SQLAlchemyError as e:
-            logger.error(f"Database error searching entries: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            logger.error(f"Database error searching entries: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Database error while searching inventory items"
+            )
         
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 #  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
