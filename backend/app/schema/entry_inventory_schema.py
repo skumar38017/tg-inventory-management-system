@@ -183,6 +183,8 @@ class EntryInventoryOut(EntryInventoryBase):
     submitted_by: str
     created_at: datetime
     updated_at: datetime
+    bar_code: str
+    unique_code: str
     barcode_image_url: Optional[str] = None  # Add this new field
     
     class Config:

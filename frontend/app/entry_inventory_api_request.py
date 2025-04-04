@@ -208,8 +208,8 @@ def add_new_inventory_item(item_data: dict):
 
         # Construct API payload with proper formatting
         api_payload = {
-            "product_id": format_id(item_data.get('ProductID'), 'PRD'),
-            "inventory_id": format_id(item_data.get('InventoryID'), 'INV'),
+            "product_id": format_id(item_data.get('ProductID'), ' '),
+            "inventory_id": format_id(item_data.get('InventoryID'), ' '),
             "sno": sno,
             "name": get_stripped(item_data.get('Name')),
             "material": get_stripped(item_data.get('Material')),
