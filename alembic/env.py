@@ -4,14 +4,18 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 from sqlalchemy.ext.declarative import declarative_base
-from app.database.base import Base  # Ensure this imports Base from the correct location
+from backend.app.database.base import Base  # Ensure this imports Base from the correct location
 from alembic import context
-from app.models.entry_inventory_model import EntryInventory
+from backend.app.models.entry_inventory_model import EntryInventory
+from backend.app.models.to_event_inventry_model import ToEventInventory
+
+EntryInventory=EntryInventory()
+ToEventInventory=ToEventInventory()
 
 # Add the project's root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.config import SYNC_DB_URL  # This imports the DB URL correctly
+from backend.app.config import SYNC_DB_URL  # This imports the DB URL correctly
 
 # Set the target_metadata to Base.metadata (this will give Alembic access to all models)
 target_metadata = Base.metadata

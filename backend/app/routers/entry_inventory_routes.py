@@ -2,7 +2,7 @@
 import logging
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, HTTPException, Depends
 from backend.app.database.database import get_async_db
@@ -11,6 +11,7 @@ from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdate,
     EntryInventoryOut,
+    InventoryRedisOut,
     EntryInventorySearch,
     DateRangeFilter
 )
@@ -32,59 +33,193 @@ logger.setLevel(logging.INFO)
 # Asynchronous Endpoints
 # --------------------------
 
+#  Filter inventory from database by date range without passing any `IDs`
+@router.get(
+    "/date-range",
+    response_model=List[EntryInventoryOut],
+    status_code=200,
+    summary="Filter inventory by date range",
+    description="Get inventory items within a specific date range",
+    response_model_exclude_unset=True,
+)
+async def get_inventory_by_date_range(
+    from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    to_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    """Get inventory items within a date range"""
+    try:
+        # FastAPI automatically converts query params to date objects
+        if from_date > to_date:
+            raise HTTPException(
+                status_code=400,
+                detail="From date cannot be after To date"
+            )
+            
+        results = await service.get_by_date_range(db, DateRangeFilter(
+            from_date=from_date,
+            to_date=to_date
+        ))
+        
+        if not results:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No items found between {from_date} and {to_date}"
+            )
+            
+        return results
+        
+    except ValueError as e:
+        logger.error(f"Invalid date format: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Date range filter failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)  # Return the actual error message
+        )
+
+# Refrech record in UI and show all updated data directly after clicking {sync} button [/sync/]
+@router.post("/sync/",
+    status_code=200,
+    summary="Sync database with Redis",
+    description="Stores all inventory entries in Redis cache",
+    responses={
+        200: {"description": "Successfully synced with Redis"},
+        500: {"description": "Internal server error during sync"}
+    }
+)
+async def sync_redis(
+    service: EntryInventoryService = Depends(get_entry_inventory_service),
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Synchronize all inventory data from database to Redis cache.
+    
+    This endpoint will:
+    1. Fetch all inventory entries from the database
+    2. Store them in Redis with proper serialization
+    3. Return success/failure status
+    """
+    try:
+        logger.info("Starting Redis sync operation")
+        success = await service.store_inventory_in_redis(db)
+        
+        if not success:
+            logger.warning("Redis sync completed with warnings")
+            return {"status": "completed with warnings"}
+            
+        logger.info("Redis sync completed successfully")
+        return {"status": "success", "message": "All inventory entries synced to Redis"}
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions (they're intentional)
+        raise
+    except Exception as e:
+        logger.error(f"Critical error during Redis sync: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "failed",
+                "message": "Failed to sync with Redis",
+                "error": str(e)
+            }
+        )
+
+# Show all inventory entries directly from local Redis Database  (no search) according in sequence alphabetical order after clicking `Show All` button
+@router.get("/show-all/",
+    response_model=List[InventoryRedisOut],
+    status_code=200,
+    summary="Show all Redis-cached inventory",
+    description="Retrieves all inventory entries from Redis cache",
+    responses={
+        200: {"description": "Successfully retrieved cached data"},
+        404: {"description": "No cached data found"},
+        500: {"description": "Internal server error during retrieval"}
+    }
+)
+async def show_all_redis(
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    """
+    Retrieve all inventory data from Redis cache.
+    
+    This endpoint will:
+    1. Fetch all cached inventory entries from Redis
+    2. Validate and deserialize the data
+    3. Return the sorted list of inventory items
+    """
+    try:
+        logger.info("Fetching all inventory data from Redis")
+        cached_data = await service.show_all_inventory_from_redis()
+        
+        if not cached_data:
+            logger.warning("No inventory data found in Redis cache")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "not_found",
+                    "message": "No inventory data available in cache"
+                }
+            )
+            
+        logger.info(f"Successfully retrieved {len(cached_data)} cached entries")
+        return cached_data
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Data validation error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "failed",
+                "message": "Invalid data format in Redis cache",
+                "error": str(e)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to retrieve cached data: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "failed",
+                "message": "Failed to retrieve cached data",
+                "error": str(e)
+            }
+        )
+
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
-            response_model=EntryInventoryOut,
-            status_code=200,
-            summary="Create a new entry in the inventory",
-            description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
-            response_model_exclude_unset=True,
+    response_model=EntryInventoryOut,
+    status_code=200,
+    summary="Create a new entry in the inventory",
+    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
+    response_model_exclude_unset=True,
 )
 async def create_inventory_item_route(
     item: EntryInventoryCreate,
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
-    print(f"Creating new item: {item}")
     try:
-        new_item = await service.create_entry_inventory(db, item)
-        print(f"New item created: {new_item}")
-        if not new_item:
+        # Convert to dict and process
+        item_data = item.dict(exclude_unset=True)
+        logger.info(f"New item created: {item_data}")
+
+        if not item_data:
             logger.error("Failed to create inventory item: item is None.")
             raise HTTPException(status_code=400, detail="Failed to create inventory item")
-        return new_item
-    
+        
+        return await service.create_entry_inventory(db, item_data)
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
-        print(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-
-#  Refrech record in UI and show all updated data directly after clicking {sync} button
-@router.get("/sync/",
-            response_model=List[EntryInventoryOut],  # Changed to List[]
-            status_code=200,
-            summary="Refresh all inventory entries",
-            description="This endpoint refreshes and returns all inventory entries in alphabetical order",
-            response_model_exclude_unset=True,
-            )
-async def sync_inventory(
-    db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
-):
-    try:
-        entries = await service.list_all_entries(db)
-        if not entries:
-            raise HTTPException(
-                status_code=404,
-                detail="No inventory entries found"
-            )
-        return entries
-    except Exception as e:
-        logger.error(f"Error refreshing inventory: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to refresh inventory data"
-        )
+# ________________________________________________________________________________________
 
 # READ: Get an inventory which is match from inventry ID
 @router.get("/fetch/{inventory_id}",
@@ -127,69 +262,61 @@ async def get_all_entire_inventory(
         logger.error(f"Error fetching inventory items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-#  Search inventory items by various criteria
+#  Search inventory items by various criteria {Product ID, Inventory ID, Project ID}
 @router.get(
-    "/search/{inventory_id}",
+    "/search/",
     response_model=List[EntryInventoryOut],
     status_code=200,
     summary="Search inventory items",
-    description="Search inventory items by various criteria",
+    description="Search inventory items by Inventory ID, Product ID, or Project ID (exactly one required)",
     response_model_exclude_unset=True,
 )
 async def search_inventory(
-    inventory_id: str,
-    product_id: Optional[str] = Query(None),
+    inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
+    product_id: Optional[str] = Query(None, description="Product ID to search for"),
+    project_id: Optional[str] = Query(None, description="Project ID to search for"),
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
-    """Search inventory items by various criteria"""
+    """
+    Search inventory items by exactly one of:
+    - Inventory ID
+    - Product ID
+    - Project ID
+    """
     try:
+        # Convert empty strings to None
+        inventory_id = inventory_id if inventory_id else None
+        product_id = product_id if product_id else None
+        project_id = project_id if project_id else None
+
+        # Validate exactly one search parameter is provided
+        provided_params = [p for p in [inventory_id, product_id, project_id] if p is not None]
+        if len(provided_params) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Exactly one search parameter (inventory_id, product_id, or project_id) must be provided"
+            )
+
         search_params = EntryInventorySearch(
             inventory_id=inventory_id,
             product_id=product_id,
+            project_id=project_id
         )
+        
         results = await service.search_entries(db, search_params)
         if not results:
             raise HTTPException(status_code=404, detail="No matching items found")
+        
         return results
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error during search")
     
-#  Filter inventory by date range
-@router.get(
-    "/date-range",
-    response_model=List[EntryInventoryOut],
-    status_code=200,
-    summary="Filter inventory by date range",
-    description="Get inventory items within a specific date range",
-    response_model_exclude_unset=True,
-)
-async def get_inventory_by_date_range(
-    from_date: str,
-    to_date: str,
-    inventory_id: str,
-    db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
-):
-    """Get inventory items within a date range"""
-    try:
-        date_filter = DateRangeFilter(
-            from_date=datetime.strptime(from_date, "%Y-%m-%d").date(),
-            to_date=datetime.strptime(to_date, "%Y-%m-%d").date(),
-            inventory_id=inventory_id
-        )
-        results = await service.get_by_date_range(db, date_filter)
-        if not results:
-            raise HTTPException(status_code=404, detail="No items found in date range")
-        return results
-    except ValueError as e:
-        logger.error(f"Invalid date format: {e}")
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-    except Exception as e:
-        logger.error(f"Date range filter failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+    
 # UPDATE: Update an existing inventory entry
 @router.put("/update/{inventory_id}",
             response_model=EntryInventoryOut,

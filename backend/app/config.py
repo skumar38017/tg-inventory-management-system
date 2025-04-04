@@ -10,6 +10,9 @@ from sqlalchemy.ext.declarative import declarative_base
 load_dotenv() 
 Base = declarative_base() 
 
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+
+
 # Redis Configuration
 REDIS_HOST = os.getenv("REDIS_HOST", "192.168.192.3")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
