@@ -8,9 +8,11 @@ from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdateOut,
     EntryInventoryUpdate,
-    EntryInventoryOut,
+    StoreInventoryRedis,
+    InventoryRedisOut,
     EntryInventorySearch,
-    DateRangeFilter
+    DateRangeFilter,
+    DateRangeFilterOut,
 )
 from pydantic import BaseModel
 from datetime import date
@@ -26,7 +28,7 @@ class EntryInventoryInterface:
         """
         pass
     
-    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[EntryInventoryOut]:
+    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[EntryInventoryUpdateOut]:
         """
         Retrieve all EntryInventory entries.
         This method will return a list of EntryInventoryOut schema instances.
@@ -37,10 +39,10 @@ class EntryInventoryInterface:
         self, 
         db: AsyncSession, 
         inventory_id: str
-    ) -> Optional[EntryInventoryOut]:
+    ) -> Optional[EntryInventoryUpdateOut]:
         """
         Get inventory entry by its inventory_id (not UUID).
-        Returns single EntryInventoryOut instance or None if not found.
+        Returns single EntryInventoryUpdateOut instance or None if not found.
         """
         pass
     
@@ -72,10 +74,10 @@ class EntryInventoryInterface:
         self,
         db: AsyncSession,
         search_filter: EntryInventorySearch
-    ) -> List[EntryInventoryOut]:
+    ) -> List[EntryInventoryUpdateOut]:
         """
         Search inventory entries by various criteria.
-        Returns filtered list of EntryInventoryOut instances.
+        Returns filtered list of EntryInventoryUpdateOut instances.
         """
         pass
 
@@ -83,19 +85,29 @@ class EntryInventoryInterface:
         self,
         db: AsyncSession,
         date_range_filter: DateRangeFilter
-    ) -> List[EntryInventoryOut]:
+    ) -> List[DateRangeFilterOut]:
         """
         Get inventory entries within a date range.
-        Returns list of EntryInventoryOut instances filtered by date range.
+        Returns list of DateRangeFilterOut instances filtered by date range.
         """
         pass
 
-    async def list_all_entries(
+    async def store_inventory_in_redis(
         self, 
         db: AsyncSession
-    ) -> List[EntryInventoryOut]:
+    ) -> List[StoreInventoryRedis]:
         """
-        Get all inventory entries without pagination.
-        Returns complete list of EntryInventoryOut instances ordered by name.
+        Store all inventory entries in Redis.
+        Returns complete list of StoreInventoryRedis instances.
+        """
+        pass
+
+    async def show_all_inventory(
+        self, 
+        db: AsyncSession
+    ) -> List[InventoryRedisOut]:
+        """
+        Get all inventory entries from Redis.
+        Returns complete list of InventoryRedisOut instances ordered by name.
         """
         pass
