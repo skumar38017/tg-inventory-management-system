@@ -9,6 +9,8 @@ import random
 import string
 import json
 import os
+from .api_request.to_event_inventory_request import (create_to_event_inventory_list, 
+                            )
 
 logger = logging.getLogger(__name__)
 
