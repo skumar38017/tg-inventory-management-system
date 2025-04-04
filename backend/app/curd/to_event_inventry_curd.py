@@ -21,6 +21,7 @@ from typing import List, Optional
 from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
+from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
 
 logger = logging.getLogger(__name__)
@@ -31,85 +32,76 @@ logger.setLevel(logging.INFO)
 # ------------------------ 
 
 class ToEventInventoryService(ToEventInventoryInterface):
-    """Implementation of ToEventInventoryInterface with async operations"""
     def __init__(self, base_url: str = config.BASE_URL):
-        self.base_url = base_url  # Your server's base URL
+        self.base_url = base_url
+        self.barcode_generator = BarcodeGenerator()
 
-    #  Create new entry of inventory for to_event which is directly stored in redis
-    #  Create new entry
     async def create_to_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate):
-        if db is None:
-            raise ValueError("Database session is None")
-
         try:
-            # Convert Pydantic model to dictionary using .dict() method
+            # Convert to dict and clean data
             inventory_data = to_event_inventory.model_dump()
+            # self._normalize_inventory_data(inventory_data)
 
-            # Handle field name variations
-            if "even_date" in inventory_data:
-                inventory_data["event_date"] = inventory_data.pop("even_date")
-            if "Total" in inventory_data:
-                inventory_data["total"] = inventory_data.pop("Total")
-            if "per_uinit_power" in inventory_data:
-                inventory_data["per_unit_power"] = inventory_data.pop("per_uinit_power")
+            # Ensure UUID is generated if missing
+            if 'uuid' not in inventory_data or not inventory_data['uuid']:
+                inventory_data['uuid'] = str(uuid.uuid4())  # Ensure UUID is set
 
-            # Create new instance of ToEventInventory
-            new_entry = ToEventInventory(**inventory_data)
+            # Generate UUID and timestamps
+            current_time = datetime.now(timezone.utc).isoformat()
+            inventory_data.update({
+                'created_at': current_time,
+                'updated_at': current_time
+            })
 
-            # Ensure UUID generation if not already present
-            if not hasattr(new_entry, 'uuid') or not new_entry.uuid:
-                new_entry.uuid = str(uuid.uuid4())
+            # Generate barcodes
+            barcode, unique_code = self.barcode_generator.generate_linked_codes(inventory_data)
 
-            # Set timestamps
-            current_time = datetime.now(timezone.utc)
-            new_entry.created_at = current_time
-            new_entry.updated_at = current_time
+            # Update inventory data with barcode information
+            inventory_data['project_barcode'] = barcode
+            inventory_data['project_barcode_unique_code'] = unique_code
 
-            # Store in Redis as ToEventRedis format
+            # Create Redis entry
             redis_entry = ToEventRedis(
-                uuid=new_entry.uuid,
-                sno=new_entry.sno,
-                project_id=new_entry.project_id,
-                employee_name=new_entry.employee_name,
-                location=new_entry.location,
-                client_name=new_entry.client_name,
-                setup_date=new_entry.setup_date,
-                project_name=new_entry.project_name,
-                event_date=new_entry.event_date,
-                zone_active=new_entry.zone_active,
-                name=new_entry.name,
-                description=new_entry.description,
-                quantity=new_entry.quantity,
-                material=new_entry.material,
-                comments=new_entry.comments,
-                total=new_entry.total,
-                unit=new_entry.unit,
-                per_unit_power=new_entry.per_unit_power,
-                total_power=new_entry.total_power,
-                status=new_entry.status,
-                poc=new_entry.poc,
-                submitted_by=new_entry.submitted_by,
-                created_at=new_entry.created_at,
-                updated_at=new_entry.updated_at,
-                project_barcode=getattr(new_entry, 'project_barcode', ''),
-                project_barcode_unique_code=getattr(new_entry, 'project_barcode_unique_code', ''),
-                project_barcode_image_url=getattr(new_entry, 'project_barcode_image_url', '')
+                uuid=inventory_data['uuid'],
+                sno=inventory_data['sno'],
+                project_id=inventory_data['project_id'],
+                employee_name=inventory_data['employee_name'],
+                location=inventory_data['location'],
+                client_name=inventory_data['client_name'],
+                setup_date=inventory_data['setup_date'],
+                project_name=inventory_data['project_name'],
+                event_date=inventory_data['event_date'],
+                zone_active=inventory_data['zone_active'],
+                name=inventory_data['name'],
+                description=inventory_data['description'],
+                quantity=inventory_data['quantity'],
+                material=inventory_data['material'],
+                comments=inventory_data['comments'],
+                total=inventory_data['total'],
+                unit=inventory_data['unit'],
+                per_unit_power=inventory_data['per_unit_power'],
+                total_power=inventory_data['total_power'],
+                status=inventory_data['status'],
+                poc=inventory_data['poc'],
+                submitted_by=inventory_data['submitted_by'],
+                created_at=inventory_data['created_at'],
+                updated_at=inventory_data['updated_at'],
+                project_barcode=inventory_data['project_barcode'],
+                project_barcode_unique_code=inventory_data['project_barcode_unique_code'],
+                project_barcode_image_url=inventory_data.get('project_barcode_image_url', '')
             )
 
-            # Store the entry in Redis
+            # Store Redis entry
             await redis_client.set(
-                f"to_event_inventory:{new_entry.project_id}", 
+                f"to_event_inventory:{redis_entry.project_id}", 
                 redis_entry.json()
             )
 
-            logger.info(f"Stored entry in Redis with UUID: {new_entry.project_id}")
+            logger.info(f"Stored in Redis - Project ID: {redis_entry.project_id}")
             return redis_entry
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error: {str(e)}")
-            raise HTTPException(status_code=500, detail="Database operation failed")
+
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(f"Redis storage failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to create inventory: {str(e)}")
     
         
