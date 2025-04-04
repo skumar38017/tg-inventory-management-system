@@ -38,5 +38,86 @@
                 "poc": ""
             }
         ]
+    },
+    {
+        "work_id": "PRJ94877",
+        "employee_name": "skumar",
+        "location": "indore",
+        "client_name": "tagglabs",
+        "setup_date": "2024-01-25",
+        "project_name": "testing",
+        "event_date": "2025-01-04",
+        "inventory_items": [
+            {
+                "zone_activity": "Zone C",
+                "sr_no": "sf567",
+                "inventory": "keyboard",
+                "description": "testing",
+                "quantity": "10",
+                "comments": "na",
+                "total": "10",
+                "units": "05",
+                "power_per_unit": "50",
+                "total_power": "50",
+                "status": "Available",
+                "poc": "sumit"
+            },
+            {
+                "zone_activity": "",
+                "sr_no": "",
+                "inventory": "",
+                "description": "",
+                "quantity": "",
+                "comments": "",
+                "total": "",
+                "units": "",
+                "power_per_unit": "",
+                "total_power": "",
+                "status": "",
+                "poc": ""
+            },
+            {
+                "zone_activity": "",
+                "sr_no": "",
+                "inventory": "",
+                "description": "",
+                "quantity": "",
+                "comments": "",
+                "total": "",
+                "units": "",
+                "power_per_unit": "",
+                "total_power": "",
+                "status": "",
+                "poc": ""
+            },
+            {
+                "zone_activity": "",
+                "sr_no": "",
+                "inventory": "",
+                "description": "",
+                "quantity": "",
+                "comments": "",
+                "total": "",
+                "units": "",
+                "power_per_unit": "",
+                "total_power": "",
+                "status": "",
+                "poc": ""
+            },
+            {
+                "zone_activity": "",
+                "sr_no": "",
+                "inventory": "",
+                "description": "",
+                "quantity": "",
+                "comments": "",
+                "total": "",
+                "units": "",
+                "power_per_unit": "",
+                "total_power": "",
+                "status": "",
+                "poc": ""
+            }
+        ]
     }
 ]
