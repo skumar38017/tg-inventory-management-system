@@ -47,7 +47,7 @@ def create_to_event_inventory_list(item_data: dict):
         if project_id:
             project_id = ''.join(c for c in project_id if c.isdigit())
         
-        # Payload construction
+        # Base payload with optional fields
         payload = {
             "project_id": clean_value(item_data.get('work_id')),
             "employee_name": clean_value(item_data.get('employee_name')),
@@ -60,31 +60,31 @@ def create_to_event_inventory_list(item_data: dict):
             "inventory_items": []
         }
 
-        # Process inventory items
+        # Process all inventory items from all rows
         for item in item_data.get('inventory_items', []):
             inventory_item = {
-                "zone_active": clean_value(item.get('zone_activity')),
-                "sno": clean_value(item.get('sr_no')),
-                "name": clean_value(item.get('inventory')),
+                "zone_active": clean_value(item.get('zone_active')),
+                "sno": clean_value(item.get('sno')),
+                "name": clean_value(item.get('name')),
                 "description": clean_value(item.get('description')),
                 "quantity": clean_number_str(item.get('quantity')),
+                "material": clean_value(item.get('material')),
                 "comments": clean_value(item.get('comments')),
                 "total": clean_number_str(item.get('total')),
-                "unit": clean_value(item.get('units')),
-                "per_unit_power": clean_number_str(item.get('power_per_unit')),
+                "unit": clean_value(item.get('unit')),
+                "per_unit_power": clean_number_str(item.get('per_unit_power')),
                 "total_power": clean_number_str(item.get('total_power')),
                 "status": clean_value(item.get('status')),
                 "poc": clean_value(item.get('poc'))
             }
-            if any(v for v in inventory_item.values() if v is not None):
-                payload["inventory_items"].append(inventory_item)
+            # Only add if at least one field has value
+            if any(v is not None for v in inventory_item.values()):
+                payload["inventory_items"].append(
+                    {k: v for k, v in inventory_item.items() if v is not None}
+                )
 
-        # Remove empty inventory_items if no valid items
-        if not payload["inventory_items"]:
-            del payload["inventory_items"]
-
-        # Remove None values
-        payload = {k: v for k, v in payload.items() if v is not None}
+        # Remove empty values from main payload
+        payload = {k: v for k, v in payload.items() if v is not None and v != []}
 
         logger.debug(f"Sending payload: {payload}")
 
@@ -112,6 +112,7 @@ def load_submitted_project_from_db() -> List[Dict]:
             "to_event-load-submitted-project-db/"
         )
         
+        print(response.json())
         return [format_project_item(item) for item in response.json()]
         
     except Exception as e:
@@ -167,32 +168,35 @@ def search_project_details_by_id(project_id: str) -> List[Dict]:
 # Add new inventory items to the database with proper data formatting
 def format_project_item(item: dict) -> dict:
     """Format project item from API response to frontend format"""
-    default_inventory_item = {
-        'zone_activity': 'N/A',
-        'sr_no': 'N/A',
-        'inventory': 'N/A',
-        'description': 'N/A',
-        'quantity': 'N/A',
-        'comments': 'N/A',
-        'total': 'N/A',
-        'units': 'N/A',
-        'power_per_unit': 'N/A',
-        'total_power': 'N/A',
-        'status': 'N/A',
-        'poc': 'N/A'
-    }
-    
-    # Get first inventory item or use default
-    inventory_items = item.get('inventory_items', [])
-    first_item = inventory_items[0] if inventory_items else default_inventory_item
+    # Handle both flat structure (old) and nested inventory_items (new)
+    if 'inventory_items' not in item:
+        # Convert flat structure to nested
+        inventory_item = {
+            'zone_active': item.get('zone_active'),
+            'sno': item.get('sno'),
+            'name': item.get('name'),
+            'description': item.get('description'),
+            'quantity': item.get('quantity'),
+            'material': item.get('material'),
+            'comments': item.get('comments'),
+            'total': item.get('total'),
+            'unit': item.get('unit'),
+            'per_unit_power': item.get('per_unit_power'),
+            'total_power': item.get('total_power'),
+            'status': item.get('status'),
+            'poc': item.get('poc')
+        }
+        inventory_items = [inventory_item]
+    else:
+        inventory_items = item.get('inventory_items', [])
     
     return {
-        'work_id': item.get('work_id', 'N/A'),
-        'employee_name': item.get('employee_name', 'N/A'),
-        'location': item.get('location', 'N/A'),
-        'client_name': item.get('client_name', 'N/A'),
-        'setup_date': item.get('setup_date', 'N/A'),
-        'project_name': item.get('project_name', 'N/A'),
-        'event_date': item.get('event_date', 'N/A'),
-        'inventory_items': [first_item]
+        'work_id': item.get('project_id'),
+        'employee_name': item.get('employee_name'),
+        'location': item.get('location'),
+        'client_name': item.get('client_name'),
+        'setup_date': item.get('setup_date'),
+        'project_name': item.get('project_name'),
+        'event_date': item.get('event_date'),
+        'inventory_items': inventory_items
     }
