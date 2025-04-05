@@ -8,12 +8,12 @@ import uuid
 import re
 from tkinter import messagebox
 from datetime import datetime, timezone, date
+from ..config import *
 
 logger = logging.getLogger(__name__)
 
 
 # Create to-event inventry list request api
-
 def create_to_event_inventory_list(item_data: dict):
     """Inventory item creation with all fields optional"""
     try:
@@ -33,7 +33,6 @@ def create_to_event_inventory_list(item_data: dict):
                 return str(num)
             except (ValueError, TypeError):
                 return None
-                # Helper function for date fields
 
         def clean_date(date_str):
             try:
@@ -43,128 +42,157 @@ def create_to_event_inventory_list(item_data: dict):
             except (ValueError, TypeError):
                 return None
         
-        # Clean IDs - remove non-numeric characters but keep as strings
-        project_id = clean_value(item_data.get('WorkID'))
+        # Clean project ID
+        project_id = clean_value(item_data.get('work_id'))
         if project_id:
             project_id = ''.join(c for c in project_id if c.isdigit())
         
-        # Payload construction - all fields optional
+        # Payload construction
         payload = {
-            # Basic information
-            "project_id": project_id,
-            "employee_name": clean_value(item_data.get('Employee')),
-            "location": clean_value(item_data.get('Location')),
-            "client_name": clean_value(item_data.get('Client')),
-            "setup_date": clean_date(item_data.get('SetupDate')),
-            "project_name": clean_value(item_data.get('ProjectName')),
-            "event_date": clean_date(item_data.get('EventDate')),
+            "project_id": clean_value(item_data.get('work_id')),
+            "employee_name": clean_value(item_data.get('employee_name')),
+            "location": clean_value(item_data.get('location')),
+            "client_name": clean_value(item_data.get('client_name')),
+            "setup_date": clean_date(item_data.get('setup_date')),
+            "project_name": clean_value(item_data.get('project_name')),
+            "event_date": clean_date(item_data.get('event_date')),
             "submitted_by": "inventory-admin",
-            
-            # Inventory information
-            "inventory_items": [
-                {
-                    "zone_active": clean_value(item_data.get('zone_activity')),
-                    "sno": clean_value(item_data.get('sr_no')),
-                    "name": clean_value(item_data.get('inventory')),
-                    "description": clean_value(item_data.get('description')),
-                    "quantity": clean_number_str(item_data.get('quantity')),
-                    "comments": clean_value(item_data.get('comments')),
-                    "total": clean_number_str(item_data.get('total')),
-                    "unit": clean_value(item_data.get('Units')),
-                    "per_unit_power": clean_number_str(item_data.get('power_per_unit')),
-                    "total_power": clean_number_str(item_data.get('total_power')),
-                    "status": clean_value(item_data.get('status')),
-                    "poc": clean_value(item_data.get('poc'))
-                }
-            ]
+            "inventory_items": []
         }
 
-        # Remove None values to keep payload clean
+        # Process inventory items
+        for item in item_data.get('inventory_items', []):
+            inventory_item = {
+                "zone_active": clean_value(item.get('zone_activity')),
+                "sno": clean_value(item.get('sr_no')),
+                "name": clean_value(item.get('inventory')),
+                "description": clean_value(item.get('description')),
+                "quantity": clean_number_str(item.get('quantity')),
+                "comments": clean_value(item.get('comments')),
+                "total": clean_number_str(item.get('total')),
+                "unit": clean_value(item.get('units')),
+                "per_unit_power": clean_number_str(item.get('power_per_unit')),
+                "total_power": clean_number_str(item.get('total_power')),
+                "status": clean_value(item.get('status')),
+                "poc": clean_value(item.get('poc'))
+            }
+            if any(v for v in inventory_item.values() if v is not None):
+                payload["inventory_items"].append(inventory_item)
+
+        # Remove empty inventory_items if no valid items
+        if not payload["inventory_items"]:
+            del payload["inventory_items"]
+
+        # Remove None values
         payload = {k: v for k, v in payload.items() if v is not None}
 
         logger.debug(f"Sending payload: {payload}")
 
-        # API request
-        response = requests.post(
-            url="http://localhost:8000/api/v1/to_event-create-item/",
+        # Use helper function for API request
+        response = make_api_request(
+            "POST",
+            "to_event-create-item/",
             headers={"Content-Type": "application/json"},
             json=payload
         )
-        
-        # Handle response
-        if response.status_code == 422:
-            errors = response.json().get('detail', [])
-            error_msgs = "\n".join(
-                f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
-                for e in errors if isinstance(e, dict)
-            )
-            raise Exception(f"Validation errors:\n{error_msgs}")
-            
-        response.raise_for_status()
+
         return response.json()
         
     except Exception as e:
-        logger.error(f"Error adding item: {str(e)}")
-        raise Exception(f"Could not add inventory item: {str(e)}")
-    
+        error_msg = f"Could not add inventory item: {str(e)}"
+        logger.error(error_msg)
+        raise Exception(error_msg)
+
+# Load submitted forms from from db the API
+def load_submitted_project_from_db() -> List[Dict]:
+    """Fetch submitted forms from the API"""
+    try:
+        response = make_api_request(
+            "GET",
+            "to_event-load-submitted-project-db/"
+        )
+        
+        return [format_project_item(item) for item in response.json()]
+        
+    except Exception as e:
+        error_msg = "Could not fetch submitted forms"
+        logger.error(f"{error_msg}: {str(e)}")
+        messagebox.showerror("Error", error_msg)
+        return []
+
+# Update data into existing record of ``work_id`` in the API
+def update_submitted_project_in_db(work_id: str, data: dict) -> bool:
+    """Update submitted forms in the API"""
+    try:
+        response = make_api_request(
+            "PUT",  # Changed from POST to PUT for updates
+            f"to_event-update-submitted-project-db/{work_id}",
+            headers={"Content-Type": "application/json"},
+            json=data
+        )
+        return True
+        
+    except Exception as e:
+        error_msg = "Could not update submitted forms"
+        logger.error(f"{error_msg}: {str(e)}")
+        messagebox.showerror("Error", error_msg)
+        return False
+
 # Search for Project with there inventory list by [Project_id] by clicking search
-def search_project_details_by_id(project_id: str = None) -> List[Dict]:
+def search_project_details_by_id(project_id: str) -> List[Dict]:
     """Fetch inventory data filtered by a single ID from the API"""
     try:
-        # Validate that exactly one ID is provided
-        provided_ids = [id for id in [project_id] if id]
-        if len(provided_ids) != 1:
-            raise ValueError("Please provide exactly one ID (Project ID) for searching")
-        
-        # Prepare query parameters
-        params = {}
-        if project_id:
-            params['project_id'] = project_id
+        if not project_id:
+            raise ValueError("Project ID is required for searching")
 
-        # Make the API request with the parameter
-        response = requests.get(
-            "http://localhost:8000/api/v1/search-to-event-inventory/",
-            params=params
+        response = make_api_request(
+            "GET",
+            "search-to-event-inventory/",
+            params={"project_id": project_id}
         )
-        response.raise_for_status()
         
-        # Map backend fields to frontend display names
-        formatted_data = []
-        for item in response.json():
-            formatted_item = {
-                'project_id': item.get('work_id', 'N/A'),
-                'employee_name': item.get('employee_name', 'N/A'),
-                'location': item.get('location', 'N/A'),
-                'client_name': item.get('client_name', 'N/A'),
-                'setup_date': item.get('setup_date', 'N/A'),
-                'project_name': item.get('project_name', 'N/A'),
-                'event_date': item.get('event_date', 'N/A'),
-                'inventory_items': [
-                    {
-                        'zone_activity': item.get('inventory_items')[0].get('zone_activity', 'N/A'),
-                        'sr_no': item.get('inventory_items')[0].get('sr_no', 'N/A'),
-                        'inventory': item.get('inventory_items')[0].get('inventory', 'N/A'),
-                        'description': item.get('inventory_items')[0].get('description', 'N/A'),
-                        'quantity': item.get('inventory_items')[0].get('quantity', 'N/A'),
-                        'comments': item.get('inventory_items')[0].get('comments', 'N/A'),
-                        'total': item.get('inventory_items')[0].get('total', 'N/A'),
-                        'units': item.get('inventory_items')[0].get('units', 'N/A'),
-                        'power_per_unit': item.get('inventory_items')[0].get('power_per_unit', 'N/A'),
-                        'total_power': item.get('inventory_items')[0].get('total_power', 'N/A'),
-                        'status': item.get('inventory_items')[0].get('status', 'N/A'),
-                        'poc': item.get('inventory_items')[0].get('poc', 'N/A')
-                    }
-                ]
-            }
-            formatted_data.append(formatted_item)
+        return [format_project_item(item) for item in response.json()]
         
-        return formatted_data
-        
-    except requests.RequestException as e:
-        logger.error(f"Failed to fetch inventory by ID: {e}")
-        messagebox.showerror("Error", "Could not fetch inventory data")
-        return []
     except ValueError as e:
-        logger.error(f"Search validation error: {e}")
+        logger.error(f"Search validation error: {str(e)}")
         messagebox.showwarning("Search Error", str(e))
         return []
+    except Exception as e:
+        error_msg = "Could not fetch inventory data"
+        logger.error(f"{error_msg}: {str(e)}")
+        messagebox.showerror("Error", error_msg)
+        return []
+
+
+# Add new inventory items to the database with proper data formatting
+def format_project_item(item: dict) -> dict:
+    """Format project item from API response to frontend format"""
+    default_inventory_item = {
+        'zone_activity': 'N/A',
+        'sr_no': 'N/A',
+        'inventory': 'N/A',
+        'description': 'N/A',
+        'quantity': 'N/A',
+        'comments': 'N/A',
+        'total': 'N/A',
+        'units': 'N/A',
+        'power_per_unit': 'N/A',
+        'total_power': 'N/A',
+        'status': 'N/A',
+        'poc': 'N/A'
+    }
+    
+    # Get first inventory item or use default
+    inventory_items = item.get('inventory_items', [])
+    first_item = inventory_items[0] if inventory_items else default_inventory_item
+    
+    return {
+        'work_id': item.get('work_id', 'N/A'),
+        'employee_name': item.get('employee_name', 'N/A'),
+        'location': item.get('location', 'N/A'),
+        'client_name': item.get('client_name', 'N/A'),
+        'setup_date': item.get('setup_date', 'N/A'),
+        'project_name': item.get('project_name', 'N/A'),
+        'event_date': item.get('event_date', 'N/A'),
+        'inventory_items': [first_item]
+    }
