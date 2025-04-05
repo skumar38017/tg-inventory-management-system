@@ -13,7 +13,6 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryOut,
     ToEventInventoryBase,
     ToEventInventoryUpdateOut,
-    ToEventInventoryUpload,
     ToEventInventorySearch,
     ToEventRedis,
     ToEventRedisOut,
@@ -99,7 +98,7 @@ async def load_submitted_project(
         raise HTTPException(status_code=400, detail=str(e))
     
 # Search all project directly in local Redis  before submitting the form
-@router.get("/to_event-search-entries-by-project-id/{project_id}/",
+@router.get("to_event-search-entries-by-project-id/{project_id}/",
     response_model=List[ToEventRedisOut],
     status_code=200,
     summary="Search all entries in local Redis by project_id",

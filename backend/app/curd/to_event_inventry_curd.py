@@ -11,7 +11,6 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryUpdate,
     ToEventInventoryUpdateOut,
     ToEventInventorySearch,
-    ToEventInventoryUpload,
     ToEventRedisUpdate,
     ToEventRedis,
     ToEventRedisOut,
@@ -89,6 +88,9 @@ class ToEventInventoryService(ToEventInventoryInterface):
                             # Clean empty values
                             if item_data.get('project_barcode_image_url') == '':
                                 item_data['project_barcode_image_url'] = None
+                            
+                            if item_data.get('material') == '':
+                                item_data['material'] = None
 
                             # Convert to Pydantic model
                             redis_entry = ToEventRedisOut(**item_data)
@@ -210,7 +212,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                 updated_at=inventory_data['updated_at'],
                 project_barcode=inventory_data['project_barcode'],
                 project_barcode_unique_code=inventory_data['project_barcode_unique_code'],
-                project_barcode_image_url=inventory_data.get('project_barcode_image_url', '')
+                project_barcode_image_url=inventory_data.get('project_barcode_image_url', 'None')
             )
 
             # Store Redis entry

@@ -24,14 +24,18 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
         return []
     
     try:
+        # Remove double slash and use proper URL format
         response = make_api_request(
             "GET",
-            f"/to_event-search-entries-by-project-id/{work_id}"
+            f"to_event-search-entries-by-project-id/{work_id.strip()}"
         )
+        if response.status_code == 404:
+            return []  # Project not found is not an error case
+        response.raise_for_status()
         return [format_project_item(item) for item in response.json()]
     except Exception as e:
-        error_msg = "Could not fetch inventory data"
-        logger.error(f"{error_msg}: {str(e)}")
+        error_msg = f"Could not fetch inventory data: {str(e)}"
+        logger.error(error_msg)
         messagebox.showerror("Error", error_msg)
         return []
 
@@ -67,14 +71,19 @@ def create_to_event_inventory_list(item_data: dict):
             except (ValueError, TypeError):
                 return None
         
-        # Clean project ID
-        project_id = clean_value(item_data.get('work_id'))
-        if project_id:
-            project_id = ''.join(c for c in project_id if c.isdigit())
+        # Get project_id from either 'work_id' or 'project_id' field
+        # Get project_id - ensure it exists
+        project_id = clean_value(item_data.get('work_id')) or clean_value(item_data.get('project_id'))
+        if not project_id:
+            raise ValueError("Project ID is required")
+        print(f"Using Project ID: {project_id}")
+
+        # Get first inventory item (since backend expects flat structure)
+        inventory_item = item_data.get('inventory_items', [{}])[0]
         
-        # Base payload with optional fields
+        # Prepare payload in flat structure
         payload = {
-            "project_id": clean_value(item_data.get('work_id')),
+            "project_id": project_id,
             "employee_name": clean_value(item_data.get('employee_name')),
             "location": clean_value(item_data.get('location')),
             "client_name": clean_value(item_data.get('client_name')),
@@ -82,45 +91,36 @@ def create_to_event_inventory_list(item_data: dict):
             "project_name": clean_value(item_data.get('project_name')),
             "event_date": clean_date(item_data.get('event_date')),
             "submitted_by": "inventory-admin",
-            "inventory_items": []
+            "zone_active": clean_value(inventory_item.get('zone_active')),
+            "sno": clean_value(inventory_item.get('sno')),
+            "name": clean_value(inventory_item.get('name')),
+            "description": clean_value(inventory_item.get('description')),
+            "quantity": clean_number_str(inventory_item.get('quantity')),
+            "material": clean_value(inventory_item.get('material', '')),  # Default empty
+            "comments": clean_value(inventory_item.get('comments')),
+            "total": clean_number_str(inventory_item.get('total')),
+            "unit": clean_value(inventory_item.get('unit')),
+            "per_unit_power": clean_number_str(inventory_item.get('per_unit_power')),
+            "total_power": clean_number_str(inventory_item.get('total_power')),
+            "status": clean_value(inventory_item.get('status')),
+            "poc": clean_value(inventory_item.get('poc')),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
-        # Process all inventory items from all rows
-        for item in item_data.get('inventory_items', []):
-            inventory_item = {
-                "zone_active": clean_value(item.get('zone_active')),
-                "sno": clean_value(item.get('sno')),
-                "name": clean_value(item.get('name')),
-                "description": clean_value(item.get('description')),
-                "quantity": clean_number_str(item.get('quantity')),
-                "material": clean_value(item.get('material')),
-                "comments": clean_value(item.get('comments')),
-                "total": clean_number_str(item.get('total')),
-                "unit": clean_value(item.get('unit')),
-                "per_unit_power": clean_number_str(item.get('per_unit_power')),
-                "total_power": clean_number_str(item.get('total_power')),
-                "status": clean_value(item.get('status')),
-                "poc": clean_value(item.get('poc'))
-            }
-            # Only add if at least one field has value
-            if any(v is not None for v in inventory_item.values()):
-                payload["inventory_items"].append(
-                    {k: v for k, v in inventory_item.items() if v is not None}
-                )
-
-        # Remove empty values from main payload
-        payload = {k: v for k, v in payload.items() if v is not None and v != []}
-
+        # Remove None values
+        payload = {k: v for k, v in payload.items() if v is not None}
+        
         logger.debug(f"Sending payload: {payload}")
 
-        # Use helper function for API request
         response = make_api_request(
             "POST",
             "to_event-create-item/",
             headers={"Content-Type": "application/json"},
             json=payload
         )
-
+        
+        response.raise_for_status()
         return response.json()
         
     except Exception as e:
@@ -182,7 +182,7 @@ def update_submitted_project_in_db(work_id: str, data: dict) -> bool:
         # Make PUT request with project_id in URL path
         response = make_api_request(
             "PUT",
-            f"/to_event-update-submitted-project-db/{work_id}",  # Project ID in URL path
+            f"to_event-update-submitted-project-db/{work_id}",  # Project ID in URL path
             headers={"Content-Type": "application/json"},
             json=update_payload
         )

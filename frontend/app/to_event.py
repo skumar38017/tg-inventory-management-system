@@ -71,21 +71,23 @@ class ToEventWindow:
         """Save data to the database via API"""
         try:
             work_id = data['work_id']
-            
-            # First check if project exists
-            existing_records = search_project_details_by_id(work_id)
-            
-            if not existing_records:
-                # Create new record
-                api_response = create_to_event_inventory_list(data)
-                logger.info(f"New record created via API: {api_response}")
-            else:
-                # Update existing record
-                if not update_submitted_project_in_db(work_id, data):
-                    raise Exception("Failed to update record via API")
-    
+
+            # First check if project exists - handle 404 as non-error case
+            try:
+                existing_records = search_project_details_by_id(work_id)
+                if existing_records:
+                    # Update existing record
+                    if not update_submitted_project_in_db(work_id, data):
+                        raise Exception("Failed to update record via API")
+                    return True
+            except Exception as e:
+                logger.warning(f"Project check failed, attempting create: {str(e)}")
+
+            # Create new record
+            api_response = create_to_event_inventory_list(data)
+            logger.info(f"New record created via API: {api_response}")
             return True
-        
+
         except Exception as e:
             logger.error(f"Failed to save to database: {str(e)}")
             return False
@@ -554,6 +556,7 @@ class ToEventWindow:
             row[9].insert(0, item['total_power'])
             row[10].insert(0, item['status'])
             row[11].insert(0, item['poc'])
+            row[12].insert(0, item['material'])
         
         # Switch back to form view
         self.tab_control.select(0)
@@ -608,7 +611,8 @@ class ToEventWindow:
                     'per_unit_power': row[8].get(),
                     'total_power': row[9].get(),
                     'status': row[10].get(),
-                    'poc': row[11].get()
+                    'poc': row[11].get(),
+                    'material': row[12].get()
                 }
                 data['inventory_items'].append(item)
 
@@ -701,6 +705,7 @@ class ToEventWindow:
                     self.project_name.get() or self.work_id.get()):
                 messagebox.showwarning("Warning", "Please fill in at least one field")
                 return
+        # Prepare data with all fields
         data = {
             'work_id': self.work_id.get(),
             'employee_name': self.employee_name.get(),
@@ -709,30 +714,22 @@ class ToEventWindow:
             'setup_date': self.setup_date.get(),
             'project_name': self.project_name.get(),
             'event_date': self.event_date.get(),
-            'inventory_items': []
+            'inventory_items': [{
+                'zone_active': self.table_entries[0][0].get(),
+                'sno': self.table_entries[0][1].get(),
+                'name': self.table_entries[0][2].get(),
+                'description': self.table_entries[0][3].get(),
+                'quantity': self.table_entries[0][4].get(),
+                'comments': self.table_entries[0][5].get(),
+                'total': self.table_entries[0][6].get(),
+                'unit': self.table_entries[0][7].get(),
+                'per_unit_power': self.table_entries[0][8].get(),
+                'total_power': self.table_entries[0][9].get(),
+                'status': self.table_entries[0][10].get(),
+                'poc': self.table_entries[0][11].get(),
+                'material': self.table_entries[0][12].get() if len(self.table_entries[0]) > 12 else ''
+            }]
         }
-
-        # Collect all non-empty inventory items from all rows
-        for row in self.table_entries:
-            item = {
-                'zone_active': row[0].get(),    # Zone/Activity
-                'sno': row[1].get(),            # Sr. No.
-                'name': row[2].get(),           # Inventory
-                'description': row[3].get(),     # Description
-                'quantity': row[4].get(),       # Quantity
-                'material': '',                 # Material (add field if needed)
-                'comments': row[5].get(),       # Comments
-                'total': row[6].get(),          # Total
-                'unit': row[7].get(),           # Units
-                'per_unit_power': row[8].get(), # Per Unit Power
-                'total_power': row[9].get(),    # Total Power
-                'status': row[10].get(),        # Status
-                'poc': row[11].get()            # POC
-            }
-
-            # Only add if at least one field has value
-            if any(value.strip() if value else False for value in item.values()):
-                data['inventory_items'].append(item)
 
         # Try to save to API
         try:
