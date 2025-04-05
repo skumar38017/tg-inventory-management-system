@@ -42,10 +42,10 @@ class ToEventInventoryBase(BaseModel):
     @field_validator('project_id', mode='before')
     def format_product_id(cls, v):
         if v is None:
-            raise ValueError("Product ID cannot be empty")
+            raise ValueError("Project_id cannot be empty")
         clean_id = re.sub(r'^PRJ', '', str(v))
         if not clean_id.isdigit():
-            raise ValueError("Product ID must contain only numbers after prefix")
+            raise ValueError("Project_idmust contain only numbers after prefix")
         return f"PRJ{clean_id}"
 
     @field_validator('created_at', 'updated_at', mode='before')
@@ -72,7 +72,19 @@ class ToEventInventoryCreate(ToEventInventoryBase):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
         }
- 
+
+class ToEventInventorySearch(BaseModel):
+    project_id: str
+    
+    @field_validator('project_id', mode='before')
+    def format_product_id(cls, v):
+        if v is None:
+            raise ValueError("Project_id cannot be empty")
+        clean_id = re.sub(r'^PRJ', '', str(v))
+        if not clean_id.isdigit():
+            raise ValueError("Project_id must contain only numbers after prefix")
+        return f"PRJ{clean_id}"
+    
 class ToEventInventoryOut(ToEventInventoryBase):
     uuid: str
     project_id: Optional[str] = None
@@ -219,9 +231,10 @@ class ToEventRedisOut(BaseModel):
     project_barcode_image_url: Optional[str] = None  # Add this new field
 
     class Config:
-        from_attributes = True  # This enables ORM mode
+        from_attributes = True
         json_encoders = {
-            datetime: lambda v: v.isoformat()
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()  # Add this line for date fields
         }
     @classmethod
     def from_redis(cls, redis_data: str):

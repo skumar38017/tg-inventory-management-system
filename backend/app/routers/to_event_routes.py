@@ -14,6 +14,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryBase,
     ToEventInventoryUpdateOut,
     ToEventInventoryUpload,
+    ToEventInventorySearch,
     ToEventRedis,
     ToEventRedisOut,
 )
@@ -94,4 +95,32 @@ async def load_submitted_project(
         return await service.load_submitted_project_from_db(db, skip)
     except Exception as e:
         logger.error(f"Error loading projects: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+# Search all project directly in local Redis  before submitting the form
+@router.get("/to_event-search-entries-by-project-id/",
+    response_model=List[ToEventRedisOut],
+    status_code=200,
+    summary="Search all entries in local Redis by project_id",
+    description="This endpoint searches all entries in local Redis by project_id and returns the results.",
+    response_model_exclude_unset=True,
+)
+async def search_by_project_id(
+    project_id: str = Query(..., description="Project ID to search for"),
+    db: AsyncSession = Depends(get_async_db),
+    service: ToEventInventoryService = Depends(get_to_event_service)
+):
+    try:
+        logger.info(f"Searching entries by project_id: {project_id}")
+        
+        # Use the search-specific schema
+        search_filter = ToEventInventorySearch(project_id=project_id)
+        
+        # Call the service to search entries by project_id
+        entries = await service.search_entries_by_project_id(db, search_filter)
+        
+        return entries
+        
+    except Exception as e:
+        logger.error(f"Error searching entries by project_id: {e}")
         raise HTTPException(status_code=400, detail=str(e))

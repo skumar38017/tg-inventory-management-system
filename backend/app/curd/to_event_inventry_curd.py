@@ -10,6 +10,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryBase,
     ToEventInventoryUpdate,
     ToEventInventoryUpdateOut,
+    ToEventInventorySearch,
     ToEventInventoryUpload,
     ToEventRedis,
     ToEventRedisOut,
@@ -22,6 +23,10 @@ from typing import List, Optional
 from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
+import redis.asyncio as redis
+from typing import List, Optional
+from fastapi import HTTPException
+from pydantic import ValidationError
 import json
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
@@ -37,7 +42,6 @@ class ToEventInventoryService(ToEventInventoryInterface):
     def __init__(self, base_url: str = config.BASE_URL):
         self.base_url = base_url
         self.barcode_generator = BarcodeGenerator()
-
 
     # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
     async def upload_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
@@ -180,6 +184,53 @@ class ToEventInventoryService(ToEventInventoryInterface):
             logger.error(f"Database error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Database error")
 
+    async def search_entries_by_project_id(
+        self,
+        db: AsyncSession,
+        search_filter: ToEventInventorySearch
+    ) -> List[ToEventRedisOut]:
+        try:
+            project_id = search_filter.project_id
+            if not project_id:
+                raise ValueError("Project ID is required")
+
+            # Check Redis first
+            redis_key = f"project:{project_id}"
+            redis_data = await redis_client.get(redis_key)
+
+            if redis_data:
+                try:
+                    redis_items = json.loads(redis_data)
+                    if isinstance(redis_items, list):
+                        return [ToEventRedisOut.model_validate(item) for item in redis_items]
+                    return [ToEventRedisOut.model_validate(json.loads(redis_data))]
+                except (json.JSONDecodeError, ValidationError) as e:
+                    logger.error(f"Invalid Redis data for {redis_key}: {e}")
+                    # Fall through to DB query
+
+            # Fallback to database
+            result = await db.execute(
+                select(ToEventInventory).where(ToEventInventory.project_id == project_id)
+            )
+            items = result.scalars().all()
+
+            # Convert to RedisOut format and serialize properly
+            db_items = [ToEventRedisOut.model_validate(item).model_dump() for item in items]
+
+            # Cache with proper JSON serialization
+            if db_items:
+                await redis_client.set(
+                    redis_key,
+                    json.dumps(db_items, default=str),  # Use default=str for dates
+                    ex=3600
+                )
+
+            return [ToEventRedisOut.model_validate(item) for item in db_items]
+
+        except Exception as e:
+            logger.error(f"Error in service during search: {e}")
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def get_project_by_project_id(self, db: AsyncSession, project_id: str) -> Optional[ToEventRedisOut]:
         try:
@@ -191,6 +242,8 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except SQLAlchemyError as e:
             logger.error(f"Database error fetching entry: {e}")
             raise HTTPException(status_code=500, detail="Database error")
+        
+
         
 # # Dependency function
 # def get_to_event_service():
