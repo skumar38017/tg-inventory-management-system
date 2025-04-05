@@ -11,6 +11,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryUpdateOut,
     ToEventRedis,
     ToEventRedisOut,
+    ToEventRedisUpdate
 )
 from pydantic import BaseModel
 from datetime import date
@@ -54,8 +55,34 @@ class ToEventInventoryInterface:
         Returns a list of ToEventRedisOut schema instances.
         """
         pass
-    # ------------------------------------------------------------------------------------------------
     
+    # Edit/Update exesting project directly in local Redis
+    async def update_to_event_project(
+        self, 
+        project_id: str,
+        update_data: ToEventRedisUpdate
+    ) -> Optional[ToEventRedisOut]:
+        """
+        Update an existing project in local Redis.
+        
+        This function protects immutable fields (uuid, sno, inventory_id, product_id, created_at)
+        and ensures that they cannot be modified.
+        
+        Args:
+            project_id (str): The unique identifier for the project to update.
+            update_data (ToEventRedisUpdate): The data used to update the project.
+        
+        Returns:
+            Optional[ToEventRedisOut]: The updated project data after the modification,
+                                        or None if the update fails or no changes were made.
+        """
+        # Logic for updating the project in Redis would go here.
+        # This might involve fetching the current project data,
+        # applying changes while protecting immutable fields,
+        # and then saving the updated data back into Redis.
+        
+        pass
+
     async def get_project_by_project_id(
         self, 
         db: AsyncSession, 
@@ -67,6 +94,7 @@ class ToEventInventoryInterface:
         """
         pass
 
+    # ------------------------------------------------------------------------------------------------
     async def update_entry(
         self,
         db: AsyncSession,

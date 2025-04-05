@@ -70,17 +70,20 @@ class ToEventWindow:
     def save_to_db(self, data):
         """Save data to the database via API"""
         try:
-            # For new records (no work_id match found in API)
-            if not search_project_details_by_id(data['work_id']):
+            work_id = data['work_id']
+            
+            # First check if project exists
+            existing_records = search_project_details_by_id(work_id)
+            
+            if not existing_records:
                 # Create new record
                 api_response = create_to_event_inventory_list(data)
                 logger.info(f"New record created via API: {api_response}")
-                print(api_response)
             else:
                 # Update existing record
-                if not update_submitted_project_in_db(data['work_id'], data):
+                if not update_submitted_project_in_db(work_id, data):
                     raise Exception("Failed to update record via API")
-
+    
             return True
         
         except Exception as e:
@@ -286,7 +289,7 @@ class ToEventWindow:
 
         # Create entry fields
         self.table_entries = []
-        for row in range(1, 6):  # 5 empty rows
+        for row in range(1, 2):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
                 entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
@@ -541,7 +544,7 @@ class ToEventWindow:
             row = self.table_entries[i]
             row[0].insert(0, item['zone_active'])
             row[1].insert(0, item['sno'])
-            row[2].insert(0, item['inventory'])
+            row[2].insert(0, item['name'])
             row[3].insert(0, item['description'])
             row[4].insert(0, item['quantity'])
             row[5].insert(0, item['comments'])
@@ -596,7 +599,7 @@ class ToEventWindow:
                 item = {
                     'zone_active': row[0].get(),
                     'sno': row[1].get(),
-                    'inventory': row[2].get(),
+                    'name': row[2].get(),
                     'description': row[3].get(),
                     'quantity': row[4].get(),
                     'comments': row[5].get(),
