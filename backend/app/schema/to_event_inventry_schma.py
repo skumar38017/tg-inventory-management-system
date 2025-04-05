@@ -218,6 +218,11 @@ class ToEventRedisOut(BaseModel):
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None  # Add this new field
 
+    class Config:
+        from_attributes = True  # This enables ORM mode
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
     @classmethod
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)

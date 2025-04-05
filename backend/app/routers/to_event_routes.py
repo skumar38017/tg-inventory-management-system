@@ -58,7 +58,7 @@ async def upload_inventory_item_route(
 
 # CREATE: Add a new to_event entry inventory store in directly in redis
 @router.post("/to_event-create-item/",
-    response_model=ToEventRedis,
+    response_model=ToEventRedisOut,
     status_code=200,
     summary="Create a new entry in the inventory",
     description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
@@ -74,4 +74,24 @@ async def create_inventory_item_route(
         return await service.create_to_event_inventory(db, item)
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+# Load submitted from local redis
+@router.get("/to_event-load-submitted-project-db/",
+    response_model=List[ToEventRedisOut],
+    status_code=200,
+    summary="Load submitted projects from database",
+    description="This endpoint retrieves submitted projects from the database with pagination support.",
+    response_model_exclude_unset=True,
+)
+async def load_submitted_project(
+    skip: int = Query(0, description="Number of items to skip for pagination"),
+    db: AsyncSession = Depends(get_async_db),
+    service: ToEventInventoryService = Depends(get_to_event_service)
+):
+    try:
+        logger.info(f"Loading submitted projects from database, skip={skip}")
+        return await service.load_submitted_project_from_db(db, skip)
+    except Exception as e:
+        logger.error(f"Error loading projects: {e}")
         raise HTTPException(status_code=400, detail=str(e))

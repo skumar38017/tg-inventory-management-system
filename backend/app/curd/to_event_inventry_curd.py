@@ -167,14 +167,15 @@ class ToEventInventoryService(ToEventInventoryInterface):
             raise HTTPException(status_code=500, detail=f"Failed to create inventory: {str(e)}")
     
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
-    async def get_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
         try:
             result = await db.execute(
                 select(ToEventInventory)
-                .order_by(ToEventInventory.name)  # Alphabetical order
+                .order_by(ToEventInventory.updated_at)
                 .offset(skip)
             )
-            return result.scalars().all()
+            items = result.scalars().all()
+            return [ToEventRedisOut.model_validate(item) for item in items] 
         except SQLAlchemyError as e:
             logger.error(f"Database error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Database error")

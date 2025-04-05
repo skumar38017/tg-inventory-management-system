@@ -36,12 +36,15 @@ class ToEventInventoryInterface:
         pass
     
         
-    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[ToEventInventoryUpdateOut]:
+    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventInventoryUpdateOut]:
         """
         Retrieve all ToEventInventory entries.
         This method will return a list of ToEventInventoryOut schema instances.
         """
         pass
+
+
+    # ------------------------------------------------------------------------------------------------
     
     async def get_project_by_project_id(
         self, 

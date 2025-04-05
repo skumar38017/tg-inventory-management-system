@@ -9,7 +9,11 @@ import random
 import string
 import json
 import os
-from .api_request.to_event_inventory_request import (create_to_event_inventory_list, 
+from .api_request.to_event_inventory_request import (
+    create_to_event_inventory_list, 
+    load_submitted_project_from_db,
+    update_submitted_project_in_db,
+    search_project_details_by_id
                             )
 
 logger = logging.getLogger(__name__)
@@ -62,47 +66,39 @@ class ToEventWindow:
             with open(self.db_file, 'w') as f:
                 json.dump([], f)
 
+    # Save data to the database via API
     def save_to_db(self, data):
-        """Save data to the JSON database"""
+        """Save data to the database via API"""
         try:
-            with open(self.db_file, 'r') as f:
-                records = json.load(f)
-            
-            # Check if this work_id already exists
-            existing_index = None
-            for i, record in enumerate(records):
-                if record['work_id'] == data['work_id']:
-                    existing_index = i
-                    break
-            
-            if existing_index is not None:
-                # Update existing record
-                records[existing_index] = data
+            # For new records (no work_id match found in API)
+            if not search_project_details_by_id(data['work_id']):
+                # Create new record
+                api_response = create_to_event_inventory_list(data)
+                logger.info(f"New record created via API: {api_response}")
+                print(api_response)
             else:
-                # Add new record
-                records.append(data)
-            
-            with open(self.db_file, 'w') as f:
-                json.dump(records, f, indent=4)
-            
+                # Update existing record
+                if not update_submitted_project_in_db(data['work_id'], data):
+                    raise Exception("Failed to update record via API")
+
             return True
+        
         except Exception as e:
             logger.error(f"Failed to save to database: {str(e)}")
             return False
 
+    # Load data from API only
     def load_from_db(self, work_id=None):
-        """Load data from the JSON database"""
+        """Load data from API only"""
         try:
-            with open(self.db_file, 'r') as f:
-                records = json.load(f)
-            
             if work_id:
-                for record in records:
-                    if record['work_id'] == work_id:
-                        return record
-                return None
+                # Load single record by work_id
+                records = search_project_details_by_id(work_id)
+                return records[0] if records else None
             else:
-                return records
+                # Load all records
+                return load_submitted_project_from_db()
+
         except Exception as e:
             logger.error(f"Failed to load from database: {str(e)}")
             return None
@@ -575,8 +571,9 @@ class ToEventWindow:
         self.update_btn.config(state=tk.NORMAL)
         logger.info("Editing record")
 
+    # Update record in database
     def update_record(self):
-        """Update the record in database"""
+        """Update the record in database via API"""
         try:
             work_id = self.work_id.get()
             if not work_id:
@@ -585,7 +582,7 @@ class ToEventWindow:
                 
             # Prepare the data to be saved
             data = {
-                'work_id': work_id,  # Work ID never changes
+                'work_id': work_id,
                 'employee_name': self.employee_name.get(),
                 'location': self.location.get(),
                 'client_name': self.client_name.get(),
@@ -611,18 +608,18 @@ class ToEventWindow:
                     'poc': row[11].get()
                 }
                 data['inventory_items'].append(item)
-            
+
             if not self.save_to_db(data):
                 raise Exception("Failed to save to database")
             
             messagebox.showinfo("Success", "Record updated successfully")
             logger.info(f"Record updated: {data}")
-            
+
             # Set fields back to readonly
             self.set_fields_readonly(True)
             self.edit_btn.config(state=tk.NORMAL)
             self.update_btn.config(state=tk.DISABLED)
-            
+
             # Refresh submitted forms tab
             self.load_submitted_forms()
             
@@ -691,7 +688,8 @@ class ToEventWindow:
             entry.destroy()
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
+    
+    # Submit form to API
     def submit_form(self):
         """Handle form submission"""
         if not self.employee_name.get() or not self.client_name.get():
@@ -699,7 +697,7 @@ class ToEventWindow:
             return
             
         data = {
-            'work_id': self.work_id.get(),  # Work ID never changes
+            'work_id': self.work_id.get(),
             'employee_name': self.employee_name.get(),
             'location': self.location.get(),
             'client_name': self.client_name.get(),
@@ -708,7 +706,8 @@ class ToEventWindow:
             'event_date': self.event_date.get(),
             'inventory_items': []
         }
-        
+
+        # Collect non-empty inventory items
         for row in self.table_entries:
             item = {
                 'zone_activity': row[0].get(),
@@ -724,15 +723,22 @@ class ToEventWindow:
                 'status': row[10].get(),
                 'poc': row[11].get()
             }
-            data['inventory_items'].append(item)
+            if any(value for value in item.values()):
+                data['inventory_items'].append(item)
         
-        if not self.save_to_db(data):
-            messagebox.showerror("Error", "Failed to save record")
+        # Try to save to API
+        try:
+            if not self.save_to_db(data):
+                raise Exception("Failed to save to database")
+
+            messagebox.showinfo("Success", "Form submitted successfully")
+            logger.info(f"Form submitted: {data}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to submit form: {str(e)}")
+            logger.error(f"Submit failed: {str(e)}")
             return
-        
-        messagebox.showinfo("Success", "Form submitted successfully")
-        logger.info(f"Form submitted: {data}")
-        
+
         # Clear form and generate new WorkID
         self.clear_form()
         self.generate_work_id()
