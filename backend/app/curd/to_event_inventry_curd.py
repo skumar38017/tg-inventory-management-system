@@ -12,6 +12,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryUpdateOut,
     ToEventInventorySearch,
     ToEventInventoryUpload,
+    ToEventRedisUpdate,
     ToEventRedis,
     ToEventRedisOut,
 )
@@ -44,61 +45,116 @@ class ToEventInventoryService(ToEventInventoryInterface):
         self.barcode_generator = BarcodeGenerator()
 
     # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
-    async def upload_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+    async def upload_to_event_inventory(self, db: AsyncSession) -> List[ToEventRedisOut]:
         try:
-            redis_keys = await redis_client.keys("to_event_inventory:*")
-            uploaded_entries = []
+            # Get all relevant Redis keys
+            inventory_keys = await redis_client.keys("to_event_inventory:*")
+            project_keys = await redis_client.keys("project:*")
+            all_keys = inventory_keys + project_keys
 
-            for key in redis_keys:
+            if not all_keys:
+                logger.info("No Redis entries found to upload")
+                return []
+
+            uploaded_entries = []
+            success_count = 0
+            error_count = 0
+            processed_project_ids = set()
+
+            for key in all_keys:
                 try:
+                    # Get and parse Redis data
                     redis_data = await redis_client.get(key)
+                    if not redis_data:
+                        continue
+
                     entry_data = json.loads(redis_data)
 
-                    # Handle empty image URLs
-                    if entry_data.get('project_barcode_image_url') == '':
-                        entry_data['project_barcode_image_url'] = None
+                    # Handle both single items and lists
+                    items_to_process = [entry_data] if isinstance(entry_data, dict) else entry_data
 
-                    redis_entry = ToEventRedisOut(**entry_data)
-
-                    # Try to update existing record first
-                    existing = await db.execute(
-                        select(ToEventInventory)
-                        .where(ToEventInventory.uuid == redis_entry.uuid)
-                    )
-                    existing = existing.scalar_one_or_none()
-
-                    if existing:
-                        # Update logic
-                        for field, value in redis_entry.dict().items():
-                            if hasattr(existing, field) and field != "uuid":
-                                setattr(existing, field, value)
-                    else:
-                        # Insert new record with error handling
+                    for item_data in items_to_process:
                         try:
-                            new_entry = ToEventInventory(**redis_entry.dict())
-                            db.add(new_entry)
-                            await db.flush()  # Test the insert immediately
+                            # Skip if no project_id
+                            if not item_data.get('project_id'):
+                                logger.warning(f"Skipping entry with missing project_id from key {key}")
+                                continue
+
+                            # Skip if we've already processed this project_id
+                            if item_data['project_id'] in processed_project_ids:
+                                continue
+
+                            processed_project_ids.add(item_data['project_id'])
+
+                            # Clean empty values
+                            if item_data.get('project_barcode_image_url') == '':
+                                item_data['project_barcode_image_url'] = None
+
+                            # Convert to Pydantic model
+                            redis_entry = ToEventRedisOut(**item_data)
+                            entry_dict = redis_entry.dict(exclude={'created_at', 'updated_at'})
+
+                            # Check for existing record
+                            existing = await db.execute(
+                                select(ToEventInventory)
+                                .where(ToEventInventory.project_id == redis_entry.project_id)
+                            )
+                            existing = existing.scalar_one_or_none()
+
+                            if existing:
+                                # Merge strategy for existing records
+                                for field, value in entry_dict.items():
+                                    if hasattr(existing, field) and value is not None:
+                                        # Preserve newer data
+                                        redis_timestamp = redis_entry.updated_at
+                                        db_timestamp = getattr(existing, 'updated_at', None)
+
+                                        if (field == 'updated_at' or 
+                                            (db_timestamp and redis_timestamp <= db_timestamp)):
+                                            continue
+
+                                        setattr(existing, field, value)
+
+                                existing.updated_at = datetime.now(timezone.utc)
+                                logger.info(f"Merged existing record: {redis_entry.project_id}")
+                            else:
+                                # Create new record
+                                new_entry = ToEventInventory(**entry_dict)
+                                db.add(new_entry)
+                                logger.info(f"Created new record: {redis_entry.project_id}")
+
+                            uploaded_entries.append(redis_entry)
+                            success_count += 1
+
                         except Exception as e:
-                            logger.warning(f"Skipping duplicate entry {redis_entry.uuid}: {str(e)}")
+                            error_count += 1
+                            logger.error(f"Error processing item {item_data.get('project_id')}: {str(e)}")
                             continue
-                        
-                    uploaded_entries.append(redis_entry)
 
                 except Exception as e:
-                    logger.error(f"Error processing {key}: {str(e)}")
+                    error_count += 1
+                    logger.error(f"Error processing Redis key {key}: {str(e)}")
                     continue
-
+                
             await db.commit()
-            return sorted(uploaded_entries, key=lambda x: x.name or "")
+
+            # Optional: Clear processed Redis keys
+            # if success_count > 0:
+            #     await redis_client.delete(*all_keys)
+
+            logger.info(
+                f"Upload completed: {success_count} successes, {error_count} errors\n"
+                f"Processed keys: {len(inventory_keys)} inventory, {len(project_keys)} projects"
+            )
+            return uploaded_entries
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error during upload: {e}")
             await db.rollback()
-            raise HTTPException(status_code=500, detail="Database error during upload")
+            logger.error(f"Database error during upload: {e}")
+            raise HTTPException(status_code=500, detail="Database operation failed")
         except Exception as e:
-            logger.error(f"Unexpected error during upload: {e}")
-            raise HTTPException(status_code=500, detail="Failed to upload data from Redis")
-    
+            logger.error(f"Unexpected upload error: {e}")
+            raise HTTPException(status_code=500, detail="Upload process failed")    
 
 # ------------------------------------------------------------------------------------------------
     #  Create new entry of inventory for to_event which is directly stored in redis
@@ -196,13 +252,16 @@ class ToEventInventoryService(ToEventInventoryInterface):
 
             # Check Redis first
             redis_key = f"project:{project_id}"
+            print(f"Searching for {redis_key}")
             redis_data = await redis_client.get(redis_key)
+            print(f"Found {redis_data}")
 
             if redis_data:
                 try:
                     redis_items = json.loads(redis_data)
                     if isinstance(redis_items, list):
                         return [ToEventRedisOut.model_validate(item) for item in redis_items]
+                    print(f"Found {len(redis_items)} items in Redis")
                     return [ToEventRedisOut.model_validate(json.loads(redis_data))]
                 except (json.JSONDecodeError, ValidationError) as e:
                     logger.error(f"Invalid Redis data for {redis_key}: {e}")
@@ -213,6 +272,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                 select(ToEventInventory).where(ToEventInventory.project_id == project_id)
             )
             items = result.scalars().all()
+            print(f"Found {len(items)} items in DB")
 
             # Convert to RedisOut format and serialize properly
             db_items = [ToEventRedisOut.model_validate(item).model_dump() for item in items]
@@ -243,8 +303,53 @@ class ToEventInventoryService(ToEventInventoryInterface):
             logger.error(f"Database error fetching entry: {e}")
             raise HTTPException(status_code=500, detail="Database error")
         
+    # Update Project in local Redis
+    async def update_to_event_project(
+        self,
+        project_id: str,
+        update_data: ToEventRedisUpdate
+    ) -> ToEventRedisOut:
+        try:
+            to_event_inventory = f"to_event_inventory:{project_id}"
+            redis_data = await redis_client.get(to_event_inventory)
 
-        
-# # Dependency function
-# def get_to_event_service():
-#     return ToEventInventoryService()
+            if not redis_data:
+                raise HTTPException(status_code=404, detail="Item not found in Redis")
+
+            existing_data = json.loads(redis_data)
+
+            # Handle both single item and list cases
+            items = [existing_data] if isinstance(existing_data, dict) else existing_data
+
+            if not items:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            # Convert update data to dict
+            update_dict = update_data.dict(exclude_unset=True)
+
+            # Find and update matching item
+            updated = False
+            for item in items:
+                if item.get('project_id') == project_id:
+                    item.update(update_dict)
+                    updated = True
+                    break
+
+            if not updated:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            # Save back to Redis
+            await redis_client.set(
+                to_event_inventory,
+                json.dumps(items, default=str)
+            )
+
+            return ToEventRedisOut(**items[0])
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            raise HTTPException(status_code=400, detail="Invalid data format in Redis")
+        except Exception as e:
+            logger.error(f"Error updating item in Redis: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+

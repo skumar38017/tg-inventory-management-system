@@ -7,6 +7,7 @@ import uuid
 import re
 from tkinter import messagebox
 from datetime import datetime, timezone, date
+from ..config import *
 
 logger = logging.getLogger(__name__)
 
@@ -348,3 +349,27 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None, pro
         logger.error(f"Search validation error: {e}")
         messagebox.showwarning("Search Error", str(e))
         return []
+    
+async def upload_to_event_data():
+    """Trigger upload of Redis data to main database"""
+    try:
+        response = await make_api_request(
+            "POST",
+            "to_event-upload-data/",
+            headers={"Content-Type": "application/json"}
+        )
+        
+        if response.status_code == 200:
+            uploaded_count = len(response.json())
+            messagebox.showinfo("Success", 
+                              f"Successfully uploaded {uploaded_count} records")
+            return True
+        else:
+            messagebox.showerror("Error", 
+                                "Failed to upload data from Redis")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Upload failed: {str(e)}")
+        messagebox.showerror("Error", "Failed to connect to upload service")
+        return False

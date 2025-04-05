@@ -37,7 +37,6 @@ class ToEventInventoryBase(BaseModel):
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
         }
-        extra = "forbid"  # Strict validation
     
     @field_validator('project_id', mode='before')
     def format_product_id(cls, v):
@@ -198,6 +197,49 @@ class ToEventRedis(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
+
+# Schema to Update record from Redis after clicking {Update} button
+class ToEventRedisUpdate(BaseModel):
+    """Schema for updating inventory in Redis"""
+    sno: Optional[str] = None
+    employee_name: Optional[str] = None  
+    location: Optional[str] = None
+    client_name: Optional[str] = None
+    setup_date: Optional[date] = None
+    project_name: Optional[str] = None
+    event_date: Optional[date] = None
+    zone_active: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    quantity: Optional[str] = None
+    material: Optional[str] = None
+    comments: Optional[str] = None
+    total: Optional[str] = None
+    unit: Optional[str] = None
+    per_unit_power: Optional[str] = None
+    total_power: Optional[str] = None
+    status: Optional[str] = None
+    poc: Optional[str] = None
+    submitted_by: Optional[str] = None
+    updated_at: Optional[datetime] = None  # Add this line
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
+        }
+        
+    @validator('setup_date', 'event_date', 'updated_at', pre=True)  # Add 'updated_at' here
+    def parse_dates(cls, v):
+        if isinstance(v, str):
+            try:
+                if len(v) == 10:  # Date format
+                    return datetime.strptime(v, "%Y-%m-%d").date()
+                else:  # DateTime format
+                    return datetime.fromisoformat(v)
+            except ValueError:
+                return v
+        return v
 
 # Schema to Show record from Redis after clicking {Show All} button
 class ToEventRedisOut(BaseModel):

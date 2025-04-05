@@ -12,7 +12,29 @@ from ..config import *
 
 logger = logging.getLogger(__name__)
 
-project_id = 'work_id'
+# Search for Project with there inventory list by [Project_id] by clicking search
+project_id = 'work_id'  # Makes it clear this is a field name
+DEFAULT_SUBMITTED_BY = "inventory-admin"
+
+def search_project_details_by_id(work_id: str) -> List[Dict]:
+    """Fetch inventory data filtered by a single work_id from the API"""
+    if not work_id or not str(work_id).strip():
+        logger.error("Empty work_id provided for search")
+        messagebox.showwarning("Search Error", "Project ID is required for searching")
+        return []
+    
+    try:
+        response = make_api_request(
+            "GET",
+            f"/to_event-search-entries-by-project-id/{work_id}"
+        )
+        return [format_project_item(item) for item in response.json()]
+    except Exception as e:
+        error_msg = "Could not fetch inventory data"
+        logger.error(f"{error_msg}: {str(e)}")
+        messagebox.showerror("Error", error_msg)
+        return []
+
 # Create to-event inventry list request api
 def create_to_event_inventory_list(item_data: dict):
     """Inventory item creation with all fields optional"""
@@ -35,10 +57,13 @@ def create_to_event_inventory_list(item_data: dict):
                 return None
 
         def clean_date(date_str):
-            try:
-                if date_str:
-                    return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
+            if not date_str:
                 return None
+            try:
+                # Handle both date strings and datetime objects
+                if isinstance(date_str, (date, datetime)):
+                    return date_str.isoformat()
+                return datetime.strptime(str(date_str), '%Y-%m-%d').date().isoformat()
             except (ValueError, TypeError):
                 return None
         
@@ -123,14 +148,45 @@ def load_submitted_project_from_db() -> List[Dict]:
 
 # Update data into existing record of ``work_id`` in the API
 def update_submitted_project_in_db(work_id: str, data: dict) -> bool:
-    """Update submitted forms in the API"""
+    """Update submitted forms in Redis via API"""
     try:
+        # Prepare update payload
+        update_payload = {
+            "employee_name": data.get('employee_name'),
+            "location": data.get('location'),
+            "client_name": data.get('client_name'),
+            "setup_date": data.get('setup_date'),
+            "project_name": data.get('project_name'),
+            "event_date": data.get('event_date'),
+            "inventory_items": []
+        }
+        
+        # Add inventory items
+        for item in data.get('inventory_items', []):
+            update_payload['inventory_items'].append({
+                "zone_active": item.get('zone_active'),
+                "sno": item.get('sno'),
+                "name": item.get('name'),
+                "description": item.get('description'),
+                "quantity": item.get('quantity'),
+                "material": item.get('material'),
+                "comments": item.get('comments'),
+                "total": item.get('total'),
+                "unit": item.get('unit'),
+                "per_unit_power": item.get('per_unit_power'),
+                "total_power": item.get('total_power'),
+                "status": item.get('status'),
+                "poc": item.get('poc')
+            })
+        
+        # Make PUT request with project_id in URL path
         response = make_api_request(
-            "PUT",  # Changed from POST to PUT for updates
-            f"to_event-update-submitted-project-db/{work_id}",
+            "PUT",
+            f"/to_event-update-submitted-project-db/{work_id}",  # Project ID in URL path
             headers={"Content-Type": "application/json"},
-            json=data
+            json=update_payload
         )
+        
         return True
         
     except Exception as e:
@@ -138,32 +194,6 @@ def update_submitted_project_in_db(work_id: str, data: dict) -> bool:
         logger.error(f"{error_msg}: {str(e)}")
         messagebox.showerror("Error", error_msg)
         return False
-
-# Search for Project with there inventory list by [Project_id] by clicking search
-def search_project_details_by_id(work_id: str) -> List[Dict]:
-    """Fetch inventory data filtered by a single ID from the API"""
-    try:
-        if not work_id:
-            raise ValueError("Project ID is required for searching")
-
-        response = make_api_request(
-            "GET",
-            "search-to-event-inventory/",
-            params={"project_id": work_id}
-        )
-        
-        return [format_project_item(item) for item in response.json()]
-        
-    except ValueError as e:
-        logger.error(f"Search validation error: {str(e)}")
-        messagebox.showwarning("Search Error", str(e))
-        return []
-    except Exception as e:
-        error_msg = "Could not fetch inventory data"
-        logger.error(f"{error_msg}: {str(e)}")
-        messagebox.showerror("Error", error_msg)
-        return []
-
 
 # Add new inventory items to the database with proper data formatting
 def format_project_item(item: dict) -> dict:
