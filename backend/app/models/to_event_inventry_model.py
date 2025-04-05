@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 class ToEventInventory(Base):
     __tablename__ = "to_event_inventory"  # Fixed typo in table name (was "inventry")
     
-    uuid = Column(String, primary_key=True)  # Added default UUID generation
+    uuid = Column(String, primary_key=True)  
     sno = Column(String, nullable=True)
     name = Column(String, nullable=True)
     zone_active = Column(String, nullable=True)

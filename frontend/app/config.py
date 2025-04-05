@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 #  url for the API
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1/")
-REQUEST_TIMEOUT = 10
 
 
 def make_api_request(method, endpoint, **kwargs):
@@ -29,7 +28,6 @@ def make_api_request(method, endpoint, **kwargs):
         response = requests.request(
             method,
             url,
-            timeout=REQUEST_TIMEOUT,
             **kwargs
         )
         response.raise_for_status()

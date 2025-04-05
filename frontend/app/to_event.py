@@ -539,15 +539,15 @@ class ToEventWindow:
                 break
                 
             row = self.table_entries[i]
-            row[0].insert(0, item['zone_activity'])
-            row[1].insert(0, item['sr_no'])
+            row[0].insert(0, item['zone_active'])
+            row[1].insert(0, item['sno'])
             row[2].insert(0, item['inventory'])
             row[3].insert(0, item['description'])
             row[4].insert(0, item['quantity'])
             row[5].insert(0, item['comments'])
             row[6].insert(0, item['total'])
-            row[7].insert(0, item['units'])
-            row[8].insert(0, item['power_per_unit'])
+            row[7].insert(0, item['unit'])
+            row[8].insert(0, item['per_unit_power'])
             row[9].insert(0, item['total_power'])
             row[10].insert(0, item['status'])
             row[11].insert(0, item['poc'])
@@ -594,15 +594,15 @@ class ToEventWindow:
             
             for row in self.table_entries:
                 item = {
-                    'zone_activity': row[0].get(),
-                    'sr_no': row[1].get(),
+                    'zone_active': row[0].get(),
+                    'sno': row[1].get(),
                     'inventory': row[2].get(),
                     'description': row[3].get(),
                     'quantity': row[4].get(),
                     'comments': row[5].get(),
                     'total': row[6].get(),
-                    'units': row[7].get(),
-                    'power_per_unit': row[8].get(),
+                    'unit': row[7].get(),
+                    'per_unit_power': row[8].get(),
                     'total_power': row[9].get(),
                     'status': row[10].get(),
                     'poc': row[11].get()
@@ -691,11 +691,13 @@ class ToEventWindow:
     
     # Submit form to API
     def submit_form(self):
-        """Handle form submission"""
-        if not self.employee_name.get() or not self.client_name.get():
-            messagebox.showwarning("Warning", "Please fill in all required fields")
-            return
-            
+        """Handle form submission with multiple inventory items"""
+        # All fields are optional except basic validation
+        if not any(entry.get() for row in self.table_entries for entry in row):
+            if not (self.employee_name.get() or self.client_name.get() or 
+                    self.project_name.get() or self.work_id.get()):
+                messagebox.showwarning("Warning", "Please fill in at least one field")
+                return
         data = {
             'work_id': self.work_id.get(),
             'employee_name': self.employee_name.get(),
@@ -707,25 +709,28 @@ class ToEventWindow:
             'inventory_items': []
         }
 
-        # Collect non-empty inventory items
+        # Collect all non-empty inventory items from all rows
         for row in self.table_entries:
             item = {
-                'zone_activity': row[0].get(),
-                'sr_no': row[1].get(),
-                'inventory': row[2].get(),
-                'description': row[3].get(),
-                'quantity': row[4].get(),
-                'comments': row[5].get(),
-                'total': row[6].get(),
-                'units': row[7].get(),
-                'power_per_unit': row[8].get(),
-                'total_power': row[9].get(),
-                'status': row[10].get(),
-                'poc': row[11].get()
+                'zone_active': row[0].get(),    # Zone/Activity
+                'sno': row[1].get(),            # Sr. No.
+                'name': row[2].get(),           # Inventory
+                'description': row[3].get(),     # Description
+                'quantity': row[4].get(),       # Quantity
+                'material': '',                 # Material (add field if needed)
+                'comments': row[5].get(),       # Comments
+                'total': row[6].get(),          # Total
+                'unit': row[7].get(),           # Units
+                'per_unit_power': row[8].get(), # Per Unit Power
+                'total_power': row[9].get(),    # Total Power
+                'status': row[10].get(),        # Status
+                'poc': row[11].get()            # POC
             }
-            if any(value for value in item.values()):
+
+            # Only add if at least one field has value
+            if any(value.strip() if value else False for value in item.values()):
                 data['inventory_items'].append(item)
-        
+
         # Try to save to API
         try:
             if not self.save_to_db(data):
@@ -742,7 +747,7 @@ class ToEventWindow:
         # Clear form and generate new WorkID
         self.clear_form()
         self.generate_work_id()
-        
+
         # Refresh submitted forms tab
         self.load_submitted_forms()
         self.tab_control.select(self.submitted_tab)
