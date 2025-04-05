@@ -11,9 +11,9 @@ class ToEventInventoryBase(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date:  date
+    setup_date:  Optional[date] = None
     project_name: Optional[str] = None
-    event_date: date
+    event_date: Optional[date] = None
     zone_active: Optional[str] = None
     sno: Optional[str] = None
     name: Optional[str] = None
@@ -83,7 +83,7 @@ class ToEventInventorySearch(BaseModel):
         if not clean_id.isdigit():
             raise ValueError("Project_id must contain only numbers after prefix")
         return f"PRJ{clean_id}"
-    
+        
 class ToEventInventoryOut(ToEventInventoryBase):
     uuid: str
     project_id: Optional[str] = None
@@ -125,9 +125,7 @@ class ToEventInventoryOut(ToEventInventoryBase):
             date: lambda v: v.isoformat()  # For pure date fields
         }
 
-class ToEventInventoryUpload(ToEventInventoryOut):
-    pass
-
+    
 class ToEventInventoryUpdate(BaseModel):
     employee_name: Optional[str] = None
     client_name: Optional[str] = None
@@ -250,9 +248,9 @@ class ToEventRedisOut(BaseModel):
     employee_name: Optional[str] = None  
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date:  date
+    setup_date:  Optional[date] = None
     project_name: Optional[str] = None
-    event_date: date
+    event_date: Optional[date] = None
     zone_active: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None

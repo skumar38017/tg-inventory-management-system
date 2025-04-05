@@ -45,7 +45,7 @@ class ToEventInventory(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
     project_barcode = Column(String, unique=True, nullable=True)
     project_barcode_unique_code = Column(String, unique=True, nullable=True)
-    project_barcode_image_url = Column(String, nullable=True, unique=True, default=None)
+    project_barcode_image_url = Column(String, nullable=True, default=None)
     
     __table_args__ = (
         Index('ix_to_event_inventory_created_at', 'created_at'),
