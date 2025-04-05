@@ -12,7 +12,7 @@ from ..config import *
 
 logger = logging.getLogger(__name__)
 
-
+project_id = 'work_id'
 # Create to-event inventry list request api
 def create_to_event_inventory_list(item_data: dict):
     """Inventory item creation with all fields optional"""
@@ -140,16 +140,16 @@ def update_submitted_project_in_db(work_id: str, data: dict) -> bool:
         return False
 
 # Search for Project with there inventory list by [Project_id] by clicking search
-def search_project_details_by_id(project_id: str) -> List[Dict]:
+def search_project_details_by_id(work_id: str) -> List[Dict]:
     """Fetch inventory data filtered by a single ID from the API"""
     try:
-        if not project_id:
+        if not work_id:
             raise ValueError("Project ID is required for searching")
 
         response = make_api_request(
             "GET",
             "search-to-event-inventory/",
-            params={"project_id": project_id}
+            params={"project_id": work_id}
         )
         
         return [format_project_item(item) for item in response.json()]

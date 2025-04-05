@@ -44,6 +44,16 @@ class ToEventInventoryInterface:
         pass
 
 
+    async def search_entries_by_project_id(
+        self,
+        db: AsyncSession,
+        search_filter: ToEventInventoryBase
+    ) -> List[ToEventRedisOut]:
+        """
+        Search all entries in local Redis by project_id.
+        Returns a list of ToEventRedisOut schema instances.
+        """
+        pass
     # ------------------------------------------------------------------------------------------------
     
     async def get_project_by_project_id(
