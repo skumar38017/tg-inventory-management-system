@@ -714,22 +714,27 @@ class ToEventWindow:
             'setup_date': self.setup_date.get(),
             'project_name': self.project_name.get(),
             'event_date': self.event_date.get(),
-            'inventory_items': [{
-                'zone_active': self.table_entries[0][0].get(),
-                'sno': self.table_entries[0][1].get(),
-                'name': self.table_entries[0][2].get(),
-                'description': self.table_entries[0][3].get(),
-                'quantity': self.table_entries[0][4].get(),
-                'comments': self.table_entries[0][5].get(),
-                'total': self.table_entries[0][6].get(),
-                'unit': self.table_entries[0][7].get(),
-                'per_unit_power': self.table_entries[0][8].get(),
-                'total_power': self.table_entries[0][9].get(),
-                'status': self.table_entries[0][10].get(),
-                'poc': self.table_entries[0][11].get(),
-                'material': self.table_entries[0][12].get() if len(self.table_entries[0]) > 12 else ''
-            }]
+            'inventory_items': []
         }
+    
+        # Add all inventory items
+        for row in self.table_entries:
+            if any(entry.get() for entry in row):  # Only add rows with data
+                data['inventory_items'].append({
+                    'zone_active': row[0].get(),
+                    'sno': row[1].get(),
+                    'name': row[2].get(),
+                    'description': row[3].get(),
+                    'quantity': row[4].get(),
+                    'comments': row[5].get(),
+                    'total': row[6].get(),
+                    'unit': row[7].get(),
+                    'per_unit_power': row[8].get(),
+                    'total_power': row[9].get(),
+                    'status': row[10].get(),
+                    'poc': row[11].get(),
+                    'material': row[12].get() if len(row) > 12 else ''
+                })
 
         # Try to save to API
         try:
