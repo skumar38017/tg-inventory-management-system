@@ -1,5 +1,5 @@
 # backend/app/schema/to_event_inventry_schma.py
-from pydantic import BaseModel, field_validator, ConfigDict, Field
+from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
 from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 import uuid
@@ -312,7 +312,7 @@ class ToEventUploadSchema(BaseModel):
     project_name: Optional[str] = None
     event_date: Optional[date] = None
     submitted_by: Optional[str] = None
-    inventory_items: List[RedisInventoryItem] = []
+    inventory_items: List[RedisInventoryItem]=[]
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     project_barcode: Optional[str] = None
@@ -356,18 +356,36 @@ class ToEventUploadSchema(BaseModel):
         data['items'] = [item.model_dump(exclude={'project_id'}) for item in self.inventory_items]
         return data
 
+
 class ToEventUploadResponse(BaseModel):
     success: bool
     message: str
     project_id: str
     inventory_items_count: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    cretaed_at: Optional[datetime] = None  # Keep for backward compatibility
 
-    @field_validator('created_at', mode='before')
-    def handle_created_at_typo(cls, v, values):
-        if v is None and 'cretaed_at' in values.data:
-            return values.data['cretaed_at']
-        return v
+    @model_validator(mode='before')
+    def handle_timestamps(cls, data: dict) -> dict:
+        now = datetime.now(timezone.utc)
+        
+        # Handle the typo field first
+        if 'cretaed_at' in data and data['cretaed_at'] is not None:
+            if data.get('created_at') is None:
+                data['created_at'] = data['cretaed_at']
+        
+        # Ensure we have values for required timestamps
+        if data.get('created_at') is None:
+            data['created_at'] = now
+        if data.get('updated_at') is None:
+            data['updated_at'] = now
+            
+        # Clean up the typo field if it's None
+        if 'cretaed_at' in data and data['cretaed_at'] is None:
+            del data['cretaed_at']
+            
+        return data
 
     @field_validator('project_id', mode='before')
     def format_project_id(cls, v):
@@ -382,5 +400,6 @@ class ToEventUploadResponse(BaseModel):
         json_encoders={
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
-        }
+        },
+        extra='ignore'  # Ignore extra fields in response
     )
