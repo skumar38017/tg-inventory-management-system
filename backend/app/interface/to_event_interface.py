@@ -8,7 +8,6 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate,
     ToEventInventoryOut,
     ToEventInventoryUpdate,
-    ToEventInventoryUpdateOut,
     ToEventRedis,
     ToEventRedisOut,
     ToEventRedisUpdate
@@ -37,7 +36,7 @@ class ToEventInventoryInterface:
         pass
     
         
-    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventInventoryUpdateOut]:
+    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
         """
         Retrieve all ToEventInventory entries.
         This method will return a list of ToEventInventoryOut schema instances.
@@ -87,10 +86,10 @@ class ToEventInventoryInterface:
         self, 
         db: AsyncSession, 
         inventory_id: str
-    ) -> Optional[ToEventInventoryUpdateOut]:
+    ) -> Optional[ToEventRedisOut]:
         """
         Get inventory entry by its inventory_id (not UUID).
-        Returns single ToEventInventoryUpdateOut instance or None if not found.
+        Returns single ToEventRedisOut instance or None if not found.
         """
         pass
 
@@ -100,11 +99,11 @@ class ToEventInventoryInterface:
         db: AsyncSession,
         inventory_id: str,
         update_data: ToEventInventoryUpdate
-    ) -> Optional[ToEventInventoryUpdateOut]:
+    ) -> Optional[ToEventRedisOut]:
         """
         Update existing inventory entry by inventory_id.
         Protects immutable fields (uuid, sno, inventory_id, product_id, created_at).
-        Returns updated ToEventInventoryUpdateOut instance or None if not found.
+        Returns updated ToEventRedisOut instance or None if not found.
         """
         pass
     
@@ -123,10 +122,10 @@ class ToEventInventoryInterface:
         self,
         db: AsyncSession,
         search_filter: ToEventInventoryBase
-    ) -> List[ToEventInventoryUpdateOut]:
+    ) -> List[ToEventRedisOut]:
         """
         Search inventory items by various criteria.
-        Returns filtered list of ToEventInventoryUpdateOut instances.
+        Returns filtered list of ToEventRedisOut instances.
         """
         pass
 

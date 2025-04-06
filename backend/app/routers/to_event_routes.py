@@ -12,7 +12,6 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryUpdate,
     ToEventInventoryOut,
     ToEventInventoryBase,
-    ToEventInventoryUpdateOut,
     ToEventInventorySearch,
     ToEventRedis,
     ToEventRedisOut,
@@ -60,22 +59,34 @@ async def upload_inventory_item_route(
 # CREATE: Add a new to_event entry inventory store in directly in redis
 @router.post("/to_event-create-item/",
     response_model=ToEventRedisOut,
-    status_code=200,
-    summary="Create a new entry in the inventory",
-    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
-    response_model_exclude_unset=True,
+    status_code=201,  # Changed to 201 for resource creation
+    summary="Create a new inventory entry in Redis",
+    description="Creates a new inventory entry stored directly in Redis. Returns the created entry with all fields.",
+    response_model_exclude_none=True,  # Changed from exclude_unset to exclude_none
+    tags=["Inventory (Redis)"]
 )
 async def create_inventory_item_route(
     item: ToEventInventoryCreate,
-    db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
 ):
     try:
-        logger.info(f"New item creation request received")
-        return await service.create_to_event_inventory(db, item)
+        logger.info(f"New inventory creation request received for project: {item.project_id}")
+        
+        # Remove db parameter since we're storing in Redis directly
+        created_item = await service.create_to_event_inventory(item)
+        
+        logger.info(f"Successfully created inventory in Redis for project: {item.project_id}")
+        return created_item
+        
+    except ValueError as e:
+        logger.warning(f"Validation error creating inventory: {str(e)}")
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating inventory item: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error creating inventory: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to create inventory in Redis. Please try again."
+        )
     
 # Load submitted from local redis
 @router.get("/to_event-load-submitted-project-db/",

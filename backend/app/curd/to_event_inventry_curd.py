@@ -85,10 +85,14 @@ class ToEventInventoryService(ToEventInventoryInterface):
 
                             processed_project_ids.add(item_data['project_id'])
 
+                            # Generate UUID if id is missing
+                            if 'id' not in item_data:
+                                item_data['id'] = str(uuid.uuid4())
+
                             # Clean empty values
                             if item_data.get('project_barcode_image_url') == '':
                                 item_data['project_barcode_image_url'] = None
-                            
+
                             if item_data.get('material') == '':
                                 item_data['material'] = None
 
@@ -140,10 +144,6 @@ class ToEventInventoryService(ToEventInventoryInterface):
                 
             await db.commit()
 
-            # Optional: Clear processed Redis keys
-            # if success_count > 0:
-            #     await redis_client.delete(*all_keys)
-
             logger.info(
                 f"Upload completed: {success_count} successes, {error_count} errors\n"
                 f"Processed keys: {len(inventory_keys)} inventory, {len(project_keys)} projects"
@@ -160,73 +160,74 @@ class ToEventInventoryService(ToEventInventoryInterface):
 
 # ------------------------------------------------------------------------------------------------
     #  Create new entry of inventory for to_event which is directly stored in redis
-    async def create_to_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate):
+    async def create_to_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:
         try:
+            """Create inventory with multiple items directly in Redis"""
             # Convert to dict and clean data
-            inventory_data = to_event_inventory.model_dump()
-            # self._normalize_inventory_data(inventory_data)
-
-            # Ensure UUID is generated if missing
-            if 'uuid' not in inventory_data or not inventory_data['uuid']:
-                inventory_data['uuid'] = str(uuid.uuid4())  # Ensure UUID is set
-
+            inventory_data = item.model_dump(exclude_unset=True)
+    
             # Generate UUID and timestamps
-            current_time = datetime.now(timezone.utc).isoformat()
+            current_time = datetime.now(timezone.utc)
+            inventory_id = str(uuid.uuid4())
+    
+            # Set common fields for the project
             inventory_data.update({
-                'created_at': current_time,
-                'updated_at': current_time
+                'id': inventory_id,
+                'uuid': inventory_id,
+                'created_at': current_time,  # Timestamp only in main record
+                'updated_at': current_time   # Timestamp only in main record
             })
-
-            # Generate barcodes
-            barcode, unique_code = self.barcode_generator.generate_linked_codes(inventory_data)
-
-            # Update inventory data with barcode information
-            inventory_data['project_barcode'] = barcode
-            inventory_data['project_barcode_unique_code'] = unique_code
-
-            # Create Redis entry
-            redis_entry = ToEventRedis(
-                uuid=inventory_data['uuid'],
-                sno=inventory_data['sno'],
-                project_id=inventory_data['project_id'],
-                employee_name=inventory_data['employee_name'],
-                location=inventory_data['location'],
-                client_name=inventory_data['client_name'],
-                setup_date=inventory_data['setup_date'],
-                project_name=inventory_data['project_name'],
-                event_date=inventory_data['event_date'],
-                zone_active=inventory_data['zone_active'],
-                name=inventory_data['name'],
-                description=inventory_data['description'],
-                quantity=inventory_data['quantity'],
-                material=inventory_data['material'],
-                comments=inventory_data['comments'],
-                total=inventory_data['total'],
-                unit=inventory_data['unit'],
-                per_unit_power=inventory_data['per_unit_power'],
-                total_power=inventory_data['total_power'],
-                status=inventory_data['status'],
-                poc=inventory_data['poc'],
-                submitted_by=inventory_data['submitted_by'],
-                created_at=inventory_data['created_at'],
-                updated_at=inventory_data['updated_at'],
-                project_barcode=inventory_data['project_barcode'],
-                project_barcode_unique_code=inventory_data['project_barcode_unique_code'],
-                project_barcode_image_url=inventory_data.get('project_barcode_image_url', 'None')
-            )
-
-            # Store Redis entry
+    
+            # Generate barcodes if not provided
+            if not inventory_data.get('project_barcode'):
+                barcode, unique_code = self.barcode_generator.generate_linked_codes(inventory_data)
+                inventory_data.update({
+                    'project_barcode': barcode,
+                    'project_barcode_unique_code': unique_code
+                })
+    
+                # Set an empty image URL if not provided
+                if not inventory_data.get('project_barcode_image_url'):
+                    inventory_data['project_barcode_image_url'] = ""
+    
+            # Process multiple inventory items (without timestamps)
+            inventory_items = []
+            for item_data in inventory_data.get('inventory_items', []):
+                item_id = str(uuid.uuid4())
+                inventory_items.append({
+                    **item_data,
+                    'id': item_id,
+                    'project_id': inventory_data['project_id']  # Only include project_id
+                    # Removed created_at and updated_at from items
+                })
+    
+            # Prepare complete Redis data structure
+            redis_data = {
+                **inventory_data,
+                'inventory_items': inventory_items
+            }
+    
+            # Store main inventory in Redis
             await redis_client.set(
-                f"to_event_inventory:{redis_entry.project_id}", 
-                redis_entry.json()
+                f"to_event_inventory:{inventory_data['project_id']}",
+                json.dumps(redis_data, default=str)
             )
-
-            logger.info(f"Stored in Redis - Project ID: {redis_entry.project_id}")
-            return redis_entry
-
+    
+            # Store individual items with their own keys (still without timestamps)
+            for item in inventory_items:
+                await redis_client.set(
+                    f"inventory_item:{item['id']}",
+                    json.dumps(item, default=str)
+                )
+    
+            return ToEventRedisOut(**redis_data)
+    
         except Exception as e:
-            logger.error(f"Redis storage failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Failed to create inventory: {str(e)}")
+            logger.error(f"Redis storage failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create inventory: {str(e)}"
+            )
     
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
@@ -242,56 +243,32 @@ class ToEventInventoryService(ToEventInventoryInterface):
             logger.error(f"Database error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Database error")
 
-    async def search_entries_by_project_id(
-        self,
-        db: AsyncSession,
-        search_filter: ToEventInventorySearch
-    ) -> List[ToEventRedisOut]:
+    async def search_entries_by_project_id(self, db: AsyncSession, search_filter: ToEventInventorySearch):
         try:
             project_id = search_filter.project_id
-            if not project_id:
-                raise ValueError("Project ID is required")
-
-            # Check Redis first
-            redis_key = f"project:{project_id}"
-            print(f"Searching for {redis_key}")
+            redis_key = f"to_event_inventory:{project_id}"
             redis_data = await redis_client.get(redis_key)
-            print(f"Found {redis_data}")
 
             if redis_data:
-                try:
-                    redis_items = json.loads(redis_data)
-                    if isinstance(redis_items, list):
-                        return [ToEventRedisOut.model_validate(item) for item in redis_items]
-                    print(f"Found {len(redis_items)} items in Redis")
-                    return [ToEventRedisOut.model_validate(json.loads(redis_data))]
-                except (json.JSONDecodeError, ValidationError) as e:
-                    logger.error(f"Invalid Redis data for {redis_key}: {e}")
-                    # Fall through to DB query
+                data = json.loads(redis_data)
+                # Convert to list of items with project info
+                items = []
+                for item in data['inventory_items']:
+                    combined = {**data['project_info'], **item}
+                    items.append(ToEventRedisOut(**combined))
+                return items
 
             # Fallback to database
             result = await db.execute(
                 select(ToEventInventory).where(ToEventInventory.project_id == project_id)
             )
             items = result.scalars().all()
-            print(f"Found {len(items)} items in DB")
-
-            # Convert to RedisOut format and serialize properly
-            db_items = [ToEventRedisOut.model_validate(item).model_dump() for item in items]
-
-            # Cache with proper JSON serialization
-            if db_items:
-                await redis_client.set(
-                    redis_key,
-                    json.dumps(db_items, default=str),  # Use default=str for dates
-                    ex=3600
-                )
-
-            return [ToEventRedisOut.model_validate(item) for item in db_items]
+            return [ToEventRedisOut.model_validate(item) for item in items]
 
         except Exception as e:
             logger.error(f"Error in service during search: {e}")
             raise HTTPException(status_code=500, detail="Internal Server Error")
+    
 
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def get_project_by_project_id(self, db: AsyncSession, project_id: str) -> Optional[ToEventRedisOut]:
@@ -306,52 +283,33 @@ class ToEventInventoryService(ToEventInventoryInterface):
             raise HTTPException(status_code=500, detail="Database error")
         
     # Update Project in local Redis
-    async def update_to_event_project(
-        self,
-        project_id: str,
-        update_data: ToEventRedisUpdate
-    ) -> ToEventRedisOut:
+    async def update_to_event_project(self, project_id: str, update_data: ToEventRedisUpdate):
         try:
-            to_event_inventory = f"to_event_inventory:{project_id}"
-            redis_data = await redis_client.get(to_event_inventory)
-
+            redis_key = f"to_event_inventory:{project_id}"
+            redis_data = await redis_client.get(redis_key)
+    
             if not redis_data:
-                raise HTTPException(status_code=404, detail="Item not found in Redis")
-
-            existing_data = json.loads(redis_data)
-
-            # Handle both single item and list cases
-            items = [existing_data] if isinstance(existing_data, dict) else existing_data
-
-            if not items:
                 raise HTTPException(status_code=404, detail="Project not found")
-
-            # Convert update data to dict
-            update_dict = update_data.dict(exclude_unset=True)
-
-            # Find and update matching item
-            updated = False
-            for item in items:
-                if item.get('project_id') == project_id:
-                    item.update(update_dict)
-                    updated = True
-                    break
-
-            if not updated:
-                raise HTTPException(status_code=404, detail="Project not found")
-
-            # Save back to Redis
-            await redis_client.set(
-                to_event_inventory,
-                json.dumps(items, default=str)
-            )
-
-            return ToEventRedisOut(**items[0])
-
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {str(e)}")
-            raise HTTPException(status_code=400, detail="Invalid data format in Redis")
+    
+            data = json.loads(redis_data)
+            
+            # Update project info
+            if update_data.project_info:
+                data['project_info'].update(update_data.project_info.dict(exclude_unset=True))
+                data['project_info']['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+            # Update specific items if provided
+            if update_data.inventory_items:
+                for updated_item in update_data.inventory_items:
+                    for i, item in enumerate(data['inventory_items']):
+                        if item.get('sno') == updated_item.sno:
+                            data['inventory_items'][i].update(updated_item.dict(exclude_unset=True))
+                            break
+                        
+            await redis_client.set(redis_key, json.dumps(data, default=str))
+            return ToEventRedisOut(**data['project_info'])
+    
         except Exception as e:
-            logger.error(f"Error updating item in Redis: {str(e)}")
+            logger.error(f"Error updating project: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
