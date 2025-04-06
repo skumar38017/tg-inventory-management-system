@@ -124,23 +124,25 @@ async def create_inventory_item_route(
         )
     
 # Load submitted from local redis
-@router.get("/to_event-load-submitted-project-db/",
+@router.get("/to_event-load-submitted-project-redis/",
     response_model=List[ToEventRedisOut],
     status_code=200,
-    summary="Load submitted projects from database",
-    description="This endpoint retrieves submitted projects from the database with pagination support.",
+    summary="Load submitted projects from Redis",
+    description="This endpoint retrieves submitted projects directly from Redis with pagination support.",
     response_model_exclude_unset=True,
 )
-async def load_submitted_project(
+async def load_submitted_project_from_redis(
     skip: int = Query(0, description="Number of items to skip for pagination"),
-    db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
 ):
     try:
-        logger.info(f"Loading submitted projects from database, skip={skip}")
-        return await service.load_submitted_project_from_db(db, skip)
+        logger.info(f"Loading submitted projects from Redis, skip={skip}")
+        projects = await service.load_submitted_project_from_redis(skip)
+        return projects
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error loading projects: {e}")
+        logger.error(f"Error loading projects from Redis: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     
 # Search all project directly in local Redis  before submitting the form
