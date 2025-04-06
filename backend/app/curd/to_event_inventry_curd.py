@@ -48,85 +48,112 @@ class ToEventInventoryService(ToEventInventoryInterface):
         self.base_url = base_url
         self.barcode_generator = BarcodeGenerator()
 
-    # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
+# upload all to_event_inventory entries from local Redis to the database after click on upload data button
     async def upload_to_event_inventory(self, db: AsyncSession) -> List[ToEventUploadResponse]:
         try:
+            # Start with fresh transaction
+            await db.rollback()
+            
             # Get both types of Redis keys
             inventory_keys = await redis_client.keys("to_event_inventory:*")
             item_keys = await redis_client.keys("inventory_item:*")
             
+            logger.info(f"Starting upload with {len(inventory_keys)} inventory keys and {len(item_keys)} item keys")
+            
             if not inventory_keys and not item_keys:
+                logger.info("No Redis keys found to upload")
                 return []
-    
+
             uploaded_entries = []
             success_count = 0
             error_count = 0
             processed_projects = set()
-    
-            # First process main inventory entries
+
+            # Process main inventory entries
             for key in inventory_keys:
                 try:
+                    # Ensure fresh transaction for each key
+                    await db.rollback()
+                    
                     redis_data = await redis_client.get(key)
                     if not redis_data:
+                        logger.debug(f"Empty data for key {key}")
                         continue
-                    
-                    # Parse with schema
+
                     try:
                         data = json.loads(redis_data)
-                        if isinstance(data, list):
-                            entries = [ToEventUploadSchema(**item) for item in data]
-                        else:
-                            entries = [ToEventUploadSchema(**data)]
+                        entries = [ToEventUploadSchema(**item) for item in data] if isinstance(data, list) else [ToEventUploadSchema(**data)]
                     except Exception as e:
-                        logger.error(f"Schema validation failed for {key}: {str(e)}")
                         error_count += 1
+                        logger.error(f"Schema validation failed for {key}: {str(e)}")
+                        await db.rollback()
                         continue
-                    
+
                     for entry in entries:
                         try:
                             if not entry.project_id:
+                                logger.warning(f"Empty project_id in entry from key {key}")
                                 continue
                             
                             # Skip if we've already processed this project
                             if entry.project_id in processed_projects:
+                                logger.debug(f"Skipping already processed project {entry.project_id}")
                                 continue
                                 
                             processed_projects.add(entry.project_id)
-    
-                            # Check if exists in database
+                            logger.info(f"Processing project {entry.project_id}")
+
+                            # Check if exists in the database
                             existing = await db.execute(
                                 select(ToEventInventory)
                                 .where(ToEventInventory.project_id == entry.project_id)
                             )
                             existing = existing.scalar_one_or_none()
-    
+
                             entry_dict = entry.model_dump(exclude={'inventory_items'})
-    
+
                             if existing:
-                                # Update existing
-                                for field, value in entry_dict.items():
-                                    if hasattr(existing, field) and value is not None:
-                                        setattr(existing, field, value)
-                                existing.updated_at = datetime.now(timezone.utc)
-                                parent_id = existing.id
-                            else:
-                                # Create new
-                                new_entry = ToEventInventory(**entry_dict)
-                                db.add(new_entry)
-                                await db.flush()
-                                parent_id = new_entry.id
-    
+                                # If the project already exists, delete the old entry
+                                await db.execute(
+                                    delete(ToEventInventory).where(ToEventInventory.project_id == entry.project_id)
+                                )
+                                logger.info(f"Deleted existing project with project_id: {entry.project_id}")
+                                
+                            # Create new entry (whether it existed or not)
+                            new_entry = ToEventInventory(**entry_dict)
+                            db.add(new_entry)
+                            await db.flush()
+                            parent_id = new_entry.id
+
                             # Process inventory items from main entry
                             if entry.inventory_items:
                                 for item in entry.inventory_items:
-                                    item_data = item.model_dump(exclude={'project_id'})
-                                    new_item = InventoryItem(
-                                        project_id=parent_id,
-                                        **item_data
+                                    # Check if item already exists
+                                    existing_item = await db.execute(
+                                        select(InventoryItem)
+                                        .where(InventoryItem.id == item.id)
                                     )
-                                    db.add(new_item)
-    
-                            # Prepare response
+                                    existing_item = existing_item.scalar_one_or_none()
+
+                                    item_data = item.model_dump(exclude={'project_id'})
+
+                                    if existing_item:
+                                        # Update existing item if necessary
+                                        for field, value in item_data.items():
+                                            if hasattr(existing_item, field) and getattr(existing_item, field) != value:
+                                                setattr(existing_item, field, value)
+                                    else:
+                                        # Add new item
+                                        new_item = InventoryItem(
+                                            project_id=parent_id,
+                                            **item_data
+                                        )
+                                        db.add(new_item)
+
+                            # Commit after each successful project
+                            await db.commit()
+                            
+                            # Prepare success response
                             response = ToEventUploadResponse(
                                 success=True,
                                 message="Copied to database successfully",
@@ -136,25 +163,30 @@ class ToEventInventoryService(ToEventInventoryInterface):
                             )
                             uploaded_entries.append(response)
                             success_count += 1
-    
+                            logger.info(f"Successfully processed project {entry.project_id}")
+
                         except Exception as e:
+                            await db.rollback()
                             error_count += 1
-                            logger.error(f"Error processing entry {entry.project_id}: {str(e)}")
+                            logger.error(f"Error processing entry {entry.project_id if entry else 'unknown'}: {str(e)}")
                             continue
-                        
+
                 except Exception as e:
+                    await db.rollback()
                     error_count += 1
                     logger.error(f"Error processing key {key}: {str(e)}")
                     continue
-                
-            # Then process individual inventory items
+
+            # Process individual inventory items
             for key in item_keys:
                 try:
+                    # Fresh transaction for each item
+                    await db.rollback()
+                    
                     redis_data = await redis_client.get(key)
                     if not redis_data:
                         continue
-                    
-                    # Parse with schema
+
                     try:
                         item_data = json.loads(redis_data)
                         item = RedisInventoryItem(**item_data)
@@ -162,71 +194,78 @@ class ToEventInventoryService(ToEventInventoryInterface):
                         logger.error(f"Schema validation failed for {key}: {str(e)}")
                         error_count += 1
                         continue
-                    
+
                     if not item.project_id:
                         continue
-                    
-                    try:
-                        # Find the parent project in database
-                        parent = await db.execute(
-                            select(ToEventInventory)
-                            .where(ToEventInventory.project_id == item.project_id)
-                        )
-                        parent = parent.scalar_one_or_none()
-    
-                        if not parent:
-                            logger.warning(f"No parent project found for item {item.id}")
-                            continue
-                        
-                        # Check if item already exists
-                        existing_item = await db.execute(
-                            select(InventoryItem)
-                            .where(InventoryItem.id == item.id)
-                        )
-                        existing_item = existing_item.scalar_one_or_none()
-    
-                        item_data = item.model_dump(exclude={'project_id'})
-    
-                        if existing_item:
-                            # Update existing item
-                            for field, value in item_data.items():
-                                if hasattr(existing_item, field) and value is not None:
-                                    setattr(existing_item, field, value)
-                        else:
-                            # Add new item
-                            new_item = InventoryItem(
-                                project_id=parent.id,
-                                **item_data
-                            )
-                            db.add(new_item)
-    
-                        # Update count in response if project was already processed
-                        for entry in uploaded_entries:
-                            if entry.project_id == item.project_id:
-                                entry.inventory_items_count += 1
-                                break
-                            
-                        success_count += 1
-    
-                    except Exception as e:
-                        error_count += 1
-                        logger.error(f"Error processing item {item.id}: {str(e)}")
+
+                    # Find the parent project in the database
+                    parent = await db.execute(
+                        select(ToEventInventory)
+                        .where(ToEventInventory.project_id == item.project_id)
+                    )
+                    parent = parent.scalar_one_or_none()
+
+                    if not parent:
+                        logger.warning(f"No parent project found for item {item.id}")
                         continue
+
+                    # Check if item already exists
+                    existing_item = await db.execute(
+                        select(InventoryItem)
+                        .where(InventoryItem.id == item.id)
+                    )
+                    existing_item = existing_item.scalar_one_or_none()
+
+                    item_data = item.model_dump(exclude={'project_id'})
+
+                    if existing_item:
+                        # Update existing item
+                        for field, value in item_data.items():
+                            if hasattr(existing_item, field) and getattr(existing_item, field) != value:
+                                setattr(existing_item, field, value)
+                    else:
+                        # Add new item
+                        new_item = InventoryItem(
+                            project_id=parent.id,
+                            **item_data
+                        )
+                        db.add(new_item)
                     
+                    # Commit after each item
+                    await db.commit()
+
+                    # Update count in response if project was already processed
+                    for entry in uploaded_entries:
+                        if entry.project_id == item.project_id:
+                            entry.inventory_items_count += 1
+                            break
+                    else:
+                        # If project wasn't processed yet, create a new response entry
+                        response = ToEventUploadResponse(
+                            success=True,
+                            message="Copied item to database",
+                            project_id=item.project_id,
+                            inventory_items_count=1,
+                            created_at=datetime.now(timezone.utc)
+                        )
+                        uploaded_entries.append(response)
+
+                    success_count += 1
+
                 except Exception as e:
+                    await db.rollback()
                     error_count += 1
-                    logger.error(f"Error processing key {key}: {str(e)}")
+                    logger.error(f"Error processing item {item.id if hasattr(item, 'id') else 'unknown'}: {str(e)}")
                     continue
-                
-            await db.commit()
+
             logger.info(f"Copy completed: {success_count} items processed, {error_count} errors")
             return uploaded_entries
 
         except Exception as e:
             await db.rollback()
-            logger.error(f"Copy operation failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
-    
+            logger.error(f"Copy operation failed: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))    
+
 # ------------------------------------------------------------------------------------------------
     #  Create new entry of inventory for to_event which is directly stored in redis
     async def create_to_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:

@@ -7,12 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, HTTPException, Depends
 from backend.app.database.database import get_async_db
 from datetime import datetime
+from pydantic import ValidationError
 from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate,
     ToEventInventoryUpdate,
     ToEventInventoryOut,
     ToEventInventoryBase,
     ToEventInventorySearch,
+    ToEventUploadResponse,
     ToEventRedis,
     ToEventRedisOut,
     ToEventRedisUpdate,
@@ -37,22 +39,55 @@ logger.setLevel(logging.INFO)
 
 
 #  Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
-@router.post("/to_event-upload-data/",
-    response_model=List[ToEventRedisOut],
+@router.post(
+    "/to_event-upload-data/",
+    response_model=List[ToEventUploadResponse],
     status_code=200,
     summary="Upload all entries from Redis to database",
     description="Uploads all to_event_inventory entries from local Redis to the database",
 )
-async def upload_inventory_item_route(
+async def upload_to_event_data(
     db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
 ):
     try:
-        logger.info("Upload request received")
-        return await service.upload_to_event_inventory(db)
-    except Exception as e:
-        logger.error(f"Error uploading inventory items: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.info("Starting Redis to database upload process")
+        
+        # Get data from service
+        inventory_items = await service.upload_to_event_inventory(db)
+        
+        # Prepare response
+        results = []
+        for item in inventory_items:
+            # Ensure we have proper timestamps
+            created_at = item.created_at if hasattr(item, 'created_at') else datetime.now(timezone.utc)
+            updated_at = item.updated_at if hasattr(item, 'updated_at') else datetime.now(timezone.utc)
+            
+            # Handle both ToEventRedisOut and direct database models
+            project_id = getattr(item, 'project_id', None)
+            if not project_id and hasattr(item, 'id'):
+                project_id = item.id
+                
+            results.append({
+                "success": True,
+                "message": "Upload successful",
+                "project_id": project_id,
+                "inventory_items_count": len(getattr(item, 'inventory_items', [])),
+                "created_at": created_at,
+                "updated_at": updated_at,
+                # Explicitly omit cretaed_at unless present in data
+                **({'cretaed_at': item.cretaed_at} if hasattr(item, 'cretaed_at') else {})
+            })
+            
+        logger.info(f"Successfully processed {len(results)} items")
+        return results
+        
+    except ValidationError as ve:
+        logger.error(f"Data validation error: {ve}")
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Data validation failed", "errors": ve.errors()}
+        )
 
 # ----------------------------------------------------------------------------------------
 
