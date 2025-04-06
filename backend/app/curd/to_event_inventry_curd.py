@@ -44,8 +44,9 @@ logger.setLevel(logging.INFO)
 # ------------------------ 
 
 class ToEventInventoryService(ToEventInventoryInterface):
-    def __init__(self, base_url: str = config.BASE_URL):
+    def __init__(self, base_url: str = config.BASE_URL, redis_client = redis_client):
         self.base_url = base_url
+        self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
 
 # upload all to_event_inventory entries from local Redis to the database after click on upload data button
@@ -337,18 +338,38 @@ class ToEventInventoryService(ToEventInventoryInterface):
             )
     
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
-    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+    async def load_submitted_project_from_redis(self, skip: int = 0) -> List[ToEventRedisOut]:
         try:
-            result = await db.execute(
-                select(ToEventInventory)
-                .order_by(ToEventInventory.updated_at)
-                .offset(skip)
-            )
-            items = result.scalars().all()
-            return [ToEventRedisOut.model_validate(item) for item in items] 
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching entries: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            # Get all keys matching your project pattern
+            keys = await self.redis.keys("to_event_inventory:*")
+            
+            projects = []
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        project_data = json.loads(data)
+                        # Handle the 'cretaed_at' typo if present
+                        if 'cretaed_at' in project_data and 'created_at' not in project_data:
+                            project_data['created_at'] = project_data['cretaed_at']
+                        # Validate the data against your schema
+                        validated_project = ToEventRedisOut.model_validate(project_data)
+                        projects.append(validated_project)
+                    except ValidationError as ve:
+                        logger.warning(f"Validation error for project {key}: {ve}")
+                        continue
+            
+            # Sort by updated_at (descending)
+            projects.sort(key=lambda x: x.updated_at, reverse=True)
+            
+            # Apply pagination
+            paginated_projects = projects[skip:skip+10]  # Assuming page size of 10
+            
+            return paginated_projects
+        except Exception as e:
+            logger.error(f"Redis error fetching entries: {e}")
+            raise HTTPException(status_code=500, detail="Redis error")
+    
 
     async def search_entries_by_project_id(self, db: AsyncSession, search_filter: ToEventInventorySearch):
         try:
