@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 import uuid
 import json
 import re
+from typing import Union
 from enum import Enum
 from pydantic import ValidationError
 
@@ -17,21 +18,50 @@ class StatusEnum(str, Enum):
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
     CANCELLED = "Cancelled"
+    INHOUSE = "In House"
+    OUTSIDE = "Outside"
+    PURCHASED = "Purchased"
+    RETURNED = "Returned"
+    REJECTED = "Rejected"
+    PENDING = "Pending"
+    FAILED = "Failed"
+    APPROVED = "Approved"
+    UNDER_REVIEW = "Under Review"
+    ON_HOLD = "On Hold"
+    DELIVERED = "Delivered"
+    SHIPPED = "Shipped"
+    IN_TRANSIT = "In Transit"
+    DELAYED = "Delayed"
+    CLOSED = "Closed"
+    OPEN = "Open"
+    EXPIRED = "Expired"
+    WITHDRAWN = "Withdrawn"
+    ACTIVE = "Active"
+    INACTIVE = "Inactive"
+    RESERVED = "Reserved"
+    WAITLISTED = "Waitlisted"
+    IN_HOUSE = "In House"
 
 class InventoryItemBase(BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")
     sno: Optional[str] = Field(None, description="Serial number of the equipment")
     name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[int] = None
+    quantity: Optional[Union[str, float, int]] = None 
     material: Optional[str] = None
     comments: Optional[str] = None
-    total: Optional[str] = None  # Matches String in SQLAlchemy model
-    unit: Optional[str] = None
-    per_unit_power: Optional[str] = None  # Matches String in SQLAlchemy model
-    total_power: Optional[str] = None  # Matches String in SQLAlchemy model
-    status: Optional[StatusEnum] = Field(None, example="Scheduled")
+    total: Optional[Union[str, float, int]] = None
+    unit: Optional[Union[str, float, int]] = None
+    per_unit_power: Optional[Union[str, float, int]] = None 
+    total_power: Optional[Union[str, float, int]] = None  
+    status: Optional[str] = None
     poc: Optional[str] = None
+
+    @field_validator('per_unit_power', 'total_power', mode='before')
+    def convert_numbers_to_strings(cls, v):
+        if v is None:
+            return None
+        return str(v) if not isinstance(v, str) else v
 
     @field_validator('material', 'comments', mode='before')
     def empty_to_none(cls, v):
@@ -57,11 +87,11 @@ class InventoryItemOut(BaseModel):
     quantity: Optional[int] = None
     material: Optional[str] = None
     comments: Optional[str] = None
-    total: Optional[str] = None
+    total: Optional[Union[str, float, int]] = None
     unit: Optional[str] = None
     per_unit_power: Optional[str] = None
-    total_power: Optional[str] = None
-    status: Optional[StatusEnum] = None
+    total_power: Optional[Union[str, float, int]] = None 
+    status: Optional[str] = None
     poc: Optional[str] = None
 
     @field_validator('id', mode='before')
@@ -361,11 +391,11 @@ class RedisInventoryItem(BaseModel):
     quantity: Optional[int] = None
     material: Optional[str] = None
     comments: Optional[str] = None
-    total: Optional[str] = None
+    total: Optional[Union[str, float, int]] = None
     unit: Optional[str] = None
     per_unit_power: Optional[str] = None
-    total_power: Optional[str] = None
-    status: Optional[StatusEnum] = None
+    total_power: Optional[Union[str, float, int]] = None 
+    status: Optional[str] = None
     poc: Optional[str] = None
     id: Optional[str] = None
     project_id: Optional[str] = None
