@@ -370,45 +370,39 @@ class ToEventInventoryService(ToEventInventoryInterface):
             logger.error(f"Redis error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Redis error")
     
-
-    async def search_entries_by_project_id(self, db: AsyncSession, search_filter: ToEventInventorySearch):
+    #  search project data via `project_id` directly in local Redis
+    async def get_project_data(self, project_id: str) -> ToEventRedisOut:
         try:
-            project_id = search_filter.project_id
             redis_key = f"to_event_inventory:{project_id}"
             redis_data = await redis_client.get(redis_key)
-
-            if redis_data:
-                data = json.loads(redis_data)
-                # Convert to list of items with project info
-                items = []
-                for item in data['inventory_items']:
-                    combined = {**data['project_info'], **item}
-                    items.append(ToEventRedisOut(**combined))
-                return items
-
-            # Fallback to database
-            result = await db.execute(
-                select(ToEventInventory).where(ToEventInventory.project_id == project_id)
-            )
-            items = result.scalars().all()
-            return [ToEventRedisOut.model_validate(item) for item in items]
-
-        except Exception as e:
-            logger.error(f"Error in service during search: {e}")
-            raise HTTPException(status_code=500, detail="Internal Server Error")
     
-
-    #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
-    async def get_project_by_project_id(self, db: AsyncSession, project_id: str) -> Optional[ToEventRedisOut]:
-        try:
-            result = await db.execute(
-                select(ToEventInventory)
-                .where(ToEventInventory.project_id == project_id)
+            if not redis_data:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"No data found in Redis for project_id: {project_id}"
+                )
+    
+            data = json.loads(redis_data)
+            return ToEventRedisOut(**data)
+    
+        except Exception as e:
+            logger.error(f"Error getting project data: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Internal Server Error"
             )
-            return result.scalar_one_or_none()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+    
+        #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
+        async def get_project_by_project_id(self, db: AsyncSession, project_id: str) -> Optional[ToEventRedisOut]:
+            try:
+                result = await db.execute(
+                    select(ToEventInventory)
+                    .where(ToEventInventory.project_id == project_id)
+                )
+                return result.scalar_one_or_none()
+            except SQLAlchemyError as e:
+                logger.error(f"Database error fetching entry: {e}")
+                raise HTTPException(status_code=500, detail="Database error")
         
     # Update Project in local Redis
     async def update_to_event_project(self, project_id: str, update_data: ToEventRedisUpdate):

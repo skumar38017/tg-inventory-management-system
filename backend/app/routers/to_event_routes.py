@@ -145,34 +145,40 @@ async def load_submitted_project_from_redis(
         logger.error(f"Error loading projects from Redis: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     
-# Search all project directly in local Redis  before submitting the form
-@router.get("to_event-search-entries-by-project-id/{project_id}/",
-    response_model=List[ToEventRedisOut],
+# Search project data project directly in local Redis  via `project_id`
+@router.get("/to_event-search-entries-by-project-id/{project_id}/",
+    response_model=ToEventRedisOut,  # Changed from List[ToEventRedisOut]
     status_code=200,
-    summary="Search all entries in local Redis by project_id",
-    description="This endpoint searches all entries in local Redis by project_id and returns the results.",
-    response_model_exclude_unset=True,
+    summary="Search project in local Redis by project_id",
+    description="This endpoint searches for a project in local Redis by project_id and returns the complete project data.",
 )
 async def search_by_project_id(
-    project_id: str ,
-    db: AsyncSession = Depends(get_async_db),
+    project_id: str,
     service: ToEventInventoryService = Depends(get_to_event_service)
 ):
     try:
-        logger.info(f"Searching entries by project_id: {project_id}")
+        logger.info(f"Searching project by project_id: {project_id}")
         
-        # Use the search-specific schema
-        search_filter = ToEventInventorySearch(project_id=project_id)
+        # Call the service to get project data
+        project_data = await service.get_project_data(project_id)
         
-        # Call the service to search entries by project_id
-        entries = await service.search_entries_by_project_id(db, search_filter)
+        if not project_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No project found for project_id: {project_id}"
+            )
+            
+        return project_data
         
-        return entries
-        
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error searching entries by project_id: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
+        logger.error(f"Error searching project: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error processing request: {str(e)}"
+        )
+    
 # Upadte project according to `project_id` in local Redis 
 @router.put("/to_event-update-submitted-project-db/{project_id}/",
             status_code=200,

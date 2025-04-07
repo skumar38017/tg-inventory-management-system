@@ -113,6 +113,8 @@ class ToEventInventoryBase(BaseModel):
         elif isinstance(v, datetime):
             return v.date()
         return v
+    
+
 
     @field_validator('project_id', mode='before')
     def format_project_id(cls, v):
@@ -268,7 +270,24 @@ class ToEventRedisUpdate(BaseModel):
 
 class ToEventRedisOut(ToEventInventoryOut):
     """Schema for retrieving inventory from Redis"""
-    pass
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    cretaed_at: Optional[datetime] = None  # Explicitly include the typo field
+
+    @model_validator(mode='before')
+    def handle_timestamps(cls, values):
+        # Handle the typo field
+        if 'cretaed_at' in values and values['cretaed_at'] is not None:
+            if 'created_at' not in values or values['created_at'] is None:
+                values['created_at'] = values['cretaed_at']
+        
+        # Set defaults if still missing
+        if 'created_at' not in values or values['created_at'] is None:
+            values['created_at'] = datetime.now(timezone.utc)
+        if 'updated_at' not in values or values['updated_at'] is None:
+            values['updated_at'] = datetime.now(timezone.utc)
+            
+        return values
     
 # ......................................................................................................
 class RedisInventoryItem(BaseModel):
