@@ -389,7 +389,7 @@ async def list_all_entries(
     """List all EntryInventory items (async version)."""
     try:
         # Fetch all the entries from the database
-        entry_inventories = await service.list_all_entries(db)
+        entry_inventories = await service.list_entry_inventories_curd(db)
         # Log the number of retrieved entries
         logger.info(f"Retrieved {len(entry_inventories)} EntryInventories.")
         
