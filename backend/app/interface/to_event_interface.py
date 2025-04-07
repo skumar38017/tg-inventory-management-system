@@ -10,7 +10,8 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryUpdate,
     ToEventRedis,
     ToEventRedisOut,
-    ToEventRedisUpdate
+    ToEventRedisUpdateOut,
+    ToEventRedisUpdateIn
 )
 from pydantic import BaseModel
 from datetime import date
@@ -59,7 +60,7 @@ class ToEventInventoryInterface:
     async def update_to_event_project(
         self, 
         project_id: str,
-        update_data: ToEventRedisUpdate
+        update_data: ToEventRedisUpdateIn
     ) -> Optional[ToEventRedisOut]:
         """
         Update an existing project in local Redis.
