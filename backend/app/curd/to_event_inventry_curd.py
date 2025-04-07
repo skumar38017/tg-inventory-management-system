@@ -14,7 +14,8 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryUpdate,
     ToEventInventoryUpdateOut,
     ToEventInventorySearch,
-    ToEventRedisUpdate,
+    ToEventRedisUpdateOut,
+    ToEventRedisUpdateIn,
     ToEventUploadResponse,
     InventoryItemBase,
     ToEventUploadSchema,
@@ -397,53 +398,102 @@ class ToEventInventoryService(ToEventInventoryInterface):
             )
     
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
-    async def get_project_data(self, project_id: str) -> Optional[ToEventRedisOut]:
+    async def get_project_data(self, project_id: str):
         try:
             redis_key = f"to_event_inventory:{project_id}"
-            redis_data = await redis_client.get(redis_key)
+            existing_data = await redis_client.get(redis_key)
 
-            if not redis_data:
+            if not existing_data:
                 return None
 
-            data = json.loads(redis_data)
+            # Parse the JSON data from Redis
+            project_dict = json.loads(existing_data)
 
-            # Handle the 'cretaed_at' typo if present
-            if 'cretaed_at' in data:
-                data['created_at'] = data.pop('cretaed_at')
-
-            # Ensure inventory_items is properly formatted
-            if 'inventory_items' in data and data['inventory_items']:
-                data['inventory_items'] = [
-                    dict(InventoryItemBase(**item).model_dump())
-                    for item in data['inventory_items']
-                ]
-
-            return ToEventRedisOut(**data)
+            # Convert to your model (assuming ToEventRedisOut is your output model)
+            return ToEventRedisOut(**project_dict)
         
         except Exception as e:
-            logger.error(f"Error getting project data: {str(e)}")
-            raise
+            logger.error(f"Error fetching project {project_id} from Redis: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
 
-    async def update_project_data(self, project_id: str, data: ToEventRedisOut):
+    async def update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
         try:
             redis_key = f"to_event_inventory:{project_id}"
 
-            # Convert to dict and prepare for Redis
-            data_dict = data.model_dump()
+            # Protected fields that shouldn't be changed
+            protected_fields = [
+                'id', 'project_id', 'uuid', 'created_at', 'cretaed_at',
+                'project_barcode', 'project_barcode_unique_code',
+                'project_barcode_image_url'
+            ]
 
-            # Store in Redis with 24h expiration
+            # Fetch existing project data from Redis
+            existing_data = await redis_client.get(redis_key)
+            if not existing_data:
+                raise HTTPException(status_code=404, detail="Project not found")
+                
+            existing_dict = json.loads(existing_data)
+            update_dict = update_data.model_dump(exclude_unset=True)
+
+            # Step 1: Handle inventory items
+            if 'inventory_items' in update_dict:
+                if update_dict['inventory_items'] is None:
+                    existing_dict['inventory_items'] = []
+                else:
+                    # Map existing items by sno for ID preservation
+                    existing_items = {item['sno']: item for item in existing_dict.get('inventory_items', [])}
+                    
+                    updated_items = []
+                    for new_item in update_dict['inventory_items']:
+                        # If item exists, preserve its ID and project_id
+                        if 'sno' in new_item and new_item['sno'] in existing_items:
+                            existing_item = existing_items[new_item['sno']]
+                            new_item['id'] = existing_item.get('id')
+                            new_item['project_id'] = existing_item.get('project_id')
+                        # If new item, generate ID and set project_id
+                        else:
+                            new_item['id'] = str(uuid.uuid4())
+                            new_item['project_id'] = project_id
+                        updated_items.append(new_item)
+                    
+                    update_dict['inventory_items'] = updated_items
+
+            # Step 2: Merge updates
+            # Start with existing protected fields
+            merged_data = {field: existing_dict[field] for field in protected_fields if field in existing_dict}
+            # Add all existing data
+            merged_data.update(existing_dict)
+            # Apply updates (excluding protected fields)
+            for field in update_dict:
+                if field not in protected_fields:
+                    merged_data[field] = update_dict[field]
+
+            # Set updated_at to current time
+            merged_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+            # Validate the final data
+            try:
+                validated_data = ToEventRedisUpdateOut(**merged_data)
+            except ValidationError as e:
+                logger.error(f"Validation error for project {project_id}: {str(e)}")
+                raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
+
+            # Save to Redis
             await redis_client.set(
                 redis_key,
-                json.dumps(data_dict, cls=CustomJSONEncoder),
+                validated_data.model_dump_json()
             )
-            return True
 
-        except Exception as e:
-            logger.error(f"Error updating Redis: {str(e)}")
+            return validated_data
+
+        except HTTPException:
             raise
+        except Exception as e:
+            logger.error(f"Error updating project {project_id}: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Error updating project: {str(e)}")
 
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        return super().default(obj)
+    class CustomJSONEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            return super().default(obj)

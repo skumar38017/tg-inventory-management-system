@@ -48,8 +48,8 @@ class InventoryItemCreate(InventoryItemBase):
     pass
 
 class InventoryItemOut(BaseModel):
-    id: Optional[str] = None
-    project_id: Optional[str] = None
+    id: Optional[str] = Field(None, frozen=True)
+    project_id: Optional[str] = Field(None, frozen=True)
     zone_active: Optional[str] = None
     sno: Optional[str] = None
     name: Optional[str] = None
@@ -66,9 +66,10 @@ class InventoryItemOut(BaseModel):
 
     @field_validator('id', mode='before')
     def set_id_from_uuid(cls, v, info):
-        # Changed to use info.data instead of values
-        if v is None and info.data and 'uuid' in info.data:
-            return info.data['uuid']
+        # Changed to properly handle ValidationInfo object
+        if v is None:
+            if hasattr(info, 'data') and info.data and 'uuid' in info.data:
+                return info.data['uuid']
         return v
     
     @field_validator('project_id', mode='before')
@@ -181,9 +182,11 @@ class ToEventInventoryOut(ToEventInventoryBase):
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator('id', mode='before')
-    def set_id_from_uuid(cls, v, values):
-        if v is None and 'uuid' in values:
-            return values['uuid']
+    def set_id_from_uuid(cls, v, info):
+        # Updated to properly handle ValidationInfo object
+        if v is None:
+            if hasattr(info, 'data') and info.data and 'uuid' in info.data:
+                return info.data['uuid']
         return v
     
     @field_validator('inventory_items', mode='before')
@@ -251,8 +254,8 @@ class ToEventRedis(BaseModel):
         }
     )
 
-class ToEventRedisUpdate(BaseModel):
-    """Schema for updating inventory in Redis"""
+# Update Input Schema (fields that can be updated)
+class ToEventRedisUpdateIn(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
@@ -260,8 +263,7 @@ class ToEventRedisUpdate(BaseModel):
     project_name: Optional[str] = None
     event_date: Optional[date] = None
     submitted_by: Optional[str] = None
-    inventory_items: Optional[List[InventoryItemBase]] = None  # Changed to use InventoryItemBase
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    inventory_items: Optional[List[Dict[str, Any]]] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -274,40 +276,77 @@ class ToEventRedisUpdate(BaseModel):
             return v.date()
         return v
 
-    @field_validator('updated_at', mode='before')
-    def set_updated_at(cls, v, values):
-        # Set updated_at every time the record is updated
-        return datetime.now(timezone.utc)
-    
-    @field_validator('inventory_items', mode='before')
-    def validate_inventory_items(cls, v):
-        if v is None:
-            return None
-        return [dict(InventoryItemBase(**item).model_dump()) for item in v]
-    
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
         }
     )
-
-class ToEventRedisOut(ToEventInventoryOut):
-    """Schema for retrieving inventory from Redis"""
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    cretaed_at: Optional[datetime] = None  # Explicitly include the typo field
+ 
+# Update Output Schema (fields that should be returned)
+class ToEventRedisUpdateOut(BaseModel):
+    project_id: str
+    employee_name: Optional[str] = None
+    location: Optional[str] = None
+    client_name: Optional[str] = None
+    setup_date: Optional[date] = None
+    project_name: Optional[str] = None
+    event_date: Optional[date] = None
+    submitted_by: Optional[str] = None
+    inventory_items: List[Dict[str, Any]] = Field(default_factory=list)
+    id: Optional[str] = None
+    uuid: Optional[str] = None
+    project_barcode: Optional[str] = None
+    project_barcode_unique_code: Optional[str] = None
+    project_barcode_image_url: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    cretaed_at: Optional[datetime] = None
 
     @model_validator(mode='before')
     def handle_timestamps(cls, values):
-        # Handle the typo field
-        if 'cretaed_at' in values and values['cretaed_at'] is not None:
-            if 'created_at' not in values or values['created_at'] is None:
-                values['created_at'] = values['cretaed_at']
-        
-        # Set defaults if still missing
+        if not isinstance(values, dict):
+            return values
+            
+        # Handle created_at
         if 'created_at' not in values or values['created_at'] is None:
-            values['created_at'] = datetime.now(timezone.utc)
+            if 'cretaed_at' in values and values['cretaed_at'] is not None:
+                values['created_at'] = values['cretaed_at']
+            else:
+                values['created_at'] = datetime.now(timezone.utc)
+        
+        # Always set updated_at to now
+        values['updated_at'] = datetime.now(timezone.utc)
+            
+        return values
+
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
+        }
+    )
+    
+class ToEventRedisOut(ToEventInventoryOut):
+    """Schema for retrieving inventory from Redis"""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    cretaed_at: Optional[datetime] = None
+
+    @model_validator(mode='before')
+    def handle_timestamps(cls, values):
+        # First ensure values is a dictionary
+        if not isinstance(values, dict):
+            return values
+            
+        # Ensure created_at is never null
+        if 'created_at' not in values or values['created_at'] is None:
+            if 'cretaed_at' in values and values['cretaed_at'] is not None:
+                values['created_at'] = values['cretaed_at']
+            else:
+                values['created_at'] = datetime.now(timezone.utc)
+        
+        # Ensure updated_at is set
         if 'updated_at' not in values or values['updated_at'] is None:
             values['updated_at'] = datetime.now(timezone.utc)
             
