@@ -1,7 +1,10 @@
 #  backend/app/curd/to_event_inventry_curd.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone, date
+import re
+from enum import Enum
+from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
 from backend.app.models.to_event_inventry_model import ToEventInventory
 from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate, 
@@ -13,6 +16,7 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventorySearch,
     ToEventRedisUpdate,
     ToEventUploadResponse,
+    InventoryItemBase,
     ToEventUploadSchema,
     RedisInventoryItem,
     ToEventRedis,
@@ -23,7 +27,7 @@ from backend.app.models.to_event_inventry_model import InventoryItem, ToEventInv
 from backend.app.interface.to_event_interface import ToEventInventoryInterface
 import logging
 from fastapi import HTTPException
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
@@ -392,46 +396,54 @@ class ToEventInventoryService(ToEventInventoryInterface):
                 detail="Internal Server Error"
             )
     
-        #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
-        async def get_project_by_project_id(self, db: AsyncSession, project_id: str) -> Optional[ToEventRedisOut]:
-            try:
-                result = await db.execute(
-                    select(ToEventInventory)
-                    .where(ToEventInventory.project_id == project_id)
-                )
-                return result.scalar_one_or_none()
-            except SQLAlchemyError as e:
-                logger.error(f"Database error fetching entry: {e}")
-                raise HTTPException(status_code=500, detail="Database error")
-        
-    # Update Project in local Redis
-    async def update_to_event_project(self, project_id: str, update_data: ToEventRedisUpdate):
+    #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
+    async def get_project_data(self, project_id: str) -> Optional[ToEventRedisOut]:
         try:
             redis_key = f"to_event_inventory:{project_id}"
             redis_data = await redis_client.get(redis_key)
-    
-            if not redis_data:
-                raise HTTPException(status_code=404, detail="Project not found")
-    
-            data = json.loads(redis_data)
-            
-            # Update project info
-            if update_data.project_info:
-                data['project_info'].update(update_data.project_info.dict(exclude_unset=True))
-                data['project_info']['updated_at'] = datetime.now(timezone.utc).isoformat()
-    
-            # Update specific items if provided
-            if update_data.inventory_items:
-                for updated_item in update_data.inventory_items:
-                    for i, item in enumerate(data['inventory_items']):
-                        if item.get('sno') == updated_item.sno:
-                            data['inventory_items'][i].update(updated_item.dict(exclude_unset=True))
-                            break
-                        
-            await redis_client.set(redis_key, json.dumps(data, default=str))
-            return ToEventRedisOut(**data['project_info'])
-    
-        except Exception as e:
-            logger.error(f"Error updating project: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
 
+            if not redis_data:
+                return None
+
+            data = json.loads(redis_data)
+
+            # Handle the 'cretaed_at' typo if present
+            if 'cretaed_at' in data:
+                data['created_at'] = data.pop('cretaed_at')
+
+            # Ensure inventory_items is properly formatted
+            if 'inventory_items' in data and data['inventory_items']:
+                data['inventory_items'] = [
+                    dict(InventoryItemBase(**item).model_dump())
+                    for item in data['inventory_items']
+                ]
+
+            return ToEventRedisOut(**data)
+        
+        except Exception as e:
+            logger.error(f"Error getting project data: {str(e)}")
+            raise
+
+    async def update_project_data(self, project_id: str, data: ToEventRedisOut):
+        try:
+            redis_key = f"to_event_inventory:{project_id}"
+
+            # Convert to dict and prepare for Redis
+            data_dict = data.model_dump()
+
+            # Store in Redis with 24h expiration
+            await redis_client.set(
+                redis_key,
+                json.dumps(data_dict, cls=CustomJSONEncoder),
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Error updating Redis: {str(e)}")
+            raise
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)

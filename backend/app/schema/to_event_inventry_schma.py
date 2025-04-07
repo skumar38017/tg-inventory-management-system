@@ -6,6 +6,7 @@ import uuid
 import json
 import re
 from enum import Enum
+from pydantic import ValidationError
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,8 +19,8 @@ class StatusEnum(str, Enum):
     CANCELLED = "Cancelled"
 
 class InventoryItemBase(BaseModel):
-    zone_active: Optional[str] = None
-    sno: Optional[str] = None
+    zone_active: Optional[str] = Field(None, description="The active zone for this equipment")
+    sno: Optional[str] = Field(None, description="Serial number of the equipment")
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[int] = None
@@ -29,7 +30,7 @@ class InventoryItemBase(BaseModel):
     unit: Optional[str] = None
     per_unit_power: Optional[str] = None  # Matches String in SQLAlchemy model
     total_power: Optional[str] = None  # Matches String in SQLAlchemy model
-    status: Optional[StatusEnum] = None
+    status: Optional[StatusEnum] = Field(None, example="Scheduled")
     poc: Optional[str] = None
 
     @field_validator('material', 'comments', mode='before')
@@ -64,9 +65,10 @@ class InventoryItemOut(BaseModel):
     poc: Optional[str] = None
 
     @field_validator('id', mode='before')
-    def set_id_from_uuid(cls, v, values):
-        if v is None and 'uuid' in values:
-            return values['uuid']
+    def set_id_from_uuid(cls, v, info):
+        # Changed to use info.data instead of values
+        if v is None and info.data and 'uuid' in info.data:
+            return info.data['uuid']
         return v
     
     @field_validator('project_id', mode='before')
@@ -186,7 +188,10 @@ class ToEventInventoryOut(ToEventInventoryBase):
     
     @field_validator('inventory_items', mode='before')
     def parse_inventory_items(cls, v):
-        return [InventoryItemOut(**item) for item in v]
+        if isinstance(v, list):
+            return [InventoryItemOut(**item) if isinstance(item, dict) else item for item in v]
+        return v
+
     
 class ToEventInventoryUpdateOut(ToEventInventoryOut):
     updated_at: datetime
@@ -255,12 +260,31 @@ class ToEventRedisUpdate(BaseModel):
     project_name: Optional[str] = None
     event_date: Optional[date] = None
     submitted_by: Optional[str] = None
-    project_barcode: Optional[str] = None
-    project_barcode_unique_code: Optional[str] = None
-    project_barcode_image_url: Optional[str] = None
-    inventory_items: Optional[List[Dict[str, Any]]] = None
-    updated_at: datetime = datetime.now(timezone.utc)
+    inventory_items: Optional[List[InventoryItemBase]] = None  # Changed to use InventoryItemBase
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @field_validator('setup_date', 'event_date', mode='before')
+    def parse_dates(cls, v):
+        if isinstance(v, str):
+            try:
+                return datetime.strptime(v, "%Y-%m-%d").date()
+            except ValueError:
+                return datetime.fromisoformat(v).date()
+        elif isinstance(v, datetime):
+            return v.date()
+        return v
+
+    @field_validator('updated_at', mode='before')
+    def set_updated_at(cls, v, values):
+        # Set updated_at every time the record is updated
+        return datetime.now(timezone.utc)
+    
+    @field_validator('inventory_items', mode='before')
+    def validate_inventory_items(cls, v):
+        if v is None:
+            return None
+        return [dict(InventoryItemBase(**item).model_dump()) for item in v]
+    
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),

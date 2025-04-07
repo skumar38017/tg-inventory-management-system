@@ -1,5 +1,6 @@
 #  backend/app/routers/to_event_routes.py
 import logging
+import re
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, date, timezone
@@ -180,32 +181,77 @@ async def search_by_project_id(
         )
     
 # Upadte project according to `project_id` in local Redis 
-@router.put("/to_event-update-submitted-project-db/{project_id}/",
-            status_code=200,
-            summary="Update an existing entry in the inventory",
-            description="This endpoint is used to update an existing entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the updated entry.",
-            response_model=ToEventRedisOut,
-            response_model_exclude_unset=True,
-            )
-async def update_to_event_project_item(
+@router.put(
+    "/to_event-update-submitted-project-db/{project_id}/",
+    response_model=ToEventRedisOut,
+    status_code=200,
+    summary="Update all project fields in Redis",
+    description="Update any field of an existing project in Redis including all inventory item fields",
+)
+async def update_project_in_redis(
     project_id: str,
     update_data: ToEventRedisUpdate,
-    db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
 ):
     try:
-        # Convert update_data to dict and add updated_at if not provided
-        update_dict = update_data.dict(exclude_unset=True)
-        if 'updated_at' not in update_dict:
-            update_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
-            
-        updated_item = await service.update_to_event_project(
-            project_id=project_id,
-            update_data=ToEventRedisUpdate(**update_dict)  # Recreate with updated timestamp
-        )
-        return updated_item
+        # Validate project_id format
+        if not re.match(r'^PRJ\d+$', project_id):
+            raise HTTPException(
+                status_code=422,
+                detail="Project ID must be in format PRJ followed by numbers"
+            )
+
+        # Get existing data
+        existing_data = await service.get_project_data(project_id)
+        if not existing_data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Project {project_id} not found in Redis"
+            )
+
+        # Convert existing data to dict
+        existing_dict = existing_data.model_dump()
+        
+        # Convert update data to dict, excluding unset fields
+        update_dict = update_data.model_dump(exclude_unset=True)
+        
+        # Special handling for inventory items
+        if 'inventory_items' in update_dict:
+            if update_dict['inventory_items'] is None:
+                # Clear inventory if explicitly set to None
+                existing_dict['inventory_items'] = []
+            else:
+                # Replace inventory items entirely
+                existing_dict['inventory_items'] = update_dict['inventory_items']
+        
+        # Update all other fields
+        for field in update_dict:
+            if field != 'inventory_items':
+                existing_dict[field] = update_dict[field]
+        
+        # Always update the timestamp
+        existing_dict['updated_at'] = datetime.now(timezone.utc)
+        
+        # Handle the 'cretaed_at' typo if present
+        if 'cretaed_at' in existing_dict:
+            existing_dict['created_at'] = existing_dict.pop('cretaed_at')
+        
+        # Validate the merged data
+        updated_data = ToEventRedisOut(**existing_dict)
+        
+        # Save to Redis
+        await service.update_project_data(project_id, updated_data)
+        
+        return updated_data
+        
     except HTTPException:
         raise
+    except ValidationError as e:
+        logger.error(f"Validation error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=422, detail="Invalid data format")
     except Exception as e:
-        logger.error(f"Error updating project: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Update error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating project: {str(e)}"
+        )
