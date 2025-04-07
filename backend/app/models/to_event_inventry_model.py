@@ -65,7 +65,7 @@ class InventoryItem(Base):
     sno = Column(String, nullable=True)
     name = Column(String, nullable=True)  # Changed to match migration
     description = Column(String, nullable=True)
-    quantity = Column(Integer, nullable=True)
+    quantity = Column(String, nullable=True)
     material = Column(String, nullable=True)
     comments = Column(String, nullable=True)
     total = Column(String, nullable=True)

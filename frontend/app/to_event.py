@@ -67,7 +67,7 @@ class ToEventWindow:
                 json.dump([], f)
 
     # Save data to the database via API
-    def save_to_db(self, data):
+    def save_to_db(self, data, work_id=None):
         """Save data to the database via API"""
         try:
             work_id = data['work_id']
@@ -699,6 +699,9 @@ class ToEventWindow:
     # Submit form to API
     def submit_form(self):
         """Handle form submission with multiple inventory items"""
+        # Get the current work_id
+        work_id = self.work_id.get()
+
         # All fields are optional except basic validation
         if not any(entry.get() for row in self.table_entries for entry in row):
             if not (self.employee_name.get() or self.client_name.get() or 
@@ -707,7 +710,8 @@ class ToEventWindow:
                 return
         # Prepare data with all fields
         data = {
-            'work_id': self.work_id.get(),
+            'work_id': work_id,
+            'project_id': work_id,  # Add this line
             'employee_name': self.employee_name.get(),
             'location': self.location.get(),
             'client_name': self.client_name.get(),
@@ -717,10 +721,11 @@ class ToEventWindow:
             'inventory_items': []
         }
     
-        # Add all inventory items
+        # Add all inventory items with project_id included
         for row in self.table_entries:
             if any(entry.get() for entry in row):  # Only add rows with data
                 data['inventory_items'].append({
+                    'project_id': work_id,  # Add this line
                     'zone_active': row[0].get(),
                     'sno': row[1].get(),
                     'name': row[2].get(),
