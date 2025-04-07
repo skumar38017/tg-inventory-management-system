@@ -329,8 +329,8 @@ class ToEventRedisUpdateOut(BaseModel):
     
 class ToEventRedisOut(ToEventInventoryOut):
     """Schema for retrieving inventory from Redis"""
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: Optional [datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional [datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
     cretaed_at: Optional[datetime] = None
 
     @model_validator(mode='before')
