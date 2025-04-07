@@ -148,14 +148,14 @@ def create_to_event_inventory_list(item_data: dict):
                 "name": clean_value(inventory_item.get('name')),
                 "description": clean_value(inventory_item.get('description')),
                 "quantity": clean_number(inventory_item.get('quantity')),
-                "material": clean_value(inventory_item.get('material')),
                 "comments": clean_value(inventory_item.get('comments')),
                 "total": clean_number(inventory_item.get('total')),
                 "unit": clean_value(inventory_item.get('unit')),
                 "per_unit_power": clean_number(inventory_item.get('per_unit_power')),
                 "total_power": clean_number(inventory_item.get('total_power')),
                 "status": clean_value(inventory_item.get('status')),
-                "poc": clean_value(inventory_item.get('poc'))
+                "poc": clean_value(inventory_item.get('poc')),
+                "material": clean_value(inventory_item.get('material', "")),
             }
 
             # Remove None values except for project_id which is required
