@@ -84,7 +84,7 @@ class InventoryItemOut(BaseModel):
     sno: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[int] = None
+    quantity: Optional[Union[str, float, int]] = None 
     material: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
@@ -116,6 +116,12 @@ class InventoryItemOut(BaseModel):
         if v is None:
             return None
         return str(v) if not isinstance(v, str) else v
+
+    @field_validator('quantity', mode='before')
+    def validate_quantity(cls, v):
+        if v == '':
+            return 0  # or return None, based on your preference
+        return v
         
     @field_validator('material', 'comments', mode='before')
     def empty_to_none(cls, v):
@@ -401,7 +407,7 @@ class RedisInventoryItem(BaseModel):
     sno: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[int] = None
+    quantity: Optional[Union[str, float, int]] = None 
     material: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
@@ -425,6 +431,12 @@ class RedisInventoryItem(BaseModel):
     @field_validator('material', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
+    
+    @field_validator('quantity', mode='before')
+    def validate_quantity(cls, v):
+        if v == '':
+            return 0  # or return None, based on your preference
+        return v
     
     @field_validator('unit', mode='before')
     def convert_unit_to_string(cls, v):

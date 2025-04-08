@@ -368,7 +368,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
             projects.sort(key=lambda x: x.updated_at, reverse=True)
             
             # Apply pagination
-            paginated_projects = projects[skip:skip+200]  # Assuming page size of 100
+            paginated_projects = projects[skip:skip+250]  # Assuming page size of 100
             
             return paginated_projects
         except Exception as e:
