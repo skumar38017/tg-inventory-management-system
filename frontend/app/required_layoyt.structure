@@ -1,0 +1,108 @@
+
+
+load subbmitted data in display area accordsing to `updated_at` field
+
+i have field data header in the form
+
++----------+-------------+----------+---------------+-------------+------------+------------+
+| Work ID  | Employee    | Location | Project Name  | Client Name | Setup Date | Event Date | -- show in display as header
++----------+-------------+----------+---------------+-------------+------------+------------+
+| PRJ54321 | Alex Johnson| Mumbai   | Annual Summit | Global Tech | 2023-06-01 | 2023-06-05 | -- show in display area  `subbmitted project` as per updated_at
++----------+-------------+----------+---------------+-------------+------------+------------+
+
+
+
+
+
+
+
+after double click on the work id of any project of the `subbmitted project` which is shown in the display area
+
+Project ID (Search): [_____________] [Fetch] [Edit] [Update]
+
+Employee Name: [Alex Johnson___] 
+Location: [Mumbai________] 
+Client Name: [Global Tech___] 
+Setup Date: [2023-06-01___] 
+Project Name: [Annual Summit__] 
+Event Date: [2023-06-05___] 
+Current Work ID: [PRJ54321____] (readonly)
+
+
+INVENTORY LIST TABLE:
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+|Zone/Active| Sr.No | Inventory | Description    | Quantity | Comments| Total | Units| Per Unit Power(W)| Total Power(W)| Status  | POC   | Material |
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall | 1     | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 2   | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall  | 3    | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 4    | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall  | 5    | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 6    | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall  | 7    | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 8    | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall  | 9    | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 10   | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | --> auromatically/Dynamically added row in the table as per data from the API
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+
+After Clicking "Edit" and Adding New Item
+
+[Edit mode activated - all fields editable]
+
+INVENTORY LIST TABLE:
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+|Zone/Active| Sr.No | Inventory | Description    | Quantity | Comments| Total | Units| Per Unit Power(W)| Total Power(W)| Status  | POC   | Material |
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall | 1     | Projector | Laser 10K Lumens| 3       |         | 3     | pcs  | 350              | 1050         | Checked | Rahul | AV       | ← Changed Qty 2→3
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 2   | Tablets   |                | 5        |         | 5     | pcs  | 15               | 75           | Ready   | Priya |          | ← Added power calc
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Lounge    | 3     | Speakers  | Bluetooth      | 4        |         | 4     | pcs  | 50               | 200          | New     | Sanjay| AV       | ← New row added
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall  | 4    | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | ← Changed Qty 2→2
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 5    | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | ← Added power calc
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Lounge    | 6     | Speakers  | Bluetooth      | 4        |         | 4     | pcs  | 50               | 200          | New     | Sanjay| AV       | ← New row added
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+
+
+Updated Form Display (Readonly Mode)
+
+INVENTORY LIST TABLE:
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+|Zone/Active| Sr.No | Inventory | Description    | Quantity | Comments| Total | Units| Per Unit Power(W)| Total Power(W)| Status  | POC   | Material |
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall | 1     | Projector | Laser 10K Lumens| 3       |         | 3     | pcs  | 350              | 1050         | Checked | Rahul | AV       | 
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 2   | Tablets   |                | 5        |         | 5     | pcs  | 15               | 75           | Ready   | Priya |          | 
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Lounge    | 3     | Speakers  | Bluetooth      | 4        |         | 4     | pcs  | 50               | 200          | New     | Sanjay| AV       | 
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Main Hall  | 4    | Projector | Laser 10K Lumens| 2       |         | 2     | pcs  | 350              | 700          | Checked | Rahul | AV       | 
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Registration| 5    | Tablets   |                | 5        |         | 5     | pcs  | 15               |              | Ready   | Priya |          | 
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------+
+| Lounge    | 6     | Speakers  | Bluetooth      | 4        |         | 4     | pcs  | 50               | 200          | New     | Sanjay| AV       | 
++-----------+-------+-----------+----------------+----------+---------+-------+------+------------------+--------------+---------+-------+----------
+
+and show the updated data in the display area
+
+Project LIST TABLE:
+
++----------+-------------+----------+---------------+-------------+------------+------------+---------------------+
+| Work ID  | Employee    | Location | Project Name  | Client Name | Setup Date | Event Date | Last Updated        |
++----------+-------------+----------+---------------+-------------+------------+------------+---------------------+
+| PRJ54321 | Alex Johnson| Mumbai   | Annual Summit | Global Tech | 2023-06-01 | 2023-06-05 | 2023-06-06 12:15 PM |-- show in display area  `subbmitted project` as per updated_at
++----------+-------------+----------+---------------+-------------+------------+------------+---------------------+
+| PRJ54322 | Alex Johnson| Mumbai   | Annual Summit | Global Tech | 2023-06-01 | 2023-06-05 | 2023-06-06 12:11 PM |-- show in display area  `subbmitted project` as per updated_at
++----------+-------------+----------+---------------+-------------+------------+------------+---------------------+
