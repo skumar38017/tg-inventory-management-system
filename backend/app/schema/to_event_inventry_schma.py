@@ -312,7 +312,7 @@ class ToEventRedisUpdateIn(BaseModel):
     project_name: Optional[str] = None
     event_date: Optional[date] = None
     submitted_by: Optional[str] = None
-    inventory_items: Optional[List[Dict[str, Any]]] = None
+    inventory_items: Optional[List[InventoryItemBase]] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -334,7 +334,7 @@ class ToEventRedisUpdateIn(BaseModel):
  
 # Update Output Schema (fields that should be returned)
 class ToEventRedisUpdateOut(BaseModel):
-    project_id: str
+    project_id: Optional[str] = None
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
@@ -348,8 +348,8 @@ class ToEventRedisUpdateOut(BaseModel):
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     cretaed_at: Optional[datetime] = None
 
     @model_validator(mode='before')

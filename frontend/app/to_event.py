@@ -468,7 +468,7 @@ class ToEventWindow:
                 record['client_name'],
                 record['setup_date'],
                 record['event_date'],
-                formatted_date
+                formatted_date  # Make sure this is included
             ))
 
     def load_submitted_project(self, event):
@@ -619,73 +619,136 @@ class ToEventWindow:
         logger.info("Editing record")
 
     def update_record(self):
-        """Update the record in database via API"""
+        """Update the record in database via API with multiple rows"""
         try:
             work_id = self.work_id.get()
             if not work_id:
                 messagebox.showwarning("Warning", "Work ID is required for update")
                 return
                 
-            # Prepare the data to be saved
+            # Prepare the complete data package
             data = {
                 'work_id': work_id,
-                'employee_name': self.employee_name.get(),
-                'location': self.location.get(),
-                'client_name': self.client_name.get(),
-                'setup_date': self.setup_date.get(),
-                'project_name': self.project_name.get(),
-                'event_date': self.event_date.get(),
+                'employee_name': self.employee_name.get() or '',
+                'location': self.location.get() or '',
+                'client_name': self.client_name.get() or '',
+                'setup_date': self.setup_date.get() or '',
+                'project_name': self.project_name.get() or '',
+                'event_date': self.event_date.get() or '',
                 'inventory_items': []
             }
             
-            for row in self.table_entries:
-                # Only include rows with inventory name (column 2)
-                if row[2].get().strip():
+            # Process all rows - no limit
+            for row_idx, row in enumerate(self.table_entries, start=1):
+                # Only process rows with inventory name (skip empty rows)
+                if not row[2].get().strip():
+                    continue
+                    
+                try:
                     item = {
-                        'zone_active': row[0].get(),
-                        'sno': row[1].get(),
+                        'zone_active': row[0].get() or 'General',
+                        'sno': row[1].get() or str(row_idx),
                         'name': row[2].get(),
-                        'description': row[3].get(),
-                        'quantity': row[4].get(),
-                        'comments': row[5].get(),
-                        'total': row[6].get(),
-                        'unit': row[7].get(),
-                        'per_unit_power': row[8].get(),
-                        'total_power': row[9].get(),
-                        'status': row[10].get(),
-                        'poc': row[11].get(),
-                        'material': row[12].get() if len(row) > 12 else ""
+                        'description': row[3].get() or '',
+                        'quantity': self._validate_number(row[4].get(), default=1),
+                        'comments': row[5].get() or '',
+                        'total': self._validate_number(row[6].get(), default=0),
+                        'unit': row[7].get() or 'pcs',
+                        'per_unit_power': self._validate_number(row[8].get(), default=0),
+                        'total_power': self._validate_number(row[9].get(), default=0),
+                        'status': row[10].get() or 'active',
+                        'poc': row[11].get() or '',
+                        'material': row[12].get() if len(row) > 12 else ''
                     }
                     data['inventory_items'].append(item)
-
-            if not self.save_to_db(data):
-                raise Exception("Failed to save to database")
+                except Exception as e:
+                    logger.error(f"Error processing row {row_idx}: {str(e)}")
+                    continue
+                    
+            if not data['inventory_items']:
+                messagebox.showwarning("Warning", "No valid inventory items to update")
+                return
+                
+            logger.debug(f"Prepared update data for {work_id} with {len(data['inventory_items'])} items")
             
-            messagebox.showinfo("Success", "Record updated successfully")
-            logger.info(f"Record updated: {data}")
-
-            # Refresh the form and data
-            self.refresh_after_update(work_id)
+            # Save and verify
+            if not self.save_to_db(data):
+                raise Exception("Failed to persist changes to database")
+                
+            # Force complete refresh
+            self._complete_refresh(work_id)
+            
+            messagebox.showinfo("Success", f"Updated {len(data['inventory_items'])} items successfully")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
-            logger.error(f"Update failed: {str(e)}")
+            messagebox.showerror("Error", f"Update failed: {str(e)}")
+            logger.error(f"Update error: {str(e)}", exc_info=True)
+
+    def _validate_number(self, value, default=0):
+        """Ensure numeric fields are valid"""
+        try:
+            if not value:
+                return default
+            return float(value) if '.' in value else int(value)
+        except:
+            return default
+
+    def _complete_refresh(self, work_id):
+        """Complete refresh after update"""
+        try:
+            # Reload all data
+            self.load_submitted_forms()
+            
+            # Reload this specific project
+            self.load_project_data(work_id)
+            
+            # Reset UI state
+            self.set_fields_readonly(True)
+            self.edit_btn.config(state=tk.NORMAL)
+            self.update_btn.config(state=tk.DISABLED)
+            
+            # Ensure visibility in UI
+            self.tab_control.select(self.submitted_tab)
+            self._scroll_to_project(work_id)
+            
+        except Exception as e:
+            logger.error(f"Refresh error: {str(e)}", exc_info=True)
+
+    def _scroll_to_project(self, work_id):
+        """Scroll to the updated project in the treeview"""
+        for item in self.submitted_tree.get_children():
+            if self.submitted_tree.item(item)['values'][0] == work_id:
+                self.submitted_tree.selection_set(item)
+                self.submitted_tree.see(item)
+                break
+
 
     def refresh_after_update(self, work_id):
         """Refresh the form after successful update"""
-        # Set fields back to readonly
-        self.set_fields_readonly(True)
-        self.edit_btn.config(state=tk.NORMAL)
-        self.update_btn.config(state=tk.DISABLED)
-
-        # Refresh submitted forms tab
-        self.load_submitted_forms()
-        
-        # Reload the same project to show updated data
-        self.load_project_data(work_id)
-        
-        # Switch to submitted projects tab to show updated list
-        self.tab_control.select(self.submitted_tab)
+        try:
+            # Clear and reload the submitted forms list
+            self.load_submitted_forms()
+            
+            # Reload the current project data
+            self.load_project_data(work_id)
+            
+            # Switch to readonly mode
+            self.set_fields_readonly(True)
+            self.edit_btn.config(state=tk.NORMAL)
+            self.update_btn.config(state=tk.DISABLED)
+            
+            # Ensure the updated project is visible in the list
+            self.tab_control.select(self.submitted_tab)
+            
+            # Scroll to the updated project in the treeview
+            for item in self.submitted_tree.get_children():
+                if self.submitted_tree.item(item)['values'][0] == work_id:
+                    self.submitted_tree.selection_set(item)
+                    self.submitted_tree.see(item)
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Refresh after update failed: {str(e)}", exc_info=True)
 
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
