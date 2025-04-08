@@ -84,12 +84,12 @@ class InventoryItemOut(BaseModel):
     sno: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[int] = None
+    quantity: Optional[Union[str, float, int]] = None
     material: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
-    per_unit_power: Optional[str] = None
+    per_unit_power: Optional[Union[str, float, int]] = None 
     total_power: Optional[Union[str, float, int]] = None 
     status: Optional[str] = None
     poc: Optional[str] = None
@@ -105,17 +105,20 @@ class InventoryItemOut(BaseModel):
     @field_validator('project_id', mode='before')
     def format_project_id(cls, v):
         if v is None:
-            raise ValueError("Project_id cannot be empty")
+            return None  # Allow None values
         clean_id = re.sub(r'^PRJ', '', str(v))
         if not clean_id.isdigit():
             raise ValueError("Project_id must contain only numbers after prefix")
         return f"PRJ{clean_id}"
     
-    @field_validator('unit', mode='before')
-    def convert_unit_to_string(cls, v):
-        if v is None:
+    @field_validator('quantity', 'unit', 'quantity', 'total_power', 'per_unit_power', mode='before')
+    def normalize_quantity(cls, v):
+        if v in ('', None):
             return None
-        return str(v) if not isinstance(v, str) else v
+        try:
+            return int(float(v)) if v is not None else None
+        except (ValueError, TypeError):
+            return None
         
     @field_validator('material', 'comments', mode='before')
     def empty_to_none(cls, v):
