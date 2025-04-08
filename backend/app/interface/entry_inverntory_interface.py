@@ -102,7 +102,7 @@ class EntryInventoryInterface:
         """
         pass
 
-    async def show_all_inventory(
+    async def list_entry_inventories_curd(
         self, 
         db: AsyncSession
     ) -> List[InventoryRedisOut]:

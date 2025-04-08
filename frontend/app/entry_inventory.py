@@ -6,7 +6,7 @@ import uuid
 import re
 import logging
 
-from .entry_inventory_api_request import (sync_inventory, 
+from .api_request.entry_inventory_api_request import (sync_inventory, 
                             filter_inventory_by_date_range,
                             add_new_inventory_item,
                             search_inventory_by_id
