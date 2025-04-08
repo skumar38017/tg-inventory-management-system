@@ -17,6 +17,7 @@ from .assign_inventory import AssignInventoryWindow
 from .damage_inventory import DamageWindow
 import requests
 from typing import List, Dict
+from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
 logging.basicConfig(
@@ -122,39 +123,72 @@ def filter_by_date_range():
 
 #  Perform inventory search based on search criteria [InventoryID, ProjectID, ProductID]
 def perform_search():
-    """Perform inventory search based on exactly one ID"""
+    """Perform inventory search based on search criteria"""
     inventory_id = search_inventory_id_entry.get().strip()
     project_id = search_project_id_entry.get().strip()
     product_id = search_product_id_entry.get().strip()
     
-    # Clear previous results
-    if search_results_listbox:
-        search_results_listbox.delete(0, tk.END)
+    search_results_listbox.delete(0, tk.END)
     
     try:
-        results = search_inventory_by_id(
-            inventory_id=inventory_id,
-            project_id=project_id,
-            product_id=product_id
-        )
-        
-        if not results:
-            messagebox.showinfo("Search Results", "No matching items found")
-            return
-            
-        # Display results in the listbox
-        for item in results:
-            display_text = (
-                f"{item['Sno']} | {item['InventoryID']} | {item['Product ID']} | "
-                f"{item['Name']} | Qty: {item['Qty']} | "
-                f"Purchase: {item['Purchase Date']} | "
-                f"Amount: {item['Purchase Amount']} |"
-                f"Barcode: {item['BacodeUrl']} |"
+        if project_id:
+            results = search_project_details_by_project_id(project_id)
+            if not results:
+                messagebox.showinfo("Search Results", "No matching project found")
+                return
+                
+            project = results[0]
+            header = (
+                f"Project: {project.get('project_name', 'N/A')} | "
+                f"ID: {project.get('work_id', 'N/A')}\n"
+                f"Employee: {project.get('employee_name', 'N/A')} | "
+                f"Client: {project.get('client_name', 'N/A')}\n"
+                f"Location: {project.get('location', 'N/A')} | "
+                f"Setup Date: {project.get('setup_date', 'N/A')} | "
+                f"Event Date: {project.get('event_date', 'N/A')}\n"
+                f"Submitted: {project.get('submitted_by', 'N/A')} | "
+                f"Updated: {project.get('updated_at', 'N/A')}"
             )
-            search_results_listbox.insert(tk.END, display_text)
+            search_results_listbox.insert(tk.END, header)
+            search_results_listbox.insert(tk.END, "-"*80)
+            search_results_listbox.insert(tk.END, "Inventory Items:")
+            
+            for item in project.get('inventory_items', []):
+                display_text = (
+                    f"{item.get('sno', '')} | "
+                    f"{item.get('name', '')} | "
+                    f"Qty: {str(item.get('quantity', 0))} | "
+                    f"Zone: {item.get('zone_active', '')} | "
+                    f"comments: {item.get('comments', '')} | "
+                    f"Status: {item.get('status', '')}  |"
+                    f"Total: {str(item.get('total', 0))} | "
+                    f"Unit: {item.get('unit', '')} | "
+                    f"poc: {str(item.get('poc', 0))}"
+                )
+                search_results_listbox.insert(tk.END, display_text)
+                
+        elif inventory_id or product_id:
+            # Handle inventory/product search
+            results = search_inventory_by_id(
+                inventory_id=inventory_id,
+                product_id=product_id
+            )
+            
+            if not results:
+                messagebox.showinfo("Search Results", "No matching items found")
+                return
+                
+            # Display inventory results
+            for item in results:
+                display_text = (
+                    f"{item.get('Sno', '')} | {item.get('InventoryID', 'N/A')} | "
+                    f"{item.get('Product ID', 'N/A')} | {item.get('Name', 'N/A')} | "
+                    f"Qty: {item.get('Qty', 0)} | Purchase: {item.get('Purchase Date', 'N/A')}"
+                )
+                search_results_listbox.insert(tk.END, display_text)
                 
     except Exception as e:
-        logger.error(f"Search failed: {e}")
+        logger.error(f"Search failed: {str(e)}", exc_info=True)
         messagebox.showerror("Search Error", f"Failed to perform search: {str(e)}")
 
 # Add new inventory items from all rows
