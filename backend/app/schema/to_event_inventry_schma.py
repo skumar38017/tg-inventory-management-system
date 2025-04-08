@@ -57,7 +57,7 @@ class InventoryItemBase(BaseModel):
     status: Optional[str] = None
     poc: Optional[str] = None
 
-    @field_validator('per_unit_power', 'total_power', mode='before')
+    @field_validator('per_unit_power', 'quantity', 'unit', 'total_power', mode='before')
     def convert_numbers_to_strings(cls, v):
         if v is None:
             return None
@@ -88,7 +88,7 @@ class InventoryItemOut(BaseModel):
     material: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
-    unit: Optional[str] = None
+    unit: Optional[Union[str, float, int]] = None 
     per_unit_power: Optional[str] = None
     total_power: Optional[Union[str, float, int]] = None 
     status: Optional[str] = None
@@ -110,6 +110,12 @@ class InventoryItemOut(BaseModel):
         if not clean_id.isdigit():
             raise ValueError("Project_id must contain only numbers after prefix")
         return f"PRJ{clean_id}"
+    
+    @field_validator('unit', mode='before')
+    def convert_unit_to_string(cls, v):
+        if v is None:
+            return None
+        return str(v) if not isinstance(v, str) else v
         
     @field_validator('material', 'comments', mode='before')
     def empty_to_none(cls, v):
@@ -133,8 +139,8 @@ class ToEventInventoryBase(BaseModel):
     event_date: Optional[date] = None
     submitted_by: Optional[str] = None
     inventory_items: List[InventoryItemBase]
-    cretaed_at: datetime
-    updated_at: datetime
+    cretaed_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -147,8 +153,6 @@ class ToEventInventoryBase(BaseModel):
             return v.date()
         return v
     
-
-
     @field_validator('project_id', mode='before')
     def format_project_id(cls, v):
         if v is None:
@@ -157,7 +161,7 @@ class ToEventInventoryBase(BaseModel):
         if not clean_id.isdigit():
             raise ValueError("Project_id must contain only numbers after prefix")
         return f"PRJ{clean_id}"
-    
+        
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -186,7 +190,7 @@ class ToEventInventoryUpdate(BaseModel):
     @field_validator('updated_at', mode='before')
     def set_timestamp(cls, v):
         return datetime.now(timezone.utc)
-
+    
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -218,6 +222,15 @@ class ToEventInventoryOut(ToEventInventoryBase):
             if hasattr(info, 'data') and info.data and 'uuid' in info.data:
                 return info.data['uuid']
         return v
+    
+    @field_validator('project_id', mode='before')
+    def format_project_id(cls, v):
+        if v is None:
+            raise ValueError("Project_id cannot be empty")
+        clean_id = re.sub(r'^PRJ', '', str(v))
+        if not clean_id.isdigit():
+            raise ValueError("Project_id must contain only numbers after prefix")
+        return f"PRJ{clean_id}"
     
     @field_validator('inventory_items', mode='before')
     def parse_inventory_items(cls, v):
@@ -392,7 +405,7 @@ class RedisInventoryItem(BaseModel):
     material: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
-    unit: Optional[str] = None
+    unit: Optional[Union[str, float, int]] = None 
     per_unit_power: Optional[str] = None
     total_power: Optional[Union[str, float, int]] = None 
     status: Optional[str] = None
@@ -412,6 +425,12 @@ class RedisInventoryItem(BaseModel):
     @field_validator('material', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
+    
+    @field_validator('unit', mode='before')
+    def convert_unit_to_string(cls, v):
+        if v is None:
+            return None
+        return str(v) if not isinstance(v, str) else v
 
 
 class ToEventUploadSchema(BaseModel):
