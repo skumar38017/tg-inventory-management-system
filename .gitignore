@@ -19,6 +19,10 @@ backend/app/.env
 staticfiles/
 static/barcodes/*
 
+staticfiles/
+/static/barcodes
+static/barcodes
+
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
 # in your Git repository. Update and uncomment the following line accordingly.

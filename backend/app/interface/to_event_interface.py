@@ -8,9 +8,10 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate,
     ToEventInventoryOut,
     ToEventInventoryUpdate,
-    ToEventInventoryUpdateOut,
     ToEventRedis,
     ToEventRedisOut,
+    ToEventRedisUpdateOut,
+    ToEventRedisUpdateIn
 )
 from pydantic import BaseModel
 from datetime import date
@@ -36,34 +37,74 @@ class ToEventInventoryInterface:
         pass
     
         
-    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[ToEventInventoryUpdateOut]:
+    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
         """
         Retrieve all ToEventInventory entries.
         This method will return a list of ToEventInventoryOut schema instances.
         """
         pass
+
+
+    async def search_entries_by_project_id(
+        self,
+        db: AsyncSession,
+        search_filter: ToEventInventoryBase
+    ) -> List[ToEventRedisOut]:
+        """
+        Search all entries in local Redis by project_id.
+        Returns a list of ToEventRedisOut schema instances.
+        """
+        pass
     
+    # Edit/Update exesting project directly in local Redis
+    async def update_to_event_project(
+        self, 
+        project_id: str,
+        update_data: ToEventRedisUpdateIn
+    ) -> Optional[ToEventRedisOut]:
+        """
+        Update an existing project in local Redis.
+        
+        This function protects immutable fields (uuid, sno, inventory_id, product_id, created_at)
+        and ensures that they cannot be modified.
+        
+        Args:
+            project_id (str): The unique identifier for the project to update.
+            update_data (ToEventRedisUpdate): The data used to update the project.
+        
+        Returns:
+            Optional[ToEventRedisOut]: The updated project data after the modification,
+                                        or None if the update fails or no changes were made.
+        """
+        # Logic for updating the project in Redis would go here.
+        # This might involve fetching the current project data,
+        # applying changes while protecting immutable fields,
+        # and then saving the updated data back into Redis.
+        
+        pass
+
     async def get_project_by_project_id(
         self, 
         db: AsyncSession, 
         inventory_id: str
-    ) -> Optional[ToEventInventoryUpdateOut]:
+    ) -> Optional[ToEventRedisOut]:
         """
         Get inventory entry by its inventory_id (not UUID).
-        Returns single ToEventInventoryUpdateOut instance or None if not found.
+        Returns single ToEventRedisOut instance or None if not found.
         """
         pass
 
+    # ------------------------------------------------------------------------------------------------
     async def update_entry(
         self,
         db: AsyncSession,
         inventory_id: str,
         update_data: ToEventInventoryUpdate
-    ) -> Optional[ToEventInventoryUpdateOut]:
+    ) -> Optional[ToEventRedisOut]:
         """
         Update existing inventory entry by inventory_id.
         Protects immutable fields (uuid, sno, inventory_id, product_id, created_at).
-        Returns updated ToEventInventoryUpdateOut instance or None if not found.
+        Returns updated ToEventRedisOut instance or None if not found.
         """
         pass
     
@@ -82,10 +123,10 @@ class ToEventInventoryInterface:
         self,
         db: AsyncSession,
         search_filter: ToEventInventoryBase
-    ) -> List[ToEventInventoryUpdateOut]:
+    ) -> List[ToEventRedisOut]:
         """
         Search inventory items by various criteria.
-        Returns filtered list of ToEventInventoryUpdateOut instances.
+        Returns filtered list of ToEventRedisOut instances.
         """
         pass
 

@@ -9,6 +9,12 @@ import random
 import string
 import json
 import os
+from .api_request.to_event_inventory_request import (
+    create_to_event_inventory_list, 
+    load_submitted_project_from_db,
+    update_submitted_project_in_db,
+    search_project_details_by_id
+                            )
 
 logger = logging.getLogger(__name__)
 
@@ -60,47 +66,44 @@ class ToEventWindow:
             with open(self.db_file, 'w') as f:
                 json.dump([], f)
 
+    # Save data to the database via API
     def save_to_db(self, data):
-        """Save data to the JSON database"""
+        """Save data to the database via API"""
         try:
-            with open(self.db_file, 'r') as f:
-                records = json.load(f)
-            
-            # Check if this work_id already exists
-            existing_index = None
-            for i, record in enumerate(records):
-                if record['work_id'] == data['work_id']:
-                    existing_index = i
-                    break
-            
-            if existing_index is not None:
-                # Update existing record
-                records[existing_index] = data
-            else:
-                # Add new record
-                records.append(data)
-            
-            with open(self.db_file, 'w') as f:
-                json.dump(records, f, indent=4)
-            
+            work_id = data['work_id']
+
+            # First check if project exists - handle 404 as non-error case
+            try:
+                existing_records = search_project_details_by_id(work_id)
+                if existing_records:
+                    # Update existing record
+                    if not update_submitted_project_in_db(work_id, data):
+                        raise Exception("Failed to update record via API")
+                    return True
+            except Exception as e:
+                logger.warning(f"Project check failed, attempting create: {str(e)}")
+
+            # Create new record
+            api_response = create_to_event_inventory_list(data)
+            logger.info(f"New record created via API: {api_response}")
             return True
+
         except Exception as e:
             logger.error(f"Failed to save to database: {str(e)}")
             return False
 
+    # Load data from API only
     def load_from_db(self, work_id=None):
-        """Load data from the JSON database"""
+        """Load data from API only"""
         try:
-            with open(self.db_file, 'r') as f:
-                records = json.load(f)
-            
             if work_id:
-                for record in records:
-                    if record['work_id'] == work_id:
-                        return record
-                return None
+                # Load single record by work_id
+                records = search_project_details_by_id(work_id)
+                return records[0] if records else None
             else:
-                return records
+                # Load all records
+                return load_submitted_project_from_db()
+
         except Exception as e:
             logger.error(f"Failed to load from database: {str(e)}")
             return None
@@ -274,10 +277,9 @@ class ToEventWindow:
 
         # Table headers
         self.headers = [
-            "Zone/Activity", "Sr. No.", "Inventory", "Description/Specifications",
-            "Quantity", "Comments", "Total", "Units", 
-            "Per Unit Power Consumption (Watt/H)", "Total Power Consumption (Watt)",
-            "Status (purchased/not purchased)", "POC"
+            "Zone/Activity", "Sr. No.", "Inventory", "Description",
+            "Quantity", "Comments", "Total", "Units", "Per Unit Power (W)",
+            "Total Power (W)", "Status", "POC", "Material"
         ]
 
         self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
@@ -288,7 +290,7 @@ class ToEventWindow:
 
         # Create entry fields
         self.table_entries = []
-        for row in range(1, 6):  # 5 empty rows
+        for row in range(1, 2):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
                 entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
@@ -541,18 +543,20 @@ class ToEventWindow:
                 break
                 
             row = self.table_entries[i]
-            row[0].insert(0, item['zone_activity'])
-            row[1].insert(0, item['sr_no'])
-            row[2].insert(0, item['inventory'])
-            row[3].insert(0, item['description'])
-            row[4].insert(0, item['quantity'])
-            row[5].insert(0, item['comments'])
-            row[6].insert(0, item['total'])
-            row[7].insert(0, item['units'])
-            row[8].insert(0, item['power_per_unit'])
-            row[9].insert(0, item['total_power'])
-            row[10].insert(0, item['status'])
-            row[11].insert(0, item['poc'])
+            row[0].insert(0, item.get('zone_active', ''))
+            row[1].insert(0, item.get('sno', ''))
+            row[2].insert(0, item.get('name', ''))
+            row[3].insert(0, item.get('description', ''))
+            row[4].insert(0, str(item.get('quantity', '')))
+            row[5].insert(0, item.get('comments', ''))
+            row[6].insert(0, str(item.get('total', '')))
+            row[7].insert(0, item.get('unit', ''))
+            row[8].insert(0, str(item.get('per_unit_power', '')))
+            row[9].insert(0, str(item.get('total_power', '')))
+            row[10].insert(0, item.get('status', ''))
+            row[11].insert(0, item.get('poc', ''))  
+            if len(row) > 12:
+                row[12].insert(0, item.get('material', ''))
         
         # Switch back to form view
         self.tab_control.select(0)
@@ -573,8 +577,9 @@ class ToEventWindow:
         self.update_btn.config(state=tk.NORMAL)
         logger.info("Editing record")
 
+    # Update record in database
     def update_record(self):
-        """Update the record in database"""
+        """Update the record in database via API"""
         try:
             work_id = self.work_id.get()
             if not work_id:
@@ -583,7 +588,7 @@ class ToEventWindow:
                 
             # Prepare the data to be saved
             data = {
-                'work_id': work_id,  # Work ID never changes
+                'work_id': work_id,
                 'employee_name': self.employee_name.get(),
                 'location': self.location.get(),
                 'client_name': self.client_name.get(),
@@ -595,32 +600,33 @@ class ToEventWindow:
             
             for row in self.table_entries:
                 item = {
-                    'zone_activity': row[0].get(),
-                    'sr_no': row[1].get(),
-                    'inventory': row[2].get(),
+                    'zone_active': row[0].get(),
+                    'sno': row[1].get(),
+                    'name': row[2].get(),
                     'description': row[3].get(),
                     'quantity': row[4].get(),
                     'comments': row[5].get(),
                     'total': row[6].get(),
-                    'units': row[7].get(),
-                    'power_per_unit': row[8].get(),
+                    'unit': row[7].get(),
+                    'per_unit_power': row[8].get(),
                     'total_power': row[9].get(),
                     'status': row[10].get(),
-                    'poc': row[11].get()
+                    'poc': row[11].get(),
+                    'material': row[12].get()
                 }
                 data['inventory_items'].append(item)
-            
+
             if not self.save_to_db(data):
                 raise Exception("Failed to save to database")
             
             messagebox.showinfo("Success", "Record updated successfully")
             logger.info(f"Record updated: {data}")
-            
+
             # Set fields back to readonly
             self.set_fields_readonly(True)
             self.edit_btn.config(state=tk.NORMAL)
             self.update_btn.config(state=tk.DISABLED)
-            
+
             # Refresh submitted forms tab
             self.load_submitted_forms()
             
@@ -689,55 +695,81 @@ class ToEventWindow:
             entry.destroy()
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
+    
+    # Submit form to API
     def submit_form(self):
-        """Handle form submission"""
-        if not self.employee_name.get() or not self.client_name.get():
-            messagebox.showwarning("Warning", "Please fill in all required fields")
-            return
-            
-        data = {
-            'work_id': self.work_id.get(),  # Work ID never changes
-            'employee_name': self.employee_name.get(),
-            'location': self.location.get(),
-            'client_name': self.client_name.get(),
-            'setup_date': self.setup_date.get(),
-            'project_name': self.project_name.get(),
-            'event_date': self.event_date.get(),
-            'inventory_items': []
-        }
-        
-        for row in self.table_entries:
-            item = {
-                'zone_activity': row[0].get(),
-                'sr_no': row[1].get(),
-                'inventory': row[2].get(),
-                'description': row[3].get(),
-                'quantity': row[4].get(),
-                'comments': row[5].get(),
-                'total': row[6].get(),
-                'units': row[7].get(),
-                'power_per_unit': row[8].get(),
-                'total_power': row[9].get(),
-                'status': row[10].get(),
-                'poc': row[11].get()
+        """Handle form submission with multiple inventory items"""
+        try:
+            # Get the current work_id
+            work_id = self.work_id.get()
+            if not work_id:
+                messagebox.showwarning("Warning", "Work ID is required")
+                return
+
+            # Basic validation
+            if not (self.employee_name.get() or self.client_name.get() or self.project_name.get()):
+                messagebox.showwarning("Warning", "Please fill in at least one required field")
+                return
+
+            # Prepare data with all fields
+            data = {
+                'work_id': work_id,
+                'employee_name': self.employee_name.get(),
+                'location': self.location.get(),
+                'client_name': self.client_name.get(),
+                'setup_date': self.setup_date.get(),
+                'project_name': self.project_name.get(),
+                'event_date': self.event_date.get(),
+                'submitted_by': "inventory-admin",  # Add this required field
+                'inventory_items': []
             }
-            data['inventory_items'].append(item)
-        
-        if not self.save_to_db(data):
-            messagebox.showerror("Error", "Failed to save record")
-            return
-        
-        messagebox.showinfo("Success", "Form submitted successfully")
-        logger.info(f"Form submitted: {data}")
-        
-        # Clear form and generate new WorkID
-        self.clear_form()
-        self.generate_work_id()
-        
-        # Refresh submitted forms tab
-        self.load_submitted_forms()
-        self.tab_control.select(self.submitted_tab)
+
+            # Add all inventory items with proper field mapping
+            for row in self.table_entries:
+                # Only add rows with at least name and quantity
+                if row[2].get() and row[4].get():  # name and quantity fields
+                    item = {
+                        'work_id': work_id,
+                        'zone_active': row[0].get() or "Default Zone",  # Provide default if empty
+                        'sno': row[1].get() or "",  # Optional field
+                        'name': row[2].get(),
+                        'description': row[3].get() or "",  # Optional field
+                        'quantity': int(row[4].get()) if row[4].get().isdigit() else 1,  # Convert to int
+                        'comments': row[5].get() or "",  # Optional field
+                        'total': row[6].get() if row[6].get().isdigit() else 0,  # Handle optional total field
+                        'unit': row[7].get() or "pcs",  # Provide default if empty
+                        'per_unit_power': float(row[8].get()) if row[8].get() and row[8].get().replace('.','',1).isdigit() else 0.0,
+                        'total_power': float(row[9].get()) if row[9].get() and row[9].get().replace('.','',1).isdigit() else 0.0,
+                        'status': row[10].get() or "active",  # Provide default if empty
+                        'poc': row[11].get() or "",  # Optional field
+                        'material': row[12].get() if len(row) > 12 else ""  # Handle optional material field
+                    }
+                    data['inventory_items'].append(item)
+
+            if not data['inventory_items']:
+                messagebox.showwarning("Warning", "At least one inventory item with name and quantity is required")
+                return
+
+            logger.debug(f"Sending payload: {data}")
+
+            # Try to save to API
+            if not self.save_to_db(data):
+                raise Exception("Failed to save to database")
+
+            messagebox.showinfo("Success", "Form submitted successfully")
+            logger.info(f"Form submitted: {data}")
+
+            # Clear form and generate new WorkID
+            self.clear_form()
+            self.generate_work_id()
+
+            # Refresh submitted forms tab
+            self.load_submitted_forms()
+            self.tab_control.select(self.submitted_tab)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to submit form: {str(e)}")
+            logger.error(f"Submit failed: {str(e)}")
 
     def clear_form(self):
         """Clear all form fields"""
