@@ -368,34 +368,12 @@ class ToEventInventoryService(ToEventInventoryInterface):
             projects.sort(key=lambda x: x.updated_at, reverse=True)
             
             # Apply pagination
-            paginated_projects = projects[skip:skip+10]  # Assuming page size of 10
+            paginated_projects = projects[skip:skip+200]  # Assuming page size of 100
             
             return paginated_projects
         except Exception as e:
             logger.error(f"Redis error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Redis error")
-    
-    #  search project data via `project_id` directly in local Redis
-    async def get_project_data(self, project_id: str) -> ToEventRedisOut:
-        try:
-            redis_key = f"to_event_inventory:{project_id}"
-            redis_data = await redis_client.get(redis_key)
-    
-            if not redis_data:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No data found in Redis for project_id: {project_id}"
-                )
-    
-            data = json.loads(redis_data)
-            return ToEventRedisOut(**data)
-    
-        except Exception as e:
-            logger.error(f"Error getting project data: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail="Internal Server Error"
-            )
     
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def get_project_data(self, project_id: str):
