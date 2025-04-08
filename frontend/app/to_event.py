@@ -65,7 +65,7 @@ class ToEventWindow:
         if not os.path.exists(self.db_file):
             with open(self.db_file, 'w') as f:
                 json.dump([], f)
-
+ 
     def save_to_db(self, data, work_id=None):
         """Save data to the database via API"""
         try:
@@ -765,7 +765,7 @@ class ToEventWindow:
 
             # Prepare data with all fields
             data = {
-                'project_id': work_id,
+                'work_id': work_id,
                 'employee_name': self.employee_name.get(),
                 'location': self.location.get(),
                 'client_name': self.client_name.get(),
@@ -781,7 +781,7 @@ class ToEventWindow:
                 # Only add rows with at least name and quantity
                 if row[2].get() and row[4].get():  # name and quantity fields
                     item = {
-                        'project_id': work_id,
+                        'work_id': work_id,
                         'zone_active': row[0].get() or "Default Zone",  # Provide default if empty
                         'sno': row[1].get() or "",  # Optional field
                         'name': row[2].get(),
