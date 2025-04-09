@@ -1,5 +1,7 @@
 # backend/app/routers/Assign_inventory_routes.py
 import logging
+import requests
+from fastapi import Response
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, date
@@ -114,7 +116,7 @@ async def show_assigned_inventory(
     """
     try:
         logger.info("Fetching all inventory data from Redis")
-        cached_data = await service.show_all_inventory_from_redis()
+        cached_data = await service.show_all_assigned_inventory_from_redis()
         
         if not cached_data:
             logger.warning("No inventory data found in Redis cache")
@@ -138,16 +140,6 @@ async def show_assigned_inventory(
             detail={
                 "status": "failed",
                 "message": "Invalid data format in Redis cache",
-                "error": str(e)
-            }
-        )
-    except Exception as e:
-        logger.error(f"Failed to retrieve cached data: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "failed",
-                "message": "Failed to retrieve cached data",
                 "error": str(e)
             }
         )
@@ -233,84 +225,58 @@ async def list_added_assigned_inventory(
 
 #  update/edit existing Assigned Inventory by [InventoryID, EmployeeName]
 @router.put(
-    "/update-assigned-inventory/",
-    response_model=List[AssignmentInventoryRedisOut],
+    "/update-assigned-inventory/{employee_name}/{inventory_id}",
+    response_model=AssignmentInventoryRedisOut,
     status_code=200,
-    summary="Search inventory items",
-    description="Search inventory items by Inventory ID, Product ID, or Project ID (exactly one required)",
+    summary="Update assigned inventory",
+    description="Update inventory assignment by employee_name and inventory_id",
     response_model_exclude_unset=True,
+    tags=["update Inventory (Redis)"]
 )
 async def update_assigned_inventory(
-    inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
-    employee_name: Optional[str] = Query(None, description="Product ID to search for"),
-    db: AsyncSession = Depends(get_async_db),
+    employee_name: str,
+    inventory_id: str,
+    update_data: AssignmentInventoryUpdate,
     service: AssignInventoryService = Depends(get_Assign_inventory_service)
 ):
     """
-    Search inventory items by exactly one of:
-    - Inventory ID
-    - Product ID
-    - Project ID
+    Update an inventory assignment by employee_name and inventory_id.
+    Immutable fields (IDs, barcodes, timestamps) cannot be changed.
     """
-    try:
-        # Convert empty strings to None
-        inventory_id = inventory_id if inventory_id else None
-        employee_name = employee_name if employee_name else None
-
-        # Validate exactly one search parameter is provided
-        provided_params = [p for p in [inventory_id, employee_name] if p is not None]
-        if len(provided_params) != 1:
-            raise HTTPException(
-                status_code=400,
-                detail="Exactly one search parameter (inventory_id, product_id, or project_id) must be provided"
-            )
-
-        search_params = AssignInventorySearch(
-            inventory_id=inventory_id,
-            employee_name=employee_name,
-        )
-        
-        results = await service.search_entries(db, search_params)
-        if not results:
-            raise HTTPException(status_code=404, detail="No matching items found")
-        
-        return results
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Search failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error during search")
+    # Convert Pydantic model to dict and add path parameters
+    update_dict = update_data.model_dump(exclude_unset=True)
+    update_dict.update({
+        'employee_name': employee_name,
+        'inventory_id': inventory_id
+    })
     
-    
+    return await service.update_assignment_inventory(update_dict)  
 
 # DELETE: Delete an inventory Assigned
-@router.delete("/{inventory_id}", 
-               status_code=200,
-               summary="Delete an Assign from the inventory",
-               description="This endpoint is used to delete an Assign from the inventory. It takes a UUID as a parameter and deletes the Assign with the specified UUID.",
-               )
+@router.delete(
+    "/delete-assigned-inventory/{employee_name}/{inventory_id}",
+    status_code=200,
+    response_model=AssignmentInventoryRedisOut,  # Define this model if needed
+    summary="Delete assigned inventory",
+    description="Delete an inventory assignment by employee name and inventory ID",
+    tags=["delete Inventory (Redis)"]
+)
 async def delete_assigned_inventory(
+    employee_name: str,
     inventory_id: str,
     db: AsyncSession = Depends(get_async_db),
     service: AssignInventoryService = Depends(get_Assign_inventory_service)
 ):
-    """Delete an inventory item and return a confirmation message"""
-    try:
-        # Fetch the item to be deleted first
-        item_to_delete = await service.get_by_inventory_id(db, inventory_id)
-        if not item_to_delete:
-            raise HTTPException(status_code=404, detail="Inventory item not found")
-
-        # Perform the delete operation
-        success = await service.delete_Assign(db, inventory_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Inventory item not found")
-
-        # Return a confirmation message with the deleted data
-        return {"message": "Inventory item deleted successfully", "deleted_item": item_to_delete}
-
-    except Exception as e:
-        logger.error(f"Error deleting inventory item {inventory_id}: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    deleted = await service.delete_assigned_inventory(
+        db=db,
+        employee_name=employee_name,
+        inventory_id=inventory_id
+    )
     
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Assignment not found"
+        )
+    
+    return {"status": "success", "message": "Assignment deleted"}

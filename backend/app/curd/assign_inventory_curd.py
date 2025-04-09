@@ -1,5 +1,5 @@
 # backend/app/crud/assign_inventory_crud.py
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import List, Optional
 import json
 import logging
@@ -176,12 +176,12 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 data = await self.redis.get(key)
                 if data:
                     try:
-                        project_data = json.loads(data)
+                        assigned_data = json.loads(data)
                         # Handle the 'cretaed_at' typo if present
-                        if 'cretaed_at' in project_data and 'created_at' not in project_data:
-                            project_data['created_at'] = project_data['cretaed_at']
+                        if 'cretaed_at' in assigned_data and 'created_at' not in assigned_data:
+                            assigned_data['created_at'] = assigned_data['cretaed_at']
                         # Validate the data against your schema
-                        validated_project = AssignmentInventoryRedisOut.model_validate(project_data)
+                        validated_project = AssignmentInventoryRedisOut.model_validate(assigned_data)
                         projects.append(validated_project)
                     except ValidationError as ve:
                         logger.warning(f"Validation error for project {key}: {ve}")
@@ -272,4 +272,142 @@ class AssignInventoryService(AssignmentInventoryInterface):
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to search assignment inventory: {str(e)}"
+            )
+        
+    # Update Assignment Inventory form `employee_name` and `inventory_id` directly from local Redis
+    async def update_assignment_inventory(
+        self, 
+        update_dict: dict
+    ) -> AssignmentInventoryRedisOut:
+        try:
+            # Format IDs if needed
+            inventory_id = update_dict['inventory_id']
+            if not inventory_id.startswith('INV'):
+                inventory_id = f"INV{inventory_id}"
+                
+            employee_name = update_dict['employee_name']
+            
+            # Create Redis key with consistent prefix
+            redis_key = f"assignment:{employee_name}{inventory_id}"
+            
+            # Get existing record from Redis
+            existing_data = await self.redis.get(redis_key)
+            if not existing_data:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Assignment not found with key: {redis_key}"
+                )
+            
+            # Parse existing record
+            existing_dict = json.loads(existing_data)
+            
+            # Verify immutable fields haven't changed
+            immutable_fields = {
+                'id': existing_dict.get('id'),
+                'inventory_id': existing_dict.get('inventory_id'),
+                'project_id': existing_dict.get('project_id'),
+                'product_id': existing_dict.get('product_id'),
+                'employee_name': existing_dict.get('employee_name'),
+                'assignment_barcode': existing_dict.get('assignment_barcode'),
+                'assignment_barcode_unique_code': existing_dict.get('assignment_barcode_unique_code'),
+                'created_at': existing_dict.get('created_at'),
+                'assigned_date': existing_dict.get('assigned_date')
+            }
+            
+            # Update only allowed fields (remove the path parameters)
+            update_dict.pop('employee_name', None)
+            update_dict.pop('inventory_id', None)
+            
+            # Merge updates while preserving immutable fields
+            updated_dict = {**existing_dict, **update_dict, **immutable_fields}
+            updated_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+            
+            # Convert all datetime objects to ISO format strings
+            def convert_datetime(obj):
+                if isinstance(obj, datetime):
+                    return obj.isoformat()
+                elif isinstance(obj, date):
+                    return obj.isoformat()
+                return obj
+            
+            # Apply conversion to all values in the dictionary
+            serializable_dict = {k: convert_datetime(v) for k, v in updated_dict.items()}
+            
+            # Save back to Redis
+            await self.redis.set(redis_key, json.dumps(serializable_dict))
+            
+            return AssignmentInventoryRedisOut(**updated_dict)
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Redis update failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update assignment: {str(e)}"
+            )
+        
+    #  Show all Assigned Inventory from local Redis 
+    async def show_all_assigned_inventory_from_redis(self, skip: int = 0) -> List[AssignmentInventoryRedisOut]:
+        try:
+            # Get all keys matching your project pattern
+            keys = await self.redis.keys("assignment:*")
+            
+            projects = []
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        assigned_data = json.loads(data)
+                        # Handle the 'cretaed_at' typo if present
+                        if 'cretaed_at' in assigned_data and assigned_data['cretaed_at'] is not None:
+                            assigned_data['created_at'] = assigned_data['cretaed_at']
+                        # Validate the data against your schema
+                        validated_project = AssignmentInventoryRedisOut.model_validate(assigned_data)
+                        projects.append(validated_project)
+                    except ValidationError as ve:
+                        logger.warning(f"Validation error for project {key}: {ve}")
+                        continue
+            
+            # Sort by updated_at (descending)
+            projects.sort(key=lambda x: x.updated_at, reverse=True)
+            
+            # Apply pagination
+            paginated_projects = projects[skip:skip+250]  # Assuming page size of 100
+            
+            return paginated_projects
+        except Exception as e:
+            logger.error(f"Redis error fetching entries: {e}")
+
+    # Delete an single assign item by employee_name and inventory_id
+    async def delete_assignment(
+        self,
+        employee_name: str,
+        inventory_id: str
+    ) -> None:
+        try:
+            # Format inventory_id if needed
+            if not inventory_id.startswith('INV'):
+                inventory_id = f"INV{inventory_id}"
+            
+            # Create the Redis key pattern
+            redis_key = f"assignment:{employee_name}{inventory_id}"
+            
+            # Check if the assignment exists
+            if not await self.redis.exists(redis_key):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Assignment not found for employee {employee_name} and inventory {inventory_id}"
+                )
+            
+            # Delete the specific assignment
+            await self.redis.delete(redis_key)
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete assignment: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete assignment: {str(e)}"
             )
