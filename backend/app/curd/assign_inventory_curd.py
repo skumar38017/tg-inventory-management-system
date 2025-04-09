@@ -208,24 +208,37 @@ class AssignInventoryService(AssignmentInventoryInterface):
         employee_name: Optional[str] = None
     ) -> List[AssignmentInventoryRedisOut]:
         try:
+            def format_id(value: Optional[str], prefix: str) -> Optional[str]:
+                if not value:
+                    return None
+                value = str(value).strip()
+                if not value.startswith(prefix):
+                    return f"{prefix}{value}"
+                return value
+
+            # Format IDs if they're provided (accepts both with and without prefixes)
+            formatted_inventory_id = format_id(inventory_id, "INV")
+            formatted_project_id = format_id(project_id, "PRJ") 
+            formatted_product_id = format_id(product_id, "PRD")
+
             # First check if we're searching by employee_name and inventory_id (direct key lookup)
-            if employee_name and inventory_id:
-                redis_key = f"{employee_name}{inventory_id}"
+            if employee_name and formatted_inventory_id:
+                redis_key = f"{employee_name}{formatted_inventory_id}"
                 data = await self.redis.get(redis_key)
                 if data:
                     entry = json.loads(data)
                     return [AssignmentInventoryRedisOut(**entry)]
             
-            # Build search filters
+            # Build search filters using formatted IDs
             search_filters = []
             if employee_name:
                 search_filters.append(lambda x: x.get('employee_name') == employee_name)
-            if inventory_id:
-                search_filters.append(lambda x: x.get('inventory_id') == inventory_id)
-            if project_id:
-                search_filters.append(lambda x: x.get('project_id') == project_id)
-            if product_id:
-                search_filters.append(lambda x: x.get('product_id') == product_id)
+            if formatted_inventory_id:
+                search_filters.append(lambda x: x.get('inventory_id') == formatted_inventory_id)
+            if formatted_project_id:
+                search_filters.append(lambda x: x.get('project_id') == formatted_project_id)
+            if formatted_product_id:
+                search_filters.append(lambda x: x.get('product_id') == formatted_product_id)
             
             if not search_filters:
                 raise ValueError("At least one search parameter must be provided")

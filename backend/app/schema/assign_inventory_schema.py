@@ -34,40 +34,37 @@ class AssignmentInventoryBase(BaseModel):
     comment: Optional[str] = None
     assignment_return_date: Optional[date] = None    
 
-    @field_validator('inventory_id',  mode='before')
-    def validate_inventory_id(cls, v):
+    @field_validator('inventory_id', mode='before')
+    def format_inventory_id(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return None
-            if not re.fullmatch(r'INV\d+', v):
-                raise ValueError("Project ID must be in format PRJ followed by numbers")
+        v = str(v).strip()
+        if not v:
+            return None
+        if not v.startswith('INV'):
+            return f"INV{v}"
         return v
 
     @field_validator('project_id', mode='before')
-    def validate_project_id(cls, v):
+    def format_project_id(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return None
-            if not re.fullmatch(r'PRJ\d+', v):
-                raise ValueError("Project ID must be in format PRJ followed by numbers")
+        v = str(v).strip()
+        if not v:
+            return None
+        if not v.startswith('PRJ'):
+            return f"PRJ{v}"
         return v
 
     @field_validator('product_id', mode='before')
-    def validate_product_id(cls, v):
+    def format_product_id(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return None
-            if not re.fullmatch(r'PRD\d+', v):
-                raise ValueError("Product ID must be in format PRD followed by numbers")
+        v = str(v).strip()
+        if not v:
+            return None
+        if not v.startswith('PRD'):
+            return f"PRD{v}"
         return v
 
     @field_validator('quantity', mode='before')
@@ -172,40 +169,37 @@ class AssignmentInventorySearch(BaseModel):
     project_id: Optional[str] = None
     product_id: Optional[str] = None
 
-    @field_validator('inventory_id',  mode='before')
-    def validate_inventory_id(cls, v):
+    @field_validator('inventory_id', mode='before')
+    def format_inventory_id(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return None
-            if not re.fullmatch(r'INV\d+', v):
-                raise ValueError("Project ID must be in format PRJ followed by numbers")
+        v = str(v).strip()
+        if not v:
+            return None
+        if not v.startswith('INV'):
+            return f"INV{v}"
         return v
 
     @field_validator('project_id', mode='before')
-    def validate_project_id(cls, v):
+    def format_project_id(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return None
-            if not re.fullmatch(r'PRJ\d+', v):
-                raise ValueError("Project ID must be in format PRJ followed by numbers")
+        v = str(v).strip()
+        if not v:
+            return None
+        if not v.startswith('PRJ'):
+            return f"PRJ{v}"
         return v
 
     @field_validator('product_id', mode='before')
-    def validate_product_id(cls, v):
+    def format_product_id(cls, v):
         if v is None:
             return None
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return None
-            if not re.fullmatch(r'PRD\d+', v):
-                raise ValueError("Product ID must be in format PRD followed by numbers")
+        v = str(v).strip()
+        if not v:
+            return None
+        if not v.startswith('PRD'):
+            return f"PRD{v}"
         return v
 
 
