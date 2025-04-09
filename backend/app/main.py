@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from backend.app.database.database import check_db_connectivity, check_sync_db_connectivity_with_retry, check_async_db_connectivity_with_retry
 from backend.app.database.redisclient import check_redis_connectivity_with_retry
 from backend.app.routers import entry_inventory_routes, to_event_routes  # Import the router for entry inventory
+from backend.app.routers import from_event_router
 from fastapi.staticfiles import StaticFiles
 
 # Set up logging for the main script
@@ -90,6 +91,8 @@ async def custom_http_exception_handler(request, exc: HTTPException):
 # Include the entry inventory routes with a versioned prefix
 app.include_router(entry_inventory_routes.router, prefix="/api/v1", tags=["Entry Inventory"])
 app.include_router(to_event_routes.router, prefix="/api/v1", tags=["To Event Inventory"])
+app.include_router(from_event_router.router, prefix="/api/v1", tags=["From Event Inventory"])
+# app.include_router(to_event_routes.router, prefix="/api/v1", tags=["To Event Inventory"])
 
 if __name__ == "__main__":
     # Running the FastAPI app with Uvicorn

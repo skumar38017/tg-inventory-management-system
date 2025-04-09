@@ -1,5 +1,7 @@
 #  frontend/app/to_event_functions_request.py
 
+#  frontend/app/to_event_functions_request.py
+
 import requests
 from typing import List, Dict
 import logging
@@ -17,12 +19,12 @@ logger = logging.getLogger(__name__)
 # Search for Project with there inventory list by [Project_id] by clicking search
 DEFAULT_SUBMITTED_BY = "inventory-admin"
 
-def search_project_details_by_id(work_id: str) -> List[Dict]:
+def search_return_details_by_id(work_id: str) -> List[Dict]:
     """Fetch inventory data filtered by a single work_id from the API"""
     if not work_id or not str(work_id).strip():
         print("Empty work_id provided for search {}".format(work_id))
         logger.error("Empty work_id provided for search")
-        messagebox.showwarning("Search Error", "Project ID is required for searching")
+        messagebox.showwarning("Search war", "Project ID is required for searching")
         return []
     
     try:
@@ -32,7 +34,7 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
             
         response = make_api_request(
             "GET",
-            f"to_event-search-entries-by-project-id/{work_id}/"
+            f"from_event-search-entries-by-project-id/{work_id}/"
         )
         
         if response.status_code == 404:
@@ -48,11 +50,11 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
         
         # Case 1: Response is a single project object
         if isinstance(data, dict):
-            return [format_project_item(data)]
+            return [format_return_project_item(data)]
             
         # Case 2: Response is a list of projects
         elif isinstance(data, list):
-            return [format_project_item(item) for item in data]
+            return [format_return_project_item(item) for item in data]
             
         # Unexpected format
         else:
@@ -60,9 +62,9 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
             return []
             
     except Exception as e:
-        error_msg = f"Could not fetch inventory data: {str(e)}"
-        logger.error(error_msg)
-        messagebox.showerror("Error", error_msg)
+        warning_mess = f"New Entry is processing want to create a new entry: {str(e)}"
+        logger.warning(warning_mess)
+        messagebox.showerror("Error", warning_mess)
         return []
 
 def clean_value(value: Optional[Union[str, int, float]]) -> Optional[str]:
@@ -100,7 +102,7 @@ def clean_date(date_str: Optional[Union[str, date, datetime]]) -> Optional[str]:
         return None
 
 # Create to-event inventory list request api
-def create_to_event_inventory_list(item_data: dict):
+def create_to_return_inventory_list(item_data: dict):
     """Inventory item creation with proper validation and error handling for multiple items"""
     try:
         # Get and validate project_id
@@ -167,7 +169,7 @@ def create_to_event_inventory_list(item_data: dict):
         # Make single API call with all inventory items
         response = make_api_request(
             "POST",
-            "to_event-create-item/",
+            "from_event-create-item/",
             headers={"Content-Type": "application/json"},
             json=payload
         )
@@ -195,16 +197,49 @@ def create_to_event_inventory_list(item_data: dict):
         raise Exception(error_msg)
             
 # Load submitted forms from from db the API
-def load_submitted_project_from_db() -> List[Dict]:
-    """Fetch submitted forms from the API"""
+def load_submitted_project_return_from_db() -> List[Dict]:
+    """Fetch submitted forms from the API and return sorted by updated_at"""
     try:
+        response = make_api_request(
+            "GET",
+            "from_event-load-project-redis/"
+        )
         response = make_api_request(
             "GET",
             "to_event-load-submitted-project-redis/"
         )
         
-        print(response.json())
-        return [format_project_item(item) for item in response.json()]
+        # Ensure we have a valid response
+        if response.status_code != 200:
+            logger.error(f"API returned status code: {response.status_code}")
+            return []
+            
+        projects = response.json()
+        
+        # Validate we got a list of projects
+        if not isinstance(projects, list):
+            logger.error(f"Unexpected API response format: {projects}")
+            return []
+            
+        # Format each project and sort by updated_at (newest first)
+        formatted_projects = []
+        for item in projects:
+            try:
+                formatted = format_return_project_item(item)
+                # Ensure updated_at exists (set to empty string if missing)
+                formatted['updated_at'] = item.get('updated_at', '')
+                formatted_projects.append(formatted)
+            except Exception as e:
+                logger.error(f"Error formatting project item: {str(e)}")
+                continue
+                
+        # Sort by updated_at in descending order (newest first)
+        formatted_projects.sort(
+            key=lambda x: x.get('updated_at', ''),
+            reverse=True
+        )
+        
+        return formatted_projects
         
     except Exception as e:
         error_msg = "Could not fetch submitted forms"
@@ -213,56 +248,72 @@ def load_submitted_project_from_db() -> List[Dict]:
         return []
 
 # Update data into existing record of ``work_id`` in the API
-def update_submitted_project_in_db(work_id: str, data: dict) -> bool:
+def update_submitted__return_project_in_db(work_id: str, data: dict) -> bool:
     """Update submitted forms in Redis via API"""
     try:
-        # Prepare update payload
+        # Prepare complete update payload with proper structure
         update_payload = {
-            "employee_name": data.get('employee_name'),
-            "location": data.get('location'),
-            "client_name": data.get('client_name'),
-            "setup_date": data.get('setup_date'),
-            "project_name": data.get('project_name'),
-            "event_date": data.get('event_date'),
+            "project_id": work_id,  # Ensure project_id is included
+            "employee_name": data.get('employee_name', ''),
+            "location": data.get('location', ''),
+            "client_name": data.get('client_name', ''),
+            "setup_date": data.get('setup_date', ''),
+            "project_name": data.get('project_name', ''),
+            "event_date": data.get('event_date', ''),
             "inventory_items": []
         }
         
-        # Add inventory items
+        # Process all inventory items with proper data types
         for item in data.get('inventory_items', []):
-            update_payload['inventory_items'].append({
-                "zone_active": item.get('zone_active'),
-                "sno": item.get('sno'),
-                "name": item.get('name'),
-                "description": item.get('description'),
-                "quantity": item.get('quantity'),
-                "material": item.get('material'),
-                "comments": item.get('comments'),
-                "total": item.get('total'),
-                "unit": item.get('unit'),
-                "per_unit_power": item.get('per_unit_power'),
-                "total_power": item.get('total_power'),
-                "status": item.get('status'),
-                "poc": item.get('poc')
-            })
+            inventory_item = {
+                "project_id": work_id,  # Associate each item with project
+                "zone_active": str(item.get('zone_active', '')),
+                "sno": str(item.get('sno', '')),
+                "name": str(item.get('name', '')),
+                "description": str(item.get('description', '')),
+                "quantity": str(item.get('quantity', '0')),
+                "material": str(item.get('material', '')),
+                "comments": str(item.get('comments', '')),
+                "total": str(item.get('total', '0')),
+                "unit": str(item.get('unit', 'pcs')),
+                "per_unit_power": str(item.get('per_unit_power', '0')),
+                "total_power": str(item.get('total_power', '0')),
+                "status": str(item.get('status', 'active')),
+                "poc": str(item.get('poc', ''))
+            }
+            update_payload['inventory_items'].append(inventory_item)
         
-        # Make PUT request with project_id in URL path
+        logger.debug(f"Sending update payload: {update_payload}")
+        
         response = make_api_request(
             "PUT",
-            f"to_event-update-submitted-project-db/{work_id}",  # Project ID in URL path
-            headers={"Content-Type": "application/json"},
-            json=update_payload
+            f"from_event-update-submitted-project-db/{work_id}/",
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            json=update_payload,
+            timeout=30  # Increased timeout for large payloads
         )
         
+        if response.status_code != 200:
+            logger.error(f"Update failed with status {response.status_code}. Response: {response.text}")
+            return False
+            
+        # Verify the response contains the updated data
+        response_data = response.json()
+        if not response_data.get('success', False):
+            logger.error(f"API reported failure: {response_data}")
+            return False
+            
         return True
         
     except Exception as e:
-        error_msg = "Could not update submitted forms"
-        logger.error(f"{error_msg}: {str(e)}")
-        messagebox.showerror("Error", error_msg)
+        logger.error(f"Update error: {str(e)}", exc_info=True)
         return False
 
 # Add new inventory items to the database with proper data formatting
-def format_project_item(item: dict) -> dict:
+def format_return_project_item(item: dict) -> dict:
     """Format project item from API response to frontend format"""
     # Handle both flat structure (old) and nested inventory_items (new)
     if not isinstance(item, dict):

@@ -22,7 +22,7 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
     if not work_id or not str(work_id).strip():
         print("Empty work_id provided for search {}".format(work_id))
         logger.error("Empty work_id provided for search")
-        messagebox.showwarning("Search Error", "Project ID is required for searching")
+        messagebox.showwarning("Search war", "Project ID is required for searching")
         return []
     
     try:
@@ -60,9 +60,9 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
             return []
             
     except Exception as e:
-        error_msg = f"Could not fetch inventory data: {str(e)}"
-        logger.error(error_msg)
-        messagebox.showerror("Error", error_msg)
+        warning_mess = f"New Entry is processing want to create a new entry: {str(e)}"
+        logger.warning(warning_mess)
+        messagebox.showerror("Error", warning_mess)
         return []
 
 def clean_value(value: Optional[Union[str, int, float]]) -> Optional[str]:

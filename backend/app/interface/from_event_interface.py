@@ -1,4 +1,4 @@
-# app/interface/to_event_interface.py
+# app/interface/from_event_interface.py
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
@@ -16,11 +16,11 @@ from backend.app.schema.to_event_inventry_schma import (
 from pydantic import BaseModel
 from datetime import date
 
-class ToEventInventoryInterface:
+class FromEventInventoryInterface:
     """Interface for ToEventInventory operations with immutable core fields."""
     
     # # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
-    async def upload_to_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+    async def upload_from_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
         """
         Upload all `to_event_inventory` entries from local Redis to the database.
         Returns a list of ToEventRedisOut schema instances.
@@ -28,7 +28,7 @@ class ToEventInventoryInterface:
         raise NotImplementedError
    
    
-    async def create_to_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate) -> ToEventInventory:
+    async def create_from_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate) -> ToEventInventory:
         """
         Create a new ToEventInventory entry.
         This method will receive an ToEventInventoryCreate schema instance
@@ -37,7 +37,7 @@ class ToEventInventoryInterface:
         pass
     
         
-    async def load_submitted_project_from_db(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+    async def from_event_load_submitted_project_from_redis(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
         """
         Retrieve all ToEventInventory entries.
         This method will return a list of ToEventInventoryOut schema instances.
@@ -57,7 +57,7 @@ class ToEventInventoryInterface:
         pass
     
     # Edit/Update exesting project directly in local Redis
-    async def update_to_event_project(
+    async def from_event_update_project_data(
         self, 
         project_id: str,
         update_data: ToEventRedisUpdateIn
@@ -83,7 +83,7 @@ class ToEventInventoryInterface:
         
         pass
 
-    async def get_project_by_project_id(
+    async def from_event_get_project_data(
         self, 
         db: AsyncSession, 
         inventory_id: str
@@ -108,6 +108,17 @@ class ToEventInventoryInterface:
         """
         pass
     
+    async def delete_entry(
+        self, 
+        db: AsyncSession, 
+        inventory_id: str  # Using inventory_id instead of UUID
+    ) -> bool:
+        """
+        Delete inventory entry by inventory_id.
+        Returns True if deleted successfully, False if not found.
+        """
+        pass
+
     async def search_entries(
         self,
         db: AsyncSession,
