@@ -1,4 +1,4 @@
-#  backend/app/routers/to_event_routes.py
+#  backend/app/routers/from_event_routes.py
 import logging
 import re
 from typing import Optional, List
@@ -21,12 +21,12 @@ from backend.app.schema.to_event_inventry_schma import (
     ToEventRedisUpdateOut,
     ToEventRedisUpdateIn
 )
-from backend.app.curd.to_event_inventry_curd import ToEventInventoryService
-from backend.app.interface.to_event_interface import ToEventInventoryInterface
+from backend.app.curd.from_event_inventory_curd import FromEventInventoryService
+from backend.app.interface.from_event_interface import FromEventInventoryInterface
 
 # Dependency to get the to_event service
-def get_to_event_service() -> ToEventInventoryService:
-    return ToEventInventoryService()
+def get_to_event_service() -> FromEventInventoryService:
+    return FromEventInventoryService()
 
 # Set up the router
 router = APIRouter()
@@ -42,22 +42,22 @@ logger.setLevel(logging.INFO)
 
 #  Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
 @router.post(
-    "/to_event-upload-data/",
+    "/from_event-upload-data/",
     response_model=List[ToEventUploadResponse],
     status_code=200,
     summary="Upload all entries from Redis to database",
     description="Uploads all to_event_inventory entries from local Redis to the database",
-    tags=["upload To Event Project Inventory (DataBase)"]
+    tags=["upload From Event Project Inventory (DataBase)"]
 )
-async def upload_to_event_data(
+async def upload_to_return_event_data(
     db: AsyncSession = Depends(get_async_db),
-    service: ToEventInventoryService = Depends(get_to_event_service)
+    service: FromEventInventoryService = Depends(get_to_event_service)
 ):
     try:
         logger.info("Starting Redis to database upload process")
         
         # Get data from service
-        inventory_items = await service.upload_to_event_inventory(db)
+        inventory_items = await service.upload_from_event_inventory(db)
         
         # Prepare response
         results = []
@@ -95,7 +95,7 @@ async def upload_to_event_data(
 # ----------------------------------------------------------------------------------------
 
 # CREATE: Add a new to_event entry inventory store in directly in redis
-@router.post("/to_event-create-item/",
+@router.post("/from_event-create-item/",
     response_model=ToEventRedisOut,
     status_code=201,  # Changed to 201 for resource creation
     summary="Create a new inventory entry in Redis",
@@ -103,15 +103,15 @@ async def upload_to_event_data(
     response_model_exclude_none=True,  # Changed from exclude_unset to exclude_none
     tags=["create Inventory (Redis)"]
 )
-async def create_inventory_item_route(
+async def create_return_inventory_item_route(
     item: ToEventInventoryCreate,
-    service: ToEventInventoryService = Depends(get_to_event_service)
+    service: FromEventInventoryService = Depends(get_to_event_service)
 ):
     try:
         logger.info(f"New inventory creation request received for project: {item.project_id}")
         
         # Remove db parameter since we're storing in Redis directly
-        created_item = await service.create_to_event_inventory(item)
+        created_item = await service.create_from_event_inventory(item)
         
         logger.info(f"Successfully created inventory in Redis for project: {item.project_id}")
         return created_item
@@ -127,7 +127,7 @@ async def create_inventory_item_route(
         )
     
 # Load submitted from local redis
-@router.get("/to_event-load-submitted-project-redis/",
+@router.get("/from_event-load-project-redis/",
     response_model=List[ToEventRedisOut],
     status_code=200,
     summary="Load submitted projects from Redis",
@@ -135,13 +135,13 @@ async def create_inventory_item_route(
     response_model_exclude_unset=True,
     tags=["load Inventory (Redis)"]
 )
-async def load_submitted_project_from_redis(
+async def from_event_load_submitted_project_from_redis(
     skip: int = Query(0, description="Number of items to skip for pagination"),
-    service: ToEventInventoryService = Depends(get_to_event_service)
+    service: FromEventInventoryService = Depends(get_to_event_service)
 ):
     try:
         logger.info(f"Loading submitted projects from Redis, skip={skip}")
-        projects = await service.load_submitted_project_from_redis(skip)
+        projects = await service.from_event_load_submitted_project_from_redis(skip)
         return projects
     except HTTPException:
         raise
@@ -150,22 +150,22 @@ async def load_submitted_project_from_redis(
         raise HTTPException(status_code=400, detail=str(e))
     
 # Search project data project directly in local Redis  via `project_id`
-@router.get("/to_event-search-entries-by-project-id/{project_id}/",
-    response_model=ToEventRedisOut,  
+@router.get("/from_event-search-entries-by-project-id/{project_id}/",
+    response_model=ToEventRedisOut,  # Changed from List[ToEventRedisOut]
     status_code=200,
     summary="Search project in local Redis by project_id",
     description="This endpoint searches for a project in local Redis by project_id and returns the complete project data.",
     tags=["search Inventory (Redis)"]
 )
-async def search_by_project_id(
+async def from_event_search_by_project_id(
     project_id: str,
-    service: ToEventInventoryService = Depends(get_to_event_service)
+    service: FromEventInventoryService = Depends(get_to_event_service)
 ):
     try:
         logger.info(f"Searching project by project_id: {project_id}")
         
         # Call the service to get project data
-        project_data = await service.get_project_data(project_id)
+        project_data = await service.from_event_get_project_data(project_id)
         
         if not project_data:
             raise HTTPException(
@@ -186,21 +186,21 @@ async def search_by_project_id(
     
 # Upadte project according to `project_id` in local Redis 
 @router.put(
-    "/to_event-update-submitted-project-db/{project_id}/",
+    "/from_event-update-submitted-project-db/{project_id}/",
     response_model=ToEventRedisUpdateOut,
     status_code=200,
     summary="Update all project fields in Redis",
     description="Update any field of an existing project in Redis including all inventory item fields",
     tags=["update Inventory (Redis)"]
 )
-async def update_project_in_redis(
+async def from_event_update_project_in_redis(
     project_id: str,
     update_data: ToEventRedisUpdateIn,
-    service: ToEventInventoryService = Depends(get_to_event_service)
+    service: FromEventInventoryService = Depends(get_to_event_service)
 ):
     try:
         # Perform update - no need to check project_id in body since it's not in input schema
-        updated_project = await service.update_project_data(project_id, update_data)
+        updated_project = await service.from_event_update_project_data(project_id, update_data)
         return updated_project
         
     except HTTPException:

@@ -75,7 +75,7 @@ class ToEventWindow:
             try:
                 existing_records = search_project_details_by_id(work_id)
                 if existing_records:
-                    # Update existing record
+                    # Update existing recordsave_to_db
                     if not update_submitted_project_in_db(work_id, data):
                         raise Exception("Failed to update record via API")
                     return True
@@ -222,31 +222,36 @@ class ToEventWindow:
         tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
         self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.employee_name.grid(row=1, column=1, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Location:", font=('Helvetica', 9)).grid(row=1, column=2, sticky='e', padx=2)
         self.location = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.location.grid(row=1, column=3, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Client Name:", font=('Helvetica', 9)).grid(row=1, column=4, sticky='e', padx=2)
         self.client_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.client_name.grid(row=1, column=5, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=1, column=6, sticky='e', padx=2)
         self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.setup_date.grid(row=1, column=7, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Project Name:", font=('Helvetica', 9)).grid(row=1, column=8, sticky='e', padx=2)
         self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_name.grid(row=1, column=9, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=1, column=10, sticky='e', padx=2)
         self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.event_date.grid(row=1, column=11, sticky='w', padx=2)
-        
+
         # Current Work ID display
         tk.Label(info_frame, text="Current Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
         self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
         self.work_id.grid(row=1, column=13, sticky='w', padx=2)
+
+        # Add new entry button on the same row (column 14)
+        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
+                                font=('Helvetica', 9, 'bold'))
+        self.add_btn.grid(row=1, column=14, padx=5, sticky='e')
 
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
@@ -353,6 +358,13 @@ class ToEventWindow:
         self.window.grid_rowconfigure(7, weight=0)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
+
+    def new_button_click(self):
+        """Handle New Entry button click - clears the form and generates new Work ID"""
+        self.clear_form()
+        self.generate_work_id()
+        self.set_fields_readonly(False)
+        messagebox.showinfo("New Entry", "Ready to create a new entry")
 
     def setup_submitted_tab(self):
         """Setup the tab for submitted projects"""
