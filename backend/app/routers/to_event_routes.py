@@ -47,7 +47,7 @@ logger.setLevel(logging.INFO)
     status_code=200,
     summary="Upload all entries from Redis to database",
     description="Uploads all to_event_inventory entries from local Redis to the database",
-    tags=["upload To Event Project Inventory (DataBase)"]
+    tags=["upload Inventory (DataBase)"]
 )
 async def upload_to_event_data(
     db: AsyncSession = Depends(get_async_db),
