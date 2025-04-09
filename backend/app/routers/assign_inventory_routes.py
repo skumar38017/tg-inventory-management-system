@@ -1,0 +1,316 @@
+# backend/app/routers/Assign_inventory_routes.py
+import logging
+from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Depends, Query
+from datetime import datetime, date
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.app.database.database import get_async_db
+from datetime import datetime
+from backend.app.schema.assign_inventory_schema import (
+    AssignmentInventoryCreate,
+    AssignmentInventoryOut,
+    AssignmentInventoryUpdate,
+    AssignmentInventoryRedisIn,
+    AssignmentInventoryRedisOut,
+    AssignmentInventorySearch,
+)
+from pydantic import ValidationError
+from backend.app.models.assign_inventory_model import AssignmentInventory
+from backend.app.curd.assign_inventory_curd import AssignInventoryService
+from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
+
+# Dependency to get the Assign inventory service
+def get_Assign_inventory_service() -> AssignInventoryService:
+    return AssignInventoryService()
+
+# Set up the router
+router = APIRouter()
+
+# Setup logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# --------------------------
+# Asynchronous Endpoints
+# --------------------------
+
+# upload all assign_inventory entries from local Redis to the database after click on upload data button
+@router.post(
+    "/upload-assign-inventory/",
+    response_model=List[AssignmentInventoryRedisOut],
+    status_code=200,
+    summary="Upload all assigned entries from Redis to database",
+    description="Uploads all assign_inventory entries from local Redis to the database",
+    tags=["upload Inventory (DataBase)"]
+)
+async def upload_assign_inventory(
+    db: AsyncSession = Depends(get_async_db),
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    """
+    Upload all assign_inventory entries from Redis to the database.
+    
+    Returns:
+        List of AssignmentInventoryRedisOut objects with upload status for each item
+    """
+    try:
+        logger.info("Starting Redis to database upload process")
+        
+        # Get data from service
+        uploaded_items = await service.upload_from_event_inventory(db)
+        
+        if not uploaded_items:
+            logger.warning("No inventory items found in Redis for upload")
+            raise HTTPException(
+                status_code=404,
+                detail="No inventory items found in Redis"
+            )
+            
+        logger.info(f"Successfully processed {len(uploaded_items)} items")
+        return uploaded_items
+        
+    except ValidationError as ve:
+        logger.error(f"Data validation error: {ve}", exc_info=True)
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Data validation failed",
+                "errors": ve.errors()
+            }
+        )
+    except HTTPException:
+        # Re-raise existing HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload inventory data: {str(e)}"
+        )  
+
+# Show all inventory entries directly from local Redis according in sequence alphabetical order after clicking `Show All` button
+@router.get("/show-all-assign-inventory/",
+    response_model=List[AssignmentInventoryRedisOut],
+    status_code=200,
+    summary="Show all Redis-cached assigned inventory",
+    description="Retrieves all inventory entries from Redis cache",
+    responses={
+        200: {"description": "Successfully retrieved cached data"},
+        404: {"description": "No cached data found"},
+        500: {"description": "Internal server error during retrieval"}
+    },
+    tags=["search Inventory (Redis)"]
+)
+async def show_assigned_inventory(
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    """
+    Retrieve all inventory data from Redis cache.
+    
+    This endpoint will:
+    1. Fetch all cached inventory entries from Redis
+    2. Validate and deserialize the data
+    3. Return the sorted list of inventory items
+    """
+    try:
+        logger.info("Fetching all inventory data from Redis")
+        cached_data = await service.show_all_inventory_from_redis()
+        
+        if not cached_data:
+            logger.warning("No inventory data found in Redis cache")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "not_found",
+                    "message": "No inventory data available in cache"
+                }
+            )
+            
+        logger.info(f"Successfully retrieved {len(cached_data)} cached entries")
+        return cached_data
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Data validation error: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "failed",
+                "message": "Invalid data format in Redis cache",
+                "error": str(e)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to retrieve cached data: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "failed",
+                "message": "Failed to retrieve cached data",
+                "error": str(e)
+            }
+        )
+
+# CREATE: Add a new Assign to the inventory
+@router.post("/create-assign-inventory/",
+    response_model=AssignmentInventoryRedisOut,
+    status_code=200,
+    summary="Create a new Assign in the inventory",
+    description="This endpoint is used to create a new Assign in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created Assign.",
+    response_model_exclude_unset=True,
+    tags=["create Inventory (Redis)"]
+)
+async def create_inventory_item_route(
+    item: AssignmentInventoryCreate,
+    db: AsyncSession = Depends(get_async_db),
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    try:
+        item_data = item.dict(exclude_unset=True)
+        logger.info(f"New item created: {item_data}")
+        return await service.create_assignment_inventory(db, item_data)
+    except Exception as e:
+        logger.error(f"Error creating inventory item: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+# ________________________________________________________________________________________
+
+# READ: search/fetch an inventory which is match from [Inventory ID, Project ID, Product ID, Employee name]
+@router.get("/search-assigned-inventory/",
+            response_model=List[AssignmentInventoryRedisOut],
+            status_code=200,
+            summary="Search assigned inventory by multiple fields",
+            description="Search inventory assignments by inventory_id, project_id, product_id, or employee_name",
+            response_model_exclude_unset=True,
+            tags=["search Inventory (Redis)"]
+)
+async def search_assigned_inventory(
+    inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
+    product_id: Optional[str] = Query(None, description="Product ID to search for"),
+    project_id: Optional[str] = Query(None, description="Project ID to search for"),
+    employee_name: Optional[str] = Query(None, description="Employee name to search for"),
+    db: AsyncSession = Depends(get_async_db),
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    results = await service.search_entries_by_fields(
+        db,
+        inventory_id=inventory_id,
+        project_id=project_id,
+        product_id=product_id,
+        employee_name=employee_name
+    )
+    
+    if not results:
+        raise HTTPException(
+            status_code=404,
+            detail="No matching inventory assignments found"
+        )
+    
+    return results
+
+# READ ALL: List current added Assigned inventory
+@router.get("/list-added-assign-inventory",
+            response_model=list[AssignmentInventoryRedisOut],
+            status_code=200,
+            summary="Load assigned entries from the inventory",
+            description="This endpoint is used to get all entries from the inventory. It returns a list of entries.",
+            response_model_exclude_unset=True,
+            tags=["load Inventory (Redis)"]
+)
+async def list_added_assigned_inventory(
+    skip: int = 0,
+    db: AsyncSession = Depends(get_async_db),
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    """Get all inventory items"""
+    try:
+        items = await service.list_added_assigned_inventory(db, skip)
+        logger.info(f"Retrieved {len(items)} inventory items")
+        return items
+    except Exception as e:
+        logger.error(f"Error fetching inventory items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+#  update/edit existing Assigned Inventory by [InventoryID, EmployeeName]
+@router.put(
+    "/update-assigned-inventory/",
+    response_model=List[AssignmentInventoryRedisOut],
+    status_code=200,
+    summary="Search inventory items",
+    description="Search inventory items by Inventory ID, Product ID, or Project ID (exactly one required)",
+    response_model_exclude_unset=True,
+)
+async def update_assigned_inventory(
+    inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
+    employee_name: Optional[str] = Query(None, description="Product ID to search for"),
+    db: AsyncSession = Depends(get_async_db),
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    """
+    Search inventory items by exactly one of:
+    - Inventory ID
+    - Product ID
+    - Project ID
+    """
+    try:
+        # Convert empty strings to None
+        inventory_id = inventory_id if inventory_id else None
+        employee_name = employee_name if employee_name else None
+
+        # Validate exactly one search parameter is provided
+        provided_params = [p for p in [inventory_id, employee_name] if p is not None]
+        if len(provided_params) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Exactly one search parameter (inventory_id, product_id, or project_id) must be provided"
+            )
+
+        search_params = AssignInventorySearch(
+            inventory_id=inventory_id,
+            employee_name=employee_name,
+        )
+        
+        results = await service.search_entries(db, search_params)
+        if not results:
+            raise HTTPException(status_code=404, detail="No matching items found")
+        
+        return results
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Search failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error during search")
+    
+    
+
+# DELETE: Delete an inventory Assigned
+@router.delete("/{inventory_id}", 
+               status_code=200,
+               summary="Delete an Assign from the inventory",
+               description="This endpoint is used to delete an Assign from the inventory. It takes a UUID as a parameter and deletes the Assign with the specified UUID.",
+               )
+async def delete_assigned_inventory(
+    inventory_id: str,
+    db: AsyncSession = Depends(get_async_db),
+    service: AssignInventoryService = Depends(get_Assign_inventory_service)
+):
+    """Delete an inventory item and return a confirmation message"""
+    try:
+        # Fetch the item to be deleted first
+        item_to_delete = await service.get_by_inventory_id(db, inventory_id)
+        if not item_to_delete:
+            raise HTTPException(status_code=404, detail="Inventory item not found")
+
+        # Perform the delete operation
+        success = await service.delete_Assign(db, inventory_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Inventory item not found")
+
+        # Return a confirmation message with the deleted data
+        return {"message": "Inventory item deleted successfully", "deleted_item": item_to_delete}
+
+    except Exception as e:
+        logger.error(f"Error deleting inventory item {inventory_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    

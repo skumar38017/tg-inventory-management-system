@@ -267,9 +267,10 @@ async def get_all_entire_inventory(
     "/search/",
     response_model=List[EntryInventoryOut],
     status_code=200,
-    summary="Search inventory items",
+    summary="Search Entry inventory items",
     description="Search inventory items by Inventory ID, Product ID, or Project ID (exactly one required)",
     response_model_exclude_unset=True,
+    tags=["search Inventory (Redis)"]
 )
 async def search_inventory(
     inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
