@@ -8,9 +8,11 @@ from backend.app.database.base import Base  # Ensure this imports Base from the 
 from alembic import context
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.models.to_event_inventry_model import ToEventInventory
+from backend.app.models.assign_inventory_model import AssignmentInventory
 
 EntryInventory=EntryInventory()
 ToEventInventory=ToEventInventory()
+AssignmentInventory=AssignmentInventory()
 
 # Add the project's root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
