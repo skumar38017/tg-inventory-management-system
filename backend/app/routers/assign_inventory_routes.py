@@ -102,7 +102,7 @@ async def upload_assign_inventory(
         404: {"description": "No cached data found"},
         500: {"description": "Internal server error during retrieval"}
     },
-    tags=["search Inventory (Redis)"]
+    tags=["Show all Inventory (Redis)"]
 )
 async def show_assigned_inventory(
     service: AssignInventoryService = Depends(get_Assign_inventory_service)
@@ -226,7 +226,7 @@ async def list_added_assigned_inventory(
 
 #  update/edit existing Assigned Inventory by [InventoryID, EmployeeName]
 @router.put(
-    "/update-assigned-inventory/{employee_name}/{inventory_id}",
+    "/update-assigned-inventory/{employee_name}/{inventory_id}/",
     response_model=AssignmentInventoryRedisOut,
     status_code=200,
     summary="Update assigned inventory",
@@ -255,7 +255,7 @@ async def update_assigned_inventory(
 
 # DELETE: Delete an inventory Assigned
 @router.delete(
-    "/delete-assigned-inventory/{employee_name}/{inventory_id}",
+    "/delete-assigned-inventory/{employee_name}/{inventory_id}/",
     status_code=200,
     response_model=AssignmentInventoryRedisOut,  # Define this model if needed
     summary="Delete assigned inventory",
