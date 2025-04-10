@@ -1,8 +1,19 @@
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox, ttk
 from datetime import datetime
 import platform
 import logging
+from typing import List, Dict, Optional
+from datetime import datetime, timedelta
+from .api_request.assign_inventory_api_request import (
+    search_assigned_inventory_by_id,
+    load_submitted_assigned_inventory,
+    submit_assigned_inventory,
+    show_all_assigned_inventory_from_db,
+    update_assigned_inventory,
+    get_assigned_inventory_by_id
+)
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +23,10 @@ class AssignInventoryWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs's Inventory - Assign Inventory To Employee")
 
+        # Track edit state
+        self.currently_editing_id = None
+        self.edit_mode = False
+        
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
@@ -21,6 +36,7 @@ class AssignInventoryWindow:
         
         # Setup the window
         self.setup_ui()
+        self.setup_listbox_bindings()
         
         # Handle window closing
         self.window.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -30,6 +46,9 @@ class AssignInventoryWindow:
         
         # Maximize window
         self.maximize_window()
+        
+        # Load initial data
+        self.refresh_assigned_inventory_list()
         
         logger.info("Assign Inventory window opened successfully")
 
@@ -48,6 +67,299 @@ class AssignInventoryWindow:
                     self.window.winfo_screenheight()
                 ))
 
+    def setup_listbox_bindings(self):
+        """Setup double-click binding for list box"""
+        self.list_box.bind('<Double-1>', self.on_list_item_double_click)
+
+    def on_list_item_double_click(self, event):
+        """Handle double-click on list box item to load for editing"""
+        selection = self.list_box.curselection()
+        if not selection:
+            return
+            
+        selected_index = selection[0]
+        selected_item = self.list_box.get(selected_index)
+        
+        try:
+            # Extract ID from the displayed text
+            record_id = selected_item.split("ID:")[1].split("|")[0].strip()
+            record_data = get_assigned_inventory_by_id(record_id)
+            
+            if record_data:
+                self.load_record_for_editing(record_data)
+        except Exception as e:
+            logger.error(f"Error loading record for editing: {e}")
+            messagebox.showerror("Error", "Could not load record for editing")
+
+    def load_record_for_editing(self, record_data: Dict):
+        """Load record data into the form for editing"""
+        self.clear_form()
+        self.currently_editing_id = record_data.get('id')
+        self.edit_mode = True
+        
+        # Update search fields
+        self.inventory_id.insert(0, record_data.get('inventory_id', ''))
+        self.project_id.insert(0, record_data.get('project_id', ''))
+        self.product_id.insert(0, record_data.get('product_id', ''))
+        self.employee_name.insert(0, record_data.get('employee_name', ''))
+        
+        # Update table entries
+        if self.table_entries:
+            row = self.table_entries[0]
+            row[0].insert(0, record_data.get('assigned_to', ''))        # Assigned To
+            row[1].insert(0, record_data.get('employee_name', ''))      # Employee Name
+            row[2].insert(0, record_data.get('zone_activity', ''))     # Zone/Activity
+            row[3].insert(0, record_data.get('sr_no', ''))            # Sr. No.
+            row[4].insert(0, record_data.get('inventory_id', ''))      # InventoryID
+            row[5].insert(0, record_data.get('product_id', ''))        # ProductID
+            row[6].insert(0, record_data.get('project_id', ''))        # ProjectID
+            row[7].insert(0, record_data.get('inventory_name', ''))    # Inventory Name
+            row[8].insert(0, record_data.get('description', ''))       # Description
+            row[9].insert(0, record_data.get('quantity', ''))         # Qty
+            row[10].insert(0, record_data.get('status', ''))           # Status
+            row[11].insert(0, record_data.get('purpose', ''))          # Purpose/Reason
+            row[12].insert(0, record_data.get('assigned_date', ''))    # Assigned Date
+            row[13].insert(0, record_data.get('submission_date', '')) # Submission Date
+            row[14].insert(0, record_data.get('assigned_by', ''))     # Assigned By
+            row[15].insert(0, record_data.get('comments', ''))         # Comments
+            row[16].insert(0, record_data.get('assignment_returned_date', '')) # Return Date
+        
+        self.submit_btn.config(text="Update", command=self.update_record)
+
+    def clear_form(self):
+        """Clear all form fields"""
+        self.inventory_id.delete(0, tk.END)
+        self.project_id.delete(0, tk.END)
+        self.product_id.delete(0, tk.END)
+        self.employee_name.delete(0, tk.END)
+        
+        for row in self.table_entries:
+            for entry in row:
+                entry.delete(0, tk.END)
+        
+        self.currently_editing_id = None
+        self.edit_mode = False
+        self.submit_btn.config(text="Assign", command=self.submit_form)
+
+    def update_record(self):
+        """Handle updating an existing record"""
+        if not self.currently_editing_id:
+            messagebox.showwarning("Warning", "No record selected for update")
+            return
+            
+        # Validate required fields
+        required_fields = [
+            self.inventory_id.get(),
+            self.project_id.get(),
+            self.product_id.get()
+        ]
+        
+        if not all(required_fields):
+            messagebox.showwarning("Warning", "Please fill in all required fields")
+            return
+            
+        # Prepare the update data
+        update_data = {
+            'inventory_id': self.inventory_id.get(),
+            'project_id': self.project_id.get(),
+            'product_id': self.product_id.get(),
+            'assignments': []
+        }
+        
+        for row in self.table_entries:
+            assignment = {
+                'assigned_to': row[0].get(),
+                'employee_name': row[1].get(),
+                'zone_activity': row[2].get(),
+                'sr_no': row[3].get(),
+                'inventory_id': row[4].get(),
+                'product_id': row[5].get(),
+                'project_id': row[6].get(),
+                'inventory_name': row[7].get(),
+                'description': row[8].get(),
+                'quantity': row[9].get(),
+                'status': row[10].get(),
+                'purpose': row[11].get(),
+                'assigned_date': row[12].get(),
+                'submission_date': row[13].get(),
+                'assigned_by': row[14].get(),
+                'comments': row[15].get(),
+                'assignment_returned_date': row[16].get()
+            }
+            update_data['assignments'].append(assignment)
+        
+        try:
+            success = update_assigned_inventory(self.currently_editing_id, update_data)
+            if success:
+                messagebox.showinfo("Success", "Record updated successfully")
+                logger.info(f"Record {self.currently_editing_id} updated")
+                self.refresh_assigned_inventory_list()
+                self.clear_form()
+            else:
+                messagebox.showerror("Error", "Failed to update record")
+        except Exception as e:
+            logger.error(f"Error updating record: {e}")
+            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+
+    def refresh_assigned_inventory_list(self):
+        """Refresh the list with a proper table view and dynamic column sizing"""
+        try:
+            # Clear existing content
+            for widget in self.list_frame.winfo_children():
+                widget.destroy()
+
+            # Configure Treeview style
+            style = ttk.Style()
+            style.configure('Treeview', 
+                        rowheight=15,
+                        font=('Helvetica', 9))
+            style.map('Treeview', 
+                    background=[('selected', '#347083')],
+                    foreground=[('selected', 'white')])
+
+            inventory_list = show_all_assigned_inventory_from_db()
+            if not inventory_list:
+                tk.Label(self.list_frame, 
+                        text="No assigned inventory found",
+                        font=('Helvetica', 9)).pack(expand=True)
+                return
+
+            # Define the fields to display (in order)
+            fields = [
+                'id', 'assigned_to', 'inventory_id', 'project_id',
+                'product_id', 'employee_name', 'inventory_name', 'quantity',
+                'status', 'assigned_date', 'sr_no', 'purpose_reason',
+                'submission_date', 'assign_by', 'comment',
+                'assignment_return_date'
+            ]
+
+            # Field name mappings (backend -> display)
+            field_mappings = {
+                'purpose_reason': 'Purpose',
+                'assign_by': 'Assigned By',
+                'comment': 'Comments',
+                'assignment_return_date': 'Return Date'
+            }
+
+            # Calculate column widths
+            col_widths = {}
+            for field in fields:
+                display_name = field_mappings.get(field, field.replace('_', ' ').title())
+                col_widths[field] = len(display_name)  # Start with header width
+
+            # Find maximum width for each column
+            for item in inventory_list:
+                for field in fields:
+                    value = str(item.get(field, 'N/A'))
+                    col_widths[field] = max(col_widths[field], len(value))
+
+            # Add padding and set minimum width
+            for field in col_widths:
+                col_widths[field] = max(col_widths[field] + 2, 10)  # Minimum width of 10
+
+            # Create Treeview widget
+            tree = ttk.Treeview(self.list_frame, 
+                            columns=fields, 
+                            show='headings',
+                            selectmode='browse')  # Single item selection
+
+            # Configure scrollbars
+            vsb = ttk.Scrollbar(self.list_frame, orient="vertical", command=tree.yview)
+            hsb = ttk.Scrollbar(self.list_frame, orient="horizontal", command=tree.xview)
+            tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+            # Grid layout
+            tree.grid(row=0, column=0, sticky='nsew')
+            vsb.grid(row=0, column=1, sticky='ns')
+            hsb.grid(row=1, column=0, sticky='ew')
+
+            # Configure row/column weights
+            self.list_frame.grid_rowconfigure(0, weight=1)
+            self.list_frame.grid_columnconfigure(0, weight=1)
+
+            # Set up columns with proper display names
+            for field in fields:
+                display_name = field_mappings.get(field, field.replace('_', ' ').title())
+                tree.heading(field, text=display_name)
+                tree.column(field, 
+                        width=col_widths[field] * 8,  # Adjust multiplier as needed
+                        anchor='w')  # Left-align content
+
+            # Add data
+            for item in inventory_list:
+                values = []
+                for field in fields:
+                    value = str(item.get(field, 'N/A'))
+                    # Format dates if needed
+                    if field in ['assigned_date', 'submission_date', 'assignment_return_date'] and value != 'N/A':
+                        try:
+                            value = value.split('T')[0]  # Just show date part
+                        except:
+                            pass
+                    values.append(value)
+                tree.insert('', 'end', values=values)
+
+            # Bind double-click event
+            tree.bind('<Double-1>', self.on_tree_item_double_click)
+
+            # Auto-size columns after data is loaded
+            self.auto_size_columns(tree, fields)
+
+        except Exception as e:
+            logger.error(f"Error refreshing inventory list: {e}")
+            messagebox.showerror("Error", "Could not refresh inventory list")
+            # Create error label if table fails
+            tk.Label(self.list_frame, 
+                    text="Error loading inventory data",
+                    fg='red',
+                    font=('Helvetica', 12)).pack(expand=True)
+
+    def auto_size_columns(self, tree, fields):
+        """Automatically adjust column widths based on content"""
+        for field in fields:
+            tree.column(field, width=0)  # Reset width
+            tree.column(field, stretch=True)  # Allow stretching
+
+    def on_tree_item_double_click(self, event):
+        """Handle double-click on treeview item"""
+        tree = event.widget
+        selected = tree.selection()
+        
+        if not selected:  # No item selected
+            return
+            
+        try:
+            item = selected[0]
+            values = tree.item(item, 'values')
+            if values:  # Check if values exist
+                record_id = values[0]  # First column is ID
+                record_data = get_assigned_inventory_by_id(record_id)
+                if record_data:
+                    self.load_record_for_editing(record_data)
+        except Exception as e:
+            logger.error(f"Error loading record for editing: {e}")
+            messagebox.showerror("Error", "Could not load record for editing")
+
+    def on_tree_item_double_click(self, event):
+        """Handle double-click on treeview item"""
+        tree = event.widget
+        selected_items = tree.selection()
+        
+        # Check if any item is actually selected
+        if not selected_items:
+            return
+            
+        try:
+            item = selected_items[0]  # Get first selected item
+            record_id = tree.item(item, 'values')[0]  # First column is ID
+            record_data = get_assigned_inventory_by_id(record_id)
+            
+            if record_data:
+                self.load_record_for_editing(record_data)
+        except Exception as e:
+            logger.error(f"Error loading record for editing: {e}")
+            messagebox.showerror("Error", "Could not load record for editing")
+    
     def setup_ui(self):
         """Set up all UI elements"""
         # Header section - Clock in row 0
@@ -140,9 +452,12 @@ Eros City Square
         list_frame.grid_columnconfigure(0, weight=1)
         
         # Add label for the list box
-        tk.Label(list_frame, text="Search Results", font=('Helvetica', 10, 'bold')).pack(pady=5)
+        tk.Label(list_frame, text="Assigned Inventory List", font=('Helvetica', 10, 'bold')).pack(pady=5)
         
         # Create list box with scrollbar
+        self.list_frame = tk.Frame(list_frame)
+        self.list_frame.pack(fill='both', expand=True)
+
         self.list_box = tk.Listbox(list_frame, font=('Helvetica', 10))
         scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.list_box.yview)
         self.list_box.configure(yscrollcommand=scrollbar.set)
@@ -173,7 +488,7 @@ Eros City Square
         assigned_to_label_frame.pack(side="top", fill="x", pady=(5,0))
         
         # Center the label in its frame
-        tk.Label(assigned_to_label_frame, text="Assigned To", 
+        tk.Label(assigned_to_label_frame, text="Assignment Details", 
                 font=('Helvetica', 10, 'bold')).pack()
 
         # Table headers frame
@@ -185,10 +500,10 @@ Eros City Square
             "Assigned To", "Employee Name", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
             "Inventory Name", "Description/Specifications", "Qty", "Status", "Purpose/Reason", 
             "Assigned Date", "Submission Date", "Assigned By", "Comments", "Assignment Returned Date"
-        ]
+]
 
         # Store original column widths
-        self.original_column_widths = [15, 20, 10, 15, 15, 15, 25, 10, 15, 20, 15, 15, 15, 20, 20]
+        self.original_column_widths = [15, 20, 15, 10, 15, 15, 15, 25, 10, 15, 20, 15, 15, 15, 20, 20, 15]
         
         # Create headers
         for col, header in enumerate(self.headers):
@@ -259,10 +574,15 @@ Eros City Square
                               font=('Helvetica', 12, 'bold'))
         add_row_btn.pack(side=tk.LEFT, padx=5)
 
-        # Submit button
-        submit_btn = tk.Button(button_frame, text="Assign", command=self.submit_form,
+        # Submit/Update button
+        self.submit_btn = tk.Button(button_frame, text="Assign", command=self.submit_form,
                              font=('Helvetica', 12, 'bold'))
-        submit_btn.pack(side=tk.LEFT, padx=5)
+        self.submit_btn.pack(side=tk.LEFT, padx=5)
+
+        # Clear button
+        clear_btn = tk.Button(button_frame, text="Clear", command=self.clear_form,
+                            font=('Helvetica', 12, 'bold'))
+        clear_btn.pack(side=tk.LEFT, padx=5)
 
         # Return button on right
         return_button = tk.Button(button_frame, 
@@ -362,27 +682,26 @@ Eros City Square
         # Clear previous results
         self.list_box.delete(0, tk.END)
         
-        # Here you would typically implement your search logic
-        # For demonstration, we'll add some dummy data
-        if inventory_id or project_id or product_id or employee_name:
-            # Add some sample results (more items to fill the larger list box)
-            for i in range(1, 20):
-                result_text = f"Result {i}: "
-                if inventory_id:
-                    result_text += f"InvID: {inventory_id}-{i} "
-                if project_id:
-                    result_text += f"ProjID: {project_id}-{i} "
-                if product_id:
-                    result_text += f"ProdID: {product_id}-{i} "
-                if employee_name:
-                    result_text += f"Emp: {employee_name}-{i}"
-                
-                self.list_box.insert(tk.END, result_text.strip())
-        else:
-            messagebox.showwarning("Warning", "Please enter at least one search criteria")
+        try:
+            results = search_assigned_inventory_by_id(
+                inventory_id=inventory_id,
+                project_id=project_id,
+                product_id=product_id,
+                employee_name=employee_name
+            )
+            
+            if results:
+                for item in results:
+                    display_text = f"{item.get('InventoryID', 'N/A')} | {item.get('Inventory Name', 'N/A')} | {item.get('Assigned To', 'N/A')}"
+                    self.list_box.insert(tk.END, display_text)
+            else:
+                messagebox.showinfo("Info", "No matching records found")
+        except Exception as e:
+            logger.error(f"Error during search: {e}")
+            messagebox.showerror("Error", "Failed to perform search")
 
     def submit_form(self):
-        """Handle form submission"""
+        """Handle form submission for new records"""
         # Validate required fields
         required_fields = [
             self.inventory_id.get(),
@@ -391,39 +710,51 @@ Eros City Square
         ]
         
         if not all(required_fields):
-            messagebox.showwarning("Warning", "Please fill in all search fields")
+            messagebox.showwarning("Warning", "Please fill in all required fields")
             return
             
         # Process the data
         data = {
+            'employee_name': self.employee_name.get(),
             'inventory_id': self.inventory_id.get(),
-            'project_id': self.project_id.get(),
-            'product_id': self.product_id.get(),
             'assignments': []
         }
         
         for row in self.table_entries:
             item = {
                 'assigned_to': row[0].get(),
-                'zone_activity': row[1].get(),
-                'sr_no': row[2].get(),
-                'inventory_id': row[3].get(),
-                'product_id': row[4].get(),
-                'project_id': row[5].get(),
-                'description': row[6].get(),
-                'quantity': row[7].get(),
-                'status': row[8].get(),
-                'purpose': row[9].get(),
-                'assigned_date': row[10].get(),
-                'submission_date': row[11].get(),
-                'assigned_by': row[12].get(),
-                'comments': row[13].get(),
-                'assignment_returned_date': row[14].get()
+                'product_id': row[1].get(),
+                'zone_activity': row[2].get(),
+                'sr_no': row[3].get(),
+                'inventory_id': row[4].get(),
+                'product_id': row[5].get(),
+                'project_id': row[6].get(),
+                'inventory_name': row[7].get(),
+                'description': row[8].get(),
+                'quantity': row[9].get(),
+                'status': row[10].get(),
+                'purpose': row[11].get(),
+                'assigned_date': row[12].get(),
+                'submission_date': row[13].get(),
+                'assigned_by': row[14].get(),
+                'comments': row[15].get(),
+                'assignment_returned_date': row[16].get(),
+                'project_id': row[17].get(),
             }
             data['assignments'].append(item)
         
-        messagebox.showinfo("Success", "Assignment submitted successfully")
-        logger.info(f"Form submitted: {data}")
+        try:
+            success = submit_assigned_inventory(data)
+            if success:
+                messagebox.showinfo("Success", "Assignment submitted successfully")
+                logger.info("New assignment submitted")
+                self.refresh_assigned_inventory_list()
+                self.clear_form()
+            else:
+                messagebox.showerror("Error", "Failed to submit assignment")
+        except Exception as e:
+            logger.error(f"Error submitting form: {e}")
+            messagebox.showerror("Error", f"Failed to submit assignment: {str(e)}")
 
     def update_clock(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
