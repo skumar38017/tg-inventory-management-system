@@ -4,6 +4,8 @@ from typing import List, Optional
 import json
 import logging
 import uuid
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import update
 
 from fastapi import HTTPException, Depends
 from pydantic import ValidationError
@@ -38,87 +40,84 @@ class AssignInventoryService(AssignmentInventoryInterface):
         self.barcode_generator = BarcodeGenerator()
 
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[AssignmentInventoryRedisOut]:
-        """Upload all assign_inventory entries from Redis to database."""
+        """Upload all assign_inventory entries from Redis to database with bulk upsert."""
         try:
             await db.rollback()  # Start fresh
             inventory_keys = await self.redis.keys("assignment:*")
             uploaded_entries = []
-            processed_projects = set()
+            processed_ids = set()
+            all_validated_data = []
 
+            # First pass: validate all data and collect for bulk operation
             for key in inventory_keys:
                 try:
                     redis_data = await self.redis.get(key)
                     if not redis_data:
-                        logger.debug(f"Empty data for key {key}")
                         continue
 
                     try:
                         data = json.loads(redis_data)
-                        entries = (
-                            [AssignmentInventoryRedisIn(**item) for item in data] 
-                            if isinstance(data, list) 
-                            else [AssignmentInventoryRedisIn(**data)]
-                        )
-                    except ValidationError as ve:
-                        logger.error(f"Validation error for key {key}: {ve}")
+                        if isinstance(data, dict):
+                            data = [data]  # Normalize to list
+                    except json.JSONDecodeError:
+                        logger.error(f"Invalid JSON for key {key}")
                         continue
 
-                    for entry in entries:
+                    for entry_data in data:
                         try:
-                            if not entry.project_id:
-                                logger.warning(f"Empty project_id in entry from key {key}")
+                            if not entry_data.get("id"):
+                                logger.warning(f"Entry missing ID in key {key}")
                                 continue
-                            
-                            if entry.project_id in processed_projects:
-                                logger.debug(f"Skipping duplicate project {entry.project_id}")
+
+                            entry_id = entry_data["id"]
+                            if entry_id in processed_ids:
+                                logger.debug(f"Skipping duplicate ID {entry_id}")
                                 continue
                                 
-                            processed_projects.add(entry.project_id)
+                            processed_ids.add(entry_id)
 
-                            # Check for existing entry
-                            existing = await db.execute(
-                                select(AssignmentInventory)
-                                .where(AssignmentInventory.project_id == entry.project_id)
-                            )
-                            existing = existing.scalar_one_or_none()
-
-                            if existing:
-                                await db.delete(existing)
-                                logger.info(f"Removed existing project {entry.project_id}")
-
-                            # Create new entry
-                            new_entry = AssignmentInventory(**entry.model_dump())
-                            db.add(new_entry)
-                            await db.commit()
-
-                            uploaded_entries.append(
-                                AssignmentInventoryRedisOut(
-                                    **entry.model_dump(),
-                                    success=True,
-                                    message="Uploaded successfully"
-                                )
-                            )
-                            logger.info(f"Processed project {entry.project_id}")
+                            # Clean and validate the data
+                            try:
+                                validated_data = AssignmentInventoryRedisIn(**entry_data).model_dump()
+                                all_validated_data.append(validated_data)
+                                # Keep for response
+                                uploaded_entries.append(AssignmentInventoryRedisOut(**validated_data))
+                            except ValidationError as ve:
+                                logger.error(f"Validation error for entry {entry_id}: {ve}")
+                                continue
 
                         except Exception as e:
-                            await db.rollback()
-                            logger.error(f"Error processing entry {entry.project_id}: {e}")
+                            logger.error(f"Error processing entry {entry_id}: {e}")
                             continue
 
                 except Exception as e:
                     logger.error(f"Error processing key {key}: {e}")
                     continue
 
+            if not all_validated_data:
+                raise HTTPException(status_code=404, detail="No valid inventory items found in Redis")
+
+            # Bulk upsert operation
+            try:
+                stmt = insert(AssignmentInventory).values(all_validated_data)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=['id'],
+                    set_={k: v for k, v in stmt.excluded.items() if k != 'id'}
+                )
+                await db.execute(stmt)
+                await db.commit()
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Bulk upsert failed: {e}")
+                raise
+
             return uploaded_entries
 
         except Exception as e:
             await db.rollback()
             logger.error(f"Upload operation failed: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to upload inventory data: {str(e)}"
-            ) 
-        
+            raise
+
 # Create new entry of inventory for to_event which is directly stored in redis
     async def create_assignment_inventory(self, db: AsyncSession, item: Union[AssignmentInventoryCreate, dict]) -> AssignmentInventory:
         try:
