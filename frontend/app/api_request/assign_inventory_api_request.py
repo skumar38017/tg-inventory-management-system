@@ -241,3 +241,16 @@ def get_assigned_inventory_by_id(inventory_id: str) -> Dict:
         logger.error(f"Unexpected error during fetch: {e}")
         messagebox.showerror("Error", "An unexpected error occurred")
         return {}   
+    
+def delete_assigned_inventory(record_id: str) -> bool:
+    """Delete an assigned inventory record by ID"""
+    try:
+        response = make_api_request(
+            "DELETE",
+            f"delete-assign-inventory/{record_id}/"
+        )
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting assigned inventory: {e}")
+        return False
