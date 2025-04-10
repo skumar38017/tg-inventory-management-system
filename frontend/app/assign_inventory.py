@@ -13,7 +13,8 @@ from .api_request.assign_inventory_api_request import (
     submit_assigned_inventory,
     show_all_assigned_inventory_from_db,
     update_assigned_inventory,
-    get_assigned_inventory_by_id
+    get_assigned_inventory_by_id,
+    delete_assigned_inventory
 )
 
 logger = logging.getLogger(__name__)
@@ -194,11 +195,42 @@ Eros City Square
 
         # NEW ENTRY section
         new_entry_frame = tk.LabelFrame(content_frame, text="NEW ENTRY", 
-                                      font=('Helvetica', 10, 'bold'))
+                                    font=('Helvetica', 10, 'bold'))
         new_entry_frame.grid(row=2, column=0, sticky="nsew")
         new_entry_frame.grid_columnconfigure(0, weight=1)
-        new_entry_frame.grid_rowconfigure(1, weight=1)
+        new_entry_frame.grid_rowconfigure(0, weight=1)  # For the treeview
+        new_entry_frame.grid_rowconfigure(1, weight=0)  
+
+        # Treeview for new entries
+        self.new_entry_tree = ttk.Treeview(new_entry_frame)
+        self.new_entry_tree.grid(row=0, column=0, sticky="nsew")
+
+        # Scrollbars
+        new_entry_vsb = ttk.Scrollbar(new_entry_frame, orient="vertical", command=self.new_entry_tree.yview)
+        new_entry_hsb = ttk.Scrollbar(new_entry_frame, orient="horizontal", command=self.new_entry_tree.xview)
+        self.new_entry_tree.configure(yscrollcommand=new_entry_vsb.set, xscrollcommand=new_entry_hsb.set)
+        new_entry_vsb.grid(row=0, column=1, sticky="ns")
+        new_entry_hsb.grid(row=1, column=0, sticky="ew")
+            
+        # Action buttons frame for the new entry section
+        action_frame = tk.Frame(new_entry_frame)
+        action_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
+
+        # Edit button
+        edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_selected_entry,
+                            font=('Helvetica', 10))
+        edit_btn.pack(side=tk.LEFT, padx=5)
         
+        # Update button
+        update_btn = tk.Button(action_frame, text="Update", command=self.update_selected_entry,
+                            font=('Helvetica', 10))
+        update_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Delete button
+        delete_btn = tk.Button(action_frame, text="Delete", command=self.delete_selected_entry,
+                            font=('Helvetica', 10))
+        delete_btn.pack(side=tk.LEFT, padx=5)
+
         # Create a canvas for horizontal scrolling
         entry_canvas = tk.Canvas(new_entry_frame)
         entry_canvas.grid(row=1, column=0, sticky="nsew")
@@ -265,29 +297,172 @@ Eros City Square
         return_btn.pack(side=tk.RIGHT, padx=5)
 
     def configure_treeviews(self):
-        """Configure columns for all treeviews with dynamic width adjustment"""
-        # Create a font object for measurement
+        """Configure columns for all treeviews including the new entry tree"""
         default_font = font.nametofont("TkDefaultFont")
         
-        # First clear any existing columns
-        for tree in [self.assigned_tree, self.recent_tree]:
+        # Configure all three treeviews
+        for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
             tree['columns'] = self.headers
-            tree['show'] = 'headings'  # This removes the empty first column
+            tree['show'] = 'headings'  # Remove empty first column
             
-            # Configure each column
             for col, header in enumerate(self.headers):
                 tree.heading(col, text=header, anchor='w')
-                # Set initial width based on header length
                 tree.column(col, width=default_font.measure(header) + 20, 
-                           stretch=True, anchor='w')
+                        stretch=True, anchor='w')
         
         # Bind double-click events
-        self.assigned_tree.bind('<Double-1>', lambda e: self.load_selected_item(self.assigned_tree))
-        self.recent_tree.bind('<Double-1>', lambda e: self.load_selected_item(self.recent_tree))
+        self.assigned_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.assigned_tree))
+        self.recent_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.recent_tree))
         
         # Bind column resize events
-        for tree in [self.assigned_tree, self.recent_tree]:
+        for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
             tree.bind("<Map>", lambda e: self.auto_size_columns(e.widget))
+
+    def load_selected_to_new_entry(self, source_tree):
+        """Load selected item from source tree into new entry tree"""
+        selected_item = source_tree.selection()
+        if not selected_item:
+            return
+            
+        try:
+            item = selected_item[0]
+            values = source_tree.item(item, 'values')
+            
+            # Clear existing entries in new entry tree
+            self.new_entry_tree.delete(*self.new_entry_tree.get_children())
+            
+            # Add the selected record to new entry tree
+            self.new_entry_tree.insert('', 'end', values=values)
+            
+            # Store the ID of the record being edited
+            self.currently_editing_id = values[0]
+            
+        except Exception as e:
+            logger.error(f"Error loading record to new entry: {e}")
+            messagebox.showerror("Error", "Could not load record to new entry")
+
+
+    def edit_selected_entry(self):
+        """Enable editing of the selected entry in new entry tree"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a record to edit")
+            return
+        
+        # Get all column values
+        item = selected_item[0]
+        values = self.new_entry_tree.item(item, 'values')
+        
+        # Create a top-level edit window
+        edit_window = tk.Toplevel(self.window)
+        edit_window.title("Edit Record")
+        
+        # Create entry fields for each column
+        entry_widgets = []
+        for i, (header, value) in enumerate(zip(self.headers, values)):
+            tk.Label(edit_window, text=header).grid(row=i, column=0, padx=5, pady=2)
+            entry = tk.Entry(edit_window)
+            entry.insert(0, value)
+            entry.grid(row=i, column=1, padx=5, pady=2)
+            entry_widgets.append(entry)
+        
+        # Save button
+        save_btn = tk.Button(edit_window, text="Save Changes",
+                            command=lambda: self.save_edited_entry(entry_widgets, edit_window))
+        save_btn.grid(row=len(self.headers), column=0, columnspan=2, pady=5)
+
+
+    def save_edited_entry(self, entry_widgets, edit_window):
+        """Save the edited entry back to the new entry tree"""
+        try:
+            # Get all edited values
+            edited_values = [entry.get() for entry in entry_widgets]
+            
+            # Update the record in new entry tree
+            selected_item = self.new_entry_tree.selection()
+            if selected_item:
+                self.new_entry_tree.item(selected_item[0], values=edited_values)
+            
+            # Close the edit window
+            edit_window.destroy()
+            
+        except Exception as e:
+            logger.error(f"Error saving edited entry: {e}")
+            messagebox.showerror("Error", "Failed to save edited entry")
+
+    def update_selected_entry(self):
+        """Update the selected entry in the database"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a record to update")
+            return
+        
+        if not self.currently_editing_id:
+            messagebox.showwarning("Warning", "No record selected for update")
+            return
+            
+        try:
+            # Get the updated values
+            item = selected_item[0]
+            values = self.new_entry_tree.item(item, 'values')
+            
+            # Prepare the update data
+            update_data = {
+                'id': values[0],
+                'assigned_to': values[1],
+                'employee_name': values[2],
+                'inventory_id': values[3],
+                'project_id': values[4],
+                'product_id': values[5],
+                'inventory_name': values[6],
+                'quantity': values[7],
+                'status': values[8],
+                'assigned_date': values[9],
+                'submission_date': values[10],
+                'purpose_reason': values[11],
+                'comment': values[12],
+                'assignment_return_date': values[13]
+            }
+            
+            # Call the API to update
+            success = update_assigned_inventory(self.currently_editing_id, update_data)
+            if success:
+                messagebox.showinfo("Success", "Record updated successfully")
+                self.refresh_assigned_inventory_list()
+                self.load_recent_submissions()
+            else:
+                messagebox.showerror("Error", "Failed to update record")
+                
+        except Exception as e:
+            logger.error(f"Error updating record: {e}")
+            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+
+    def delete_selected_entry(self):
+        """Delete the selected entry from the database"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a record to delete")
+            return
+        
+        if not self.currently_editing_id:
+            messagebox.showwarning("Warning", "No record selected for deletion")
+            return
+            
+        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this record?"):
+            try:
+                # Call the API to delete
+                success = delete_assigned_inventory(self.currently_editing_id)
+                if success:
+                    messagebox.showinfo("Success", "Record deleted successfully")
+                    self.new_entry_tree.delete(selected_item)
+                    self.refresh_assigned_inventory_list()
+                    self.load_recent_submissions()
+                else:
+                    messagebox.showerror("Error", "Failed to delete record")
+                    
+            except Exception as e:
+                logger.error(f"Error deleting record: {e}")
+                messagebox.showerror("Error", f"Failed to delete record: {str(e)}")
 
     def create_input_fields(self):
         """Create input fields in the entry frame"""
