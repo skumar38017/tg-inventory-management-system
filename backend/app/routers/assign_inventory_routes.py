@@ -15,6 +15,7 @@ from backend.app.schema.assign_inventory_schema import (
     AssignmentInventoryRedisIn,
     AssignmentInventoryRedisOut,
     AssignmentInventorySearch,
+    RedisSearchResult
 )
 from pydantic import ValidationError
 from backend.app.models.assign_inventory_model import AssignmentInventory
@@ -169,7 +170,7 @@ async def create_inventory_item_route(
 
 # READ: search/fetch an inventory which is match from [Inventory ID, Project ID, Product ID, Employee name]
 @router.get("/search-assigned-inventory/",
-            response_model=List[AssignmentInventoryRedisOut],
+            response_model=List[RedisSearchResult],
             status_code=200,
             summary="Search assigned inventory by multiple fields",
             description="Search inventory assignments by inventory_id, project_id, product_id, or employee_name",

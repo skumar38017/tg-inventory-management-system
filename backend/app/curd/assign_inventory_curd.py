@@ -20,6 +20,7 @@ from backend.app.schema.assign_inventory_schema import (
     AssignmentInventoryRedisIn,
     AssignmentInventoryRedisOut,
     AssignmentInventorySearch,
+    RedisSearchResult
 )
 from backend.app.database.redisclient import redis_client
 from backend.app import config
@@ -205,8 +206,9 @@ class AssignInventoryService(AssignmentInventoryInterface):
         inventory_id: Optional[str] = None,
         project_id: Optional[str] = None,
         product_id: Optional[str] = None,
-        employee_name: Optional[str] = None
-    ) -> List[AssignmentInventoryRedisOut]:
+        employee_name: Optional[str] = None,
+        key_pattern: Optional[str] = None
+    ) -> List[RedisSearchResult]:
         try:
             def format_id(value: Optional[str], prefix: str) -> Optional[str]:
                 if not value:
@@ -216,20 +218,12 @@ class AssignInventoryService(AssignmentInventoryInterface):
                     return f"{prefix}{value}"
                 return value
 
-            # Format IDs if they're provided (accepts both with and without prefixes)
+            # Format IDs
             formatted_inventory_id = format_id(inventory_id, "INV")
             formatted_project_id = format_id(project_id, "PRJ") 
             formatted_product_id = format_id(product_id, "PRD")
 
-            # First check if we're searching by employee_name and inventory_id (direct key lookup)
-            if employee_name and formatted_inventory_id:
-                redis_key = f"{employee_name}{formatted_inventory_id}"
-                data = await self.redis.get(redis_key)
-                if data:
-                    entry = json.loads(data)
-                    return [AssignmentInventoryRedisOut(**entry)]
-            
-            # Build search filters using formatted IDs
+            # Build search filters
             search_filters = []
             if employee_name:
                 search_filters.append(lambda x: x.get('employee_name') == employee_name)
@@ -239,26 +233,54 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 search_filters.append(lambda x: x.get('project_id') == formatted_project_id)
             if formatted_product_id:
                 search_filters.append(lambda x: x.get('product_id') == formatted_product_id)
-            
+
             if not search_filters:
                 raise ValueError("At least one search parameter must be provided")
-            
-            # Scan Redis for matching entries
+
+            # Determine key patterns to search
+            key_patterns = [key_pattern] if key_pattern else [
+                "assignment:*",
+                "from_event_inventory:*",
+                "inventory:*", 
+                "inventory_item:*",
+                "to_event_inventory:*"
+            ]
+
+            # Scan Redis
             results = []
-            async for key in self.redis.scan_iter(match="*"):
-                # Convert key to string if it's bytes
-                key_str = key.decode('utf-8') if isinstance(key, bytes) else key
-                
-                # Skip if key doesn't look like an assignment key
-                if not (":" in key_str and key_str.startswith("assignment:")):
-                    continue
+            for pattern in key_patterns:
+                async for key in self.redis.scan_iter(match=pattern):
+                    key_str = key.decode('utf-8') if isinstance(key, bytes) else key
                     
-                data = await self.redis.get(key_str)
-                if data:
+                    data = await self.redis.get(key_str)
+                    if not data:
+                        continue
+
                     try:
                         entry = json.loads(data)
-                        if all(f(entry) for f in search_filters):
-                            results.append(AssignmentInventoryRedisOut(**entry))
+                        
+                        # Apply filters
+                        if not all(f(entry) for f in search_filters):
+                            continue
+                        
+                        # Create proper RedisSearchResult object
+                        if key_str.startswith("assignment:"):
+                            try:
+                                validated_data = AssignmentInventoryRedisOut(**entry)
+                                results.append(RedisSearchResult(
+                                    key=key_str,
+                                    data=validated_data
+                                ))
+                            except ValidationError:
+                                results.append(RedisSearchResult(
+                                    key=key_str,
+                                    data=entry
+                                ))
+                        else:
+                            results.append(RedisSearchResult(
+                                key=key_str,
+                                data=entry
+                            ))
                     except json.JSONDecodeError:
                         continue
             
@@ -271,9 +293,9 @@ class AssignInventoryService(AssignmentInventoryInterface):
             logger.error(f"Redis search failed: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to search assignment inventory: {str(e)}"
+                detail=f"Failed to search Redis data: {str(e)}"
             )
-        
+                
     # Update Assignment Inventory form `employee_name` and `inventory_id` directly from local Redis
     async def update_assignment_inventory(
         self, 

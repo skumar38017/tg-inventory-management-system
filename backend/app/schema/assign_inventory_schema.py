@@ -9,12 +9,14 @@ import re
 from typing import Union
 from enum import Enum
 from pydantic import ValidationError
+from backend.app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
+from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
+
 
 
 class StatusEnum(str, Enum):
     ASSIGNED = "assigned"
     RETURN = "returned"
-
 
 class AssignmentInventoryBase(BaseModel):
     assign_to: Optional[str] = None
@@ -102,7 +104,6 @@ class AssignmentInventoryBase(BaseModel):
 
 class AssignmentInventoryCreate(AssignmentInventoryBase):
     pass
-
 
 class AssignmentInventoryOut(BaseModel):
     id: Optional[str]  = Field(None, frozen=True) 
@@ -235,7 +236,19 @@ class AssignmentInventoryUpdateOut(AssignmentInventoryRedisOut):
         extra='forbid'
     )
 
-
 class RedisSearchResult(BaseModel):
     key: str
-    data: Union[AssignmentInventoryRedisOut,  Dict[str, Any]] 
+    data: Union[
+        AssignmentInventoryRedisOut, 
+        ToEventInventoryOut,
+        ToEventRedisUpdateOut,
+        InventoryItemOut,
+        ToEventRedisOut, 
+        InventoryRedisOut, 
+        EntryInventoryOut,
+        Dict[str, Any]
+    ]
+    
+    model_config = ConfigDict(
+        extra="allow"
+    )
