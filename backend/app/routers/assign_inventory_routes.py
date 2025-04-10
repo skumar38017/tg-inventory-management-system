@@ -202,7 +202,7 @@ async def search_assigned_inventory(
     return results
 
 # READ ALL: List current added Assigned inventory
-@router.get("/list-added-assign-inventory",
+@router.get("/list-added-assign-inventory/",
             response_model=list[AssignmentInventoryRedisOut],
             status_code=200,
             summary="Load assigned entries from the inventory",

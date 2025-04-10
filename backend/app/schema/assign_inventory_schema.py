@@ -161,20 +161,37 @@ class AssignmentInventoryRedisIn(BaseModel):
     assign_by: Optional[str] = None
     comment: Optional[str] = None
     assignment_return_date: Optional[date] = None
-    assignment_barcode:  Optional[str] = None
-    assignment_barcode_unique_code:  Optional[str] = None
+    assignment_barcode: Optional[str] = None
+    assignment_barcode_unique_code: Optional[str] = None
     assignment_barcode_image_url: Optional[str] = None
-    
-    crated_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None  
     updated_at: Optional[datetime] = None
 
-    class Config:
-        json_encoders = {
-            date: lambda v: v.isoformat()
-        }
-
-class AssignmentInventoryRedisOut(AssignmentInventoryOut):
-    pass
+    @field_validator('submission_date', 'created_at', 'updated_at', mode='before')
+    def parse_datetime(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value).replace(tzinfo=None)
+            except ValueError:
+                return None
+        elif isinstance(value, datetime):
+            return value.replace(tzinfo=None)
+        return value
+    
+    @field_validator('assigned_date', 'assignment_return_date', mode='before')
+    def parse_date(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                return None
+        elif isinstance(value, datetime):
+            return value.date()
+        return value
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -183,6 +200,19 @@ class AssignmentInventoryRedisOut(AssignmentInventoryOut):
             StatusEnum: lambda v: v.value
         },
         extra='forbid'
+    )
+
+class AssignmentInventoryRedisOut(AssignmentInventoryOut):
+    success: Optional[bool] = Field(None, exclude=True)  # Mark as excluded from schema
+    message: Optional[str] = Field(None, exclude=True)  # Mark as excluded from schema
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            date: lambda v: v.isoformat(),
+            StatusEnum: lambda v: v.value
+        },
+        extra='ignore'  # Changed from 'forbid' to 'ignore'
     )
 
 class AssignmentInventorySearch(BaseModel):

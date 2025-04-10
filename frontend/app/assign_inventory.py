@@ -182,8 +182,8 @@ Eros City Square
 
         # Table headers
         self.headers = [
-            "Assigned To", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
-            "Description/Specifications", "Qty", "Status", "Purpose/Reason", 
+            "Assigned To", "Employee Name", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
+            "Inventory Name", "Description/Specifications", "Qty", "Status", "Purpose/Reason", 
             "Assigned Date", "Submission Date", "Assigned By", "Comments", "Assignment Returned Date"
         ]
 
