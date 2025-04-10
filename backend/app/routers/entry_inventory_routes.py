@@ -249,13 +249,12 @@ async def get_inventory_item(
 )
 async def get_all_entire_inventory(
     skip: int = 0,
-    limit: int = 100,
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     """Get all inventory items"""
     try:
-        items = await service.get_all_entries(db, skip, limit)
+        items = await service.get_all_entries(db, skip)
         logger.info(f"Retrieved {len(items)} inventory items")
         return items
     except Exception as e:

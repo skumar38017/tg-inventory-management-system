@@ -14,7 +14,7 @@ BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 # Redis Configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "192.168.192.3")
+REDIS_HOST = os.getenv("REDIS_HOST", "192.168.192.2")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_DB = os.getenv("REDIS_DB", "1")
