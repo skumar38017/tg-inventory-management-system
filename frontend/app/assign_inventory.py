@@ -351,7 +351,7 @@ Eros City Square
         edit_window.title("Edit Record")
         
         # List of read-only fields (these won't be editable)
-        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'assignment_barcode','Employee Nmae', 'Assigned By']
+        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'assignment_barcode','Employee Name', 'Assigned By']
         
         # Create entry fields for each column
         entry_widgets = []
@@ -752,7 +752,7 @@ Eros City Square
             for entries in all_entries:
                 for entry in entries.values():
                     entry.delete(0, tk.END)
-                    
+
         def validate_assignment(assignment):
             required_fields = ['inventory_id', 'assign_to', 'employee_name']
             missing = [field for field in required_fields if not assignment.get(field)]
