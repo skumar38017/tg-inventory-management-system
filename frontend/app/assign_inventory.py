@@ -163,21 +163,24 @@ Eros City Square
         assigned_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
         assigned_frame.grid_columnconfigure(0, weight=1)
         assigned_frame.grid_rowconfigure(0, weight=1)
+
         
         # Treeview for assigned inventory
         self.assigned_tree = ttk.Treeview(assigned_frame)
         self.assigned_tree.grid(row=0, column=0, sticky="nsew")
-        
-        # Scrollbars
+            
+        # Scrollbars - Modified for proper left-to-right scrolling
         assigned_vsb = ttk.Scrollbar(assigned_frame, orient="vertical", command=self.assigned_tree.yview)
         assigned_hsb = ttk.Scrollbar(assigned_frame, orient="horizontal", command=self.assigned_tree.xview)
         self.assigned_tree.configure(yscrollcommand=assigned_vsb.set, xscrollcommand=assigned_hsb.set)
+        
+        # Grid placement - ensure horizontal scrollbar is at the bottom
         assigned_vsb.grid(row=0, column=1, sticky="ns")
         assigned_hsb.grid(row=1, column=0, sticky="ew")
 
         # RECENTLY SUBMITTED section
         recent_frame = tk.LabelFrame(content_frame, text="RECENTLY SUBMITTED (current day)", 
-                                   font=('Helvetica', 10, 'bold'))
+                                font=('Helvetica', 10, 'bold'))
         recent_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         recent_frame.grid_columnconfigure(0, weight=1)
         recent_frame.grid_rowconfigure(0, weight=1)
@@ -186,10 +189,12 @@ Eros City Square
         self.recent_tree = ttk.Treeview(recent_frame)
         self.recent_tree.grid(row=0, column=0, sticky="nsew")
         
-        # Scrollbars
+        # Scrollbars - Modified for proper left-to-right scrolling
         recent_vsb = ttk.Scrollbar(recent_frame, orient="vertical", command=self.recent_tree.yview)
         recent_hsb = ttk.Scrollbar(recent_frame, orient="horizontal", command=self.recent_tree.xview)
         self.recent_tree.configure(yscrollcommand=recent_vsb.set, xscrollcommand=recent_hsb.set)
+        
+        # Grid placement
         recent_vsb.grid(row=0, column=1, sticky="ns")
         recent_hsb.grid(row=1, column=0, sticky="ew")
 
@@ -204,10 +209,12 @@ Eros City Square
         self.new_entry_tree = ttk.Treeview(new_entry_frame)
         self.new_entry_tree.grid(row=0, column=0, sticky="nsew")
 
-        # Scrollbars
+        # Scrollbars - Modified for proper left-to-right scrolling
         new_entry_vsb = ttk.Scrollbar(new_entry_frame, orient="vertical", command=self.new_entry_tree.yview)
         new_entry_hsb = ttk.Scrollbar(new_entry_frame, orient="horizontal", command=self.new_entry_tree.xview)
         self.new_entry_tree.configure(yscrollcommand=new_entry_vsb.set, xscrollcommand=new_entry_hsb.set)
+        
+        # Grid placement
         new_entry_vsb.grid(row=0, column=1, sticky="ns")
         new_entry_hsb.grid(row=1, column=0, sticky="ew")
             
@@ -295,7 +302,7 @@ Eros City Square
             for col, header in enumerate(self.headers):
                 tree.heading(col, text=header, anchor='w')
                 tree.column(col, width=default_font.measure(header) + 20, 
-                        stretch=True, anchor='w')
+                        stretch=False, anchor='w')  # Changed stretch to False for better control
         
         # Bind column resize events
         for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
@@ -558,16 +565,17 @@ Eros City Square
         
         for col in range(len(self.headers)):
             # Get max width between header and content
-            max_width = default_font.measure(self.headers[col])
+            max_width = default_font.measure(self.headers[col]) + 20
             
             # Check content width
             for item in tree.get_children():
-                item_width = default_font.measure(tree.set(item, col))
+                item_text = tree.set(item, col)
+                item_width = default_font.measure(item_text)
                 if item_width > max_width:
-                    max_width = item_width
+                    max_width = item_width + 20
             
-            # Add some padding and set column width
-            tree.column(col, width=max_width + 20)
+            # Set column width with bounds (100-300 pixels) and no stretching
+            tree.column(col, width=max(min(max_width, 300), 100), stretch=False)
                              
     def load_recent_submissions(self):
         """Load recently submitted assignments (current day) with proper column sizing"""
