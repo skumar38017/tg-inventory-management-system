@@ -33,6 +33,7 @@ class AssignmentInventoryBase(BaseModel):
     purpose_reason:  Optional[str] = None
     assigned_date: Optional[date] = None
     assign_by:  Optional[str] = None
+    assignment_return_date: Optional[date] = None
     comment: Optional[str] = None
  
 
@@ -82,7 +83,7 @@ class AssignmentInventoryBase(BaseModel):
                 raise ValueError("Quantity must be a number")
         return v
 
-    @field_validator('assigned_date',  mode='before')
+    @field_validator('assigned_date', 'assignment_return_date', mode='before')
     def validate_dates(cls, v):
         if isinstance(v, str):
             try:
