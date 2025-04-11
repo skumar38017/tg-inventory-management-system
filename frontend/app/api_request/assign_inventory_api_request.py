@@ -95,7 +95,6 @@ def load_submitted_assigned_inventory() -> List[Dict]:
         messagebox.showerror("Error", "Could not fetch submitted forms")
         return []
         
-
 def show_all_assigned_inventory_from_db() -> List[Dict]:
     try:
         response = make_api_request("GET", "show-all-assign-inventory/")

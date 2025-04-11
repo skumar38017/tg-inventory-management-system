@@ -273,7 +273,7 @@ Eros City Square
         self.headers = [
             "ID", "SNo.","Assigned To", "Employee Name", "Inventory ID", "Project ID", "Product ID",
             "Inventory Name", "Description","Quantity", "Status", "Assigned Date", "Submission Date",
-            "Purpose/Reason", "Assigned By", "Comments", "Return Date", "assignment_barcode"
+            "Purpose/Reason", "Assigned By", "Comments", "Assignment Return Date", "Assignment Barcode" 
         ]
         
         # Configure all treeviews
