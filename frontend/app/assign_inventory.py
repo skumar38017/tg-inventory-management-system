@@ -199,8 +199,7 @@ Eros City Square
         new_entry_frame.grid(row=2, column=0, sticky="nsew")
         new_entry_frame.grid_columnconfigure(0, weight=1)
         new_entry_frame.grid_rowconfigure(0, weight=1)  # For the treeview
-        new_entry_frame.grid_rowconfigure(1, weight=0)  
-
+        
         # Treeview for new entries
         self.new_entry_tree = ttk.Treeview(new_entry_frame)
         self.new_entry_tree.grid(row=0, column=0, sticky="nsew")
@@ -214,7 +213,7 @@ Eros City Square
             
         # Action buttons frame for the new entry section
         action_frame = tk.Frame(new_entry_frame)
-        action_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=5)
+        action_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
 
         # Edit button
         edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_selected_entry,
@@ -231,36 +230,10 @@ Eros City Square
                             font=('Helvetica', 10))
         delete_btn.pack(side=tk.LEFT, padx=5)
 
-        # Create a canvas for horizontal scrolling
-        entry_canvas = tk.Canvas(new_entry_frame)
-        entry_canvas.grid(row=1, column=0, sticky="nsew")
-        
-        # Add horizontal scrollbar
-        entry_hsb = ttk.Scrollbar(new_entry_frame, orient="horizontal", command=entry_canvas.xview)
-        entry_hsb.grid(row=2, column=0, sticky="ew")
-        entry_canvas.configure(xscrollcommand=entry_hsb.set)
-        
-        # Create a frame inside the canvas for the entry fields
-        self.entry_frame = tk.Frame(entry_canvas)
-        entry_canvas.create_window((0, 0), window=self.entry_frame, anchor="nw")
-        
-        # Configure the entry frame to update scrollregion
-        def on_frame_configure(event):
-            entry_canvas.configure(scrollregion=entry_canvas.bbox("all"))
-        self.entry_frame.bind("<Configure>", on_frame_configure)
-
-        # Define headers for all sections
-        self.headers = [
-            "ID", "Assigned To", "Employee Name", "Inventory ID", "Project ID", "Product ID",
-            "Inventory Name", "Quantity", "Status", "Assigned Date", "Submission Date",
-            "Purpose/Reason", "Comments", "Return Date"
-        ]
-        
-        # Configure all treeviews
-        self.configure_treeviews()
-        
-        # Create input fields in the entry frame
-        self.create_input_fields()
+        # Submit Button
+        submit_btn = tk.Button(action_frame, text="Submit", command=self.submit_selected_entry,
+                            font=('Helvetica', 10))
+        submit_btn.pack(side=tk.LEFT, padx=5)
 
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
@@ -296,8 +269,22 @@ Eros City Square
                              font=('Helvetica', 12, 'bold'))
         return_btn.pack(side=tk.RIGHT, padx=5)
 
+        # Define headers for all sections
+        self.headers = [
+            "ID", "SNo.","Assigned To", "Employee Name", "Inventory ID", "Project ID", "Product ID",
+            "Inventory Name", "Description","Quantity", "Status", "Assigned Date", "Submission Date",
+            "Purpose/Reason", "Assigned By", "Comments", "Return Date", "assignment_barcode"
+        ]
+        
+        # Configure all treeviews
+        self.configure_treeviews()
+        
+        # Bind double-click events
+        self.assigned_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.assigned_tree))
+        self.recent_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.recent_tree))
+
     def configure_treeviews(self):
-        """Configure columns for all treeviews including the new entry tree"""
+        """Configure columns for all treeviews"""
         default_font = font.nametofont("TkDefaultFont")
         
         # Configure all three treeviews
@@ -309,10 +296,6 @@ Eros City Square
                 tree.heading(col, text=header, anchor='w')
                 tree.column(col, width=default_font.measure(header) + 20, 
                         stretch=True, anchor='w')
-        
-        # Bind double-click events
-        self.assigned_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.assigned_tree))
-        self.recent_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.recent_tree))
         
         # Bind column resize events
         for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
@@ -336,11 +319,27 @@ Eros City Square
             
             # Store the ID of the record being edited
             self.currently_editing_id = values[0]
+            self.edit_mode = True
+            
+            # Update search fields
+            self.inventory_id.delete(0, tk.END)
+            self.inventory_id.insert(0, values[3])  # Inventory ID
+            
+            self.project_id.delete(0, tk.END)
+            self.project_id.insert(0, values[4])  # Project ID
+            
+            self.product_id.delete(0, tk.END)
+            self.product_id.insert(0, values[5])  # Product ID
+            
+            self.employee_name.delete(0, tk.END)
+            self.employee_name.insert(0, values[2])  # Employee Name
+            
+            # Update button text and command
+            self.submit_btn.config(text="Update", command=self.update_selected_entry)
             
         except Exception as e:
             logger.error(f"Error loading record to new entry: {e}")
             messagebox.showerror("Error", "Could not load record to new entry")
-
 
     def edit_selected_entry(self):
         """Enable editing of the selected entry in new entry tree"""
@@ -371,7 +370,6 @@ Eros City Square
                             command=lambda: self.save_edited_entry(entry_widgets, edit_window))
         save_btn.grid(row=len(self.headers), column=0, columnspan=2, pady=5)
 
-
     def save_edited_entry(self, entry_widgets, edit_window):
         """Save the edited entry back to the new entry tree"""
         try:
@@ -391,51 +389,78 @@ Eros City Square
             messagebox.showerror("Error", "Failed to save edited entry")
 
     def update_selected_entry(self):
-        """Update the selected entry in the database"""
+        """Update the selected entry in the database using employee_name and inventory_id"""
         selected_item = self.new_entry_tree.selection()
         if not selected_item:
             messagebox.showwarning("Warning", "Please select a record to update")
             return
         
-        if not self.currently_editing_id:
-            messagebox.showwarning("Warning", "No record selected for update")
-            return
-            
         try:
             # Get the updated values
             item = selected_item[0]
             values = self.new_entry_tree.item(item, 'values')
             
-            # Prepare the update data
+            # Ensure we have enough values
+            if len(values) < 14:
+                messagebox.showerror("Error", "Incomplete record data")
+                return
+                
+            # Get the required identifiers from the treeview
+            employee_name = values[3]  # Employee Name is at index 3
+            inventory_id = values[4]   # Inventory ID is at index 4
+            
+            if not employee_name or not inventory_id:
+                messagebox.showerror("Error", "Employee Name and Inventory ID are required for update")
+                return
+                
+            # Prepare the update data according to API spec
             update_data = {
-                'id': values[0],
-                'assigned_to': values[1],
-                'employee_name': values[2],
-                'inventory_id': values[3],
-                'project_id': values[4],
-                'product_id': values[5],
-                'inventory_name': values[6],
-                'quantity': values[7],
-                'status': values[8],
-                'assigned_date': values[9],
-                'submission_date': values[10],
-                'purpose_reason': values[11],
-                'comment': values[12],
-                'assignment_return_date': values[13]
+                'assign_to': values[2] or "",  # Assigned To
+                'sno': values[1] or "",  # SNo
+                'zone_activity': "",  # zone_activity
+                'description': values[8] or "",  # Description
+                'quantity': values[9] or "1",  # Quantity
+                'status': values[10].lower() if values[10].lower() in ["assigned", "returned"] else "assigned",  # Status
+                'purpose_reason': values[13] or "",  # Purpose/Reason
+                'comment': values[15] or "",  # Comments
+                'submission_date': self.format_api_date(values[12]) or datetime.now().isoformat(),
+                'assigned_date': self.format_api_date(values[11]) or datetime.now().strftime('%Y-%m-%d'),
+                'assignment_return_date': self.format_api_date(values[16]) or (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
+                'employee_name': employee_name,
+                'inventory_id': inventory_id
             }
             
             # Call the API to update
-            success = update_assigned_inventory(self.currently_editing_id, update_data)
+            success = update_assigned_inventory(employee_name, inventory_id, update_data)
             if success:
                 messagebox.showinfo("Success", "Record updated successfully")
                 self.refresh_assigned_inventory_list()
                 self.load_recent_submissions()
+                self.clear_form()
             else:
-                messagebox.showerror("Error", "Failed to update record")
+                messagebox.showerror("Error", "Failed to update record. Check logs for details.")
                 
         except Exception as e:
             logger.error(f"Error updating record: {e}")
             messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+
+    def format_api_date(self, date_str: str) -> str:
+        """Format date string for API (convert empty to None)"""
+        if not date_str or date_str.strip() in ['', 'N/A', ' ']:
+            return None
+        try:
+            # Try to parse the date in various formats
+            for fmt in ('%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f%z'):
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    if fmt.endswith('%z'):  # Contains timezone info
+                        return dt.isoformat()
+                    return dt.strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+            return None
+        except Exception:
+            return None
 
     def delete_selected_entry(self):
         """Delete the selected entry from the database"""
@@ -457,30 +482,13 @@ Eros City Square
                     self.new_entry_tree.delete(selected_item)
                     self.refresh_assigned_inventory_list()
                     self.load_recent_submissions()
+                    self.clear_form()
                 else:
                     messagebox.showerror("Error", "Failed to delete record")
                     
             except Exception as e:
                 logger.error(f"Error deleting record: {e}")
                 messagebox.showerror("Error", f"Failed to delete record: {str(e)}")
-
-    def create_input_fields(self):
-        """Create input fields in the entry frame"""
-        # Clear any existing widgets
-        for widget in self.entry_frame.winfo_children():
-            widget.destroy()
-        
-        # Create header row
-        for col, header in enumerate(self.headers):
-            if header == "ID":
-                continue  # Skip ID column for input
-            tk.Label(self.entry_frame, text=header, font=('Helvetica', 10, 'bold'),
-                   borderwidth=1, relief="solid").grid(row=0, column=col-1, sticky="ew", padx=1, pady=1)
-            self.entry_frame.grid_columnconfigure(col-1, minsize=100)
-        
-        # Create input rows (start with one empty row)
-        self.table_entries = []
-        self.add_table_row()
 
     def refresh_assigned_inventory_list(self):
         """Refresh the list of all assigned inventory with proper column sizing"""
@@ -498,19 +506,23 @@ Eros City Square
             for item in inventory_list:
                 values = [
                     item.get('id', ''),
+                    item.get('sno', ''),
                     item.get('assigned_to', ''),
                     item.get('employee_name', ''),
                     item.get('inventory_id', ''),
                     item.get('project_id', ''),
                     item.get('product_id', ''),
                     item.get('inventory_name', ''),
+                    item.get('description', ''),
                     item.get('quantity', ''),
                     item.get('status', ''),
                     self.format_date(item.get('assigned_date', '')),
                     self.format_date(item.get('submission_date', '')),
                     item.get('purpose_reason', ''),
-                    item.get('comment', ''),
-                    self.format_date(item.get('assignment_return_date', ''))
+                    item.get('assigned_by', ''),
+                    item.get('comments', ''),
+                    self.format_date(item.get('assignment_return_date', '')),
+                    item.get('assignment_barcode', '')
                 ]
                 self.assigned_tree.insert('', 'end', values=values)
             
@@ -561,19 +573,23 @@ Eros City Square
                         if updated_at.date() == current_day:
                             values = [
                                 item.get('id', ''),
+                                item.get('sno', ''),
                                 item.get('assigned_to', ''),
                                 item.get('employee_name', ''),
                                 item.get('inventory_id', ''),
                                 item.get('project_id', ''),
                                 item.get('product_id', ''),
                                 item.get('inventory_name', ''),
+                                item.get('description', ''),
                                 item.get('quantity', ''),
                                 item.get('status', ''),
                                 self.format_date(item.get('assigned_date', '')),
                                 self.format_date(item.get('submission_date', '')),
                                 item.get('purpose_reason', ''),
-                                item.get('comment', ''),
-                                self.format_date(item.get('assignment_return_date', ''))
+                                item.get('assigned_by', ''),
+                                item.get('comments', ''),
+                                self.format_date(item.get('assignment_return_date', '')),
+                                item.get('assignment_barcode', '')
                             ]
                             self.recent_tree.insert('', 'end', values=values)
                 except Exception as e:
@@ -589,8 +605,8 @@ Eros City Square
 
     def format_date(self, date_str: str) -> str:
         """Format date string for display (handles multiple formats)"""
-        if not date_str or date_str == 'N/A':
-            return 'N/A'
+        if not date_str or date_str == ' ':
+            return ' '
         
         try:
             # Try ISO format with timezone first
@@ -608,110 +624,54 @@ Eros City Square
         except Exception:
             return date_str.split('T')[0] if 'T' in date_str else date_str
         
-    def load_selected_item(self, tree):
-        """Load selected item from tree into form for editing"""
-        selected_item = tree.selection()
-        if not selected_item:
-            return
-            
-        try:
-            item = selected_item[0]
-            record_id = tree.item(item, 'values')[0]  # First column is ID
-            record_data = get_assigned_inventory_by_id(record_id)
-            
-            if record_data:
-                self.load_record_for_editing(record_data)
-        except Exception as e:
-            logger.error(f"Error loading record for editing: {e}")
-            messagebox.showerror("Error", "Could not load record for editing")
-
-    def load_record_for_editing(self, record_data: Dict):
-        """Load record data into the form for editing"""
-        self.clear_form()
-        self.currently_editing_id = record_data.get('id')
-        self.edit_mode = True
-        
-        # Update search fields
-        self.inventory_id.delete(0, tk.END)
-        self.inventory_id.insert(0, record_data.get('inventory_id', ''))
-        
-        self.project_id.delete(0, tk.END)
-        self.project_id.insert(0, record_data.get('project_id', ''))
-        
-        self.product_id.delete(0, tk.END)
-        self.product_id.insert(0, record_data.get('product_id', ''))
-        
-        self.employee_name.delete(0, tk.END)
-        self.employee_name.insert(0, record_data.get('employee_name', ''))
-        
-        # Update first row of input fields
-        if self.table_entries:
-            row = self.table_entries[0]  # First row
-            row[0].insert(0, record_data.get('assigned_to', ''))      # Assigned To
-            row[1].insert(0, record_data.get('employee_name', ''))    # Employee Name
-            row[2].insert(0, record_data.get('inventory_id', ''))     # Inventory ID
-            row[3].insert(0, record_data.get('project_id', ''))       # Project ID
-            row[4].insert(0, record_data.get('product_id', ''))       # Product ID
-            row[5].insert(0, record_data.get('inventory_name', ''))   # Inventory Name
-            row[6].insert(0, record_data.get('quantity', ''))         # Quantity
-            row[7].insert(0, record_data.get('status', ''))           # Status
-            row[8].insert(0, record_data.get('assigned_date', ''))    # Assigned Date
-            row[9].insert(0, record_data.get('submission_date', ''))  # Submission Date
-            row[10].insert(0, record_data.get('purpose_reason', ''))  # Purpose/Reason
-            row[11].insert(0, record_data.get('comment', ''))         # Comments
-            row[12].insert(0, record_data.get('assignment_return_date', ''))  # Return Date
-        
-        self.submit_btn.config(text="Update", command=self.update_record)
-
-    def clear_form(self):
-        """Clear all form fields"""
-        self.inventory_id.delete(0, tk.END)
-        self.project_id.delete(0, tk.END)
-        self.product_id.delete(0, tk.END)
-        self.employee_name.delete(0, tk.END)
-        
-        for row in self.table_entries:
-            for entry in row:
-                entry.delete(0, tk.END)
-        
-        self.currently_editing_id = None
-        self.edit_mode = False
-        self.submit_btn.config(text="Assign", command=self.submit_form)
-
     def new_entry(self):
         """Clear form for new entry"""
         self.clear_form()
-        # Keep only one empty row
-        while len(self.table_entries) > 1:
-            self.remove_table_row()
+        self.new_entry_tree.delete(*self.new_entry_tree.get_children())
+        self.edit_mode = False
+        self.submit_btn.config(text="Assign", command=self.submit_form)
 
     def add_table_row(self):
-        """Add a new row to the input table"""
-        row_num = len(self.table_entries) + 1  # +1 for header row
-        row_entries = []
+        """Add a new row to the input table in the new entry tree with auto-generated ID"""
+        # Generate default values for a new row
+        default_values = [
+            ""  # Auto-generated short  ID
+            "",  # SNo
+            "",  # Assigned To
+            self.employee_name.get() or "",  # Employee Name
+            self.inventory_id.get() or "",  # Inventory ID
+            self.project_id.get() or "",  # Project ID
+            self.product_id.get() or "",  # Product ID
+            "",  # Inventory Name
+            "",  # Description
+            "1",  # Default quantity
+            "Assigned",  # Default status
+            datetime.now().strftime('%Y-%m-%d'),  # Assigned Date
+            datetime.now().strftime('%Y-%m-%d'),  # Submission Date
+            "",  # Purpose/Reason
+            "",  # Assigned By
+            "",  # Comments
+            (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
+            ""  # Assignment Barcode
+        ]
         
-        for col in range(len(self.headers)-1):  # Skip ID column
-            entry = tk.Entry(self.entry_frame, font=('Helvetica', 10))
-            entry.grid(row=row_num, column=col, sticky="ew", padx=1, pady=1)
-            row_entries.append(entry)
-        
-        self.table_entries.append(row_entries)
+        # Add the new row to the treeview
+        self.new_entry_tree.insert('', 'end', values=default_values)
 
     def remove_table_row(self):
-        """Remove the last row from the input table"""
-        if len(self.table_entries) <= 1:
-            messagebox.showwarning("Warning", "Cannot remove the last row")
+        """Remove the selected row from the input table"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a row to remove")
             return
             
-        last_row = self.table_entries.pop()
-        for entry in last_row:
-            entry.destroy()
+        self.new_entry_tree.delete(selected_item)
 
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
         if not self.is_wrapped:
             # Adjust columns to fit content
-            for tree in [self.assigned_tree, self.recent_tree]:
+            for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
                 for col in range(len(self.headers)):
                     tree.column(col, width=0)  # Reset width
                     tree.column(col, stretch=True)  # Allow stretching
@@ -719,7 +679,7 @@ Eros City Square
             self.is_wrapped = True
         else:
             # Reset to original column widths
-            for tree in [self.assigned_tree, self.recent_tree]:
+            for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
                 for col in range(len(self.headers)):
                     tree.column(col, width=100, stretch=False)
             self.wrap_btn.config(text="Wrap")
@@ -756,11 +716,13 @@ Eros City Square
                         item.get('inventory_name', ''),
                         item.get('quantity', ''),
                         item.get('status', ''),
-                        item.get('assigned_date', ''),
-                        item.get('submission_date', ''),
+                        self.format_date(item.get('assigned_date', '')),
+                        self.format_date(item.get('submission_date', '')),
+                        self.get('assigned_by', ''),
+                        self.get('comments', ''),
+                        self.format_date(self.get('assignment_return_date', '')),
+                        self.get('assignment_barcode', ''),
                         item.get('purpose_reason', ''),
-                        item.get('comment', ''),
-                        item.get('assignment_return_date', '')
                     ]
                     self.assigned_tree.insert('', 'end', values=values)
             else:
@@ -770,42 +732,44 @@ Eros City Square
             messagebox.showerror("Error", "Failed to perform search")
 
     def submit_form(self):
-        """Handle form submission for new records"""
-        # Validate required fields
-        required_fields = [
-            self.inventory_id.get(),
-            self.project_id.get(),
-            self.product_id.get()
-        ]
-        
-        if not all(required_fields):
-            messagebox.showwarning("Warning", "Please fill in all required fields")
+        """Handle form submission for new records - all fields are optional"""
+        # Get all items from the new entry tree
+        items = self.new_entry_tree.get_children()
+        if not items:
+            messagebox.showwarning("Warning", "No items to submit")
             return
             
         # Prepare the data
         data = {
-            'inventory_id': self.inventory_id.get(),
-            'project_id': self.project_id.get(),
-            'product_id': self.product_id.get(),
-            'employee_name': self.employee_name.get(),
+            'inventory_id': self.inventory_id.get() or " ",
+            'project_id': self.project_id.get() or " ",
+            'product_id': self.product_id.get() or " ",
+            'employee_name': self.employee_name.get() or " ",
             'assignments': []
         }
         
-        for row in self.table_entries:
+        for item in items:
+            values = list(self.new_entry_tree.item(item, 'values'))
+                            
             assignment = {
-                'assigned_to': row[0].get(),
-                'employee_name': row[1].get(),
-                'inventory_id': row[2].get(),
-                'project_id': row[3].get(),
-                'product_id': row[4].get(),
-                'inventory_name': row[5].get(),
-                'quantity': row[6].get(),
-                'status': row[7].get(),
-                'assigned_date': row[8].get(),
-                'submission_date': row[9].get(),
-                'purpose_reason': row[10].get(),
-                'comment': row[11].get(),
-                'assignment_return_date': row[12].get()
+                'ID':  " ", # Default value if not provided
+                'sno': values[1] or " ",
+                'assigned_to': values[2] or "",
+                'employee_name': values[3] or "",
+                'inventory_id': values[4] or "",
+                'project_id': values[5] or " ",
+                'product_id': values[6] or " ",
+                'inventory_name': values[7] or " ",
+                'description': values[8] or " ",
+                'quantity': values[9] or "1",  # Default quantity
+                'status': values[10] or "Assigned",  # Default status
+                'assigned_date': values[11] or datetime.now().strftime('%Y-%m-%d'),
+                'submission_date': " ", # Default value if not provided
+                'purpose_reason': values[13] or " ",
+                'assigned_by': values[14] or " ",
+                'comments': values[15] or " ",
+                'assignment_return_date': values[16] or (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
+                'zone_activity': " "  # Default value if not provided
             }
             data['assignments'].append(assignment)
         
@@ -823,63 +787,24 @@ Eros City Square
             logger.error(f"Error submitting form: {e}")
             messagebox.showerror("Error", f"Failed to submit assignment: {str(e)}")
 
-    def update_record(self):
-        """Handle updating an existing record"""
-        if not self.currently_editing_id:
-            messagebox.showwarning("Warning", "No record selected for update")
-            return
-            
-        # Validate required fields
-        required_fields = [
-            self.inventory_id.get(),
-            self.project_id.get(),
-            self.product_id.get()
-        ]
+    def submit_selected_entry(self):
+        """Handle submission of selected entry (for edit mode)"""
+        if self.edit_mode:
+            self.update_selected_entry()
+        else:
+            self.submit_form()
+
+    def clear_form(self):
+        """Clear all form fields"""
+        self.inventory_id.delete(0, tk.END)
+        self.project_id.delete(0, tk.END)
+        self.product_id.delete(0, tk.END)
+        self.employee_name.delete(0, tk.END)
+        self.new_entry_tree.delete(*self.new_entry_tree.get_children())
         
-        if not all(required_fields):
-            messagebox.showwarning("Warning", "Please fill in all required fields")
-            return
-            
-        # Prepare the update data
-        update_data = {
-            'inventory_id': self.inventory_id.get(),
-            'project_id': self.project_id.get(),
-            'product_id': self.product_id.get(),
-            'employee_name': self.employee_name.get(),
-            'assignments': []
-        }
-        
-        for row in self.table_entries:
-            assignment = {
-                'assigned_to': row[0].get(),
-                'employee_name': row[1].get(),
-                'inventory_id': row[2].get(),
-                'project_id': row[3].get(),
-                'product_id': row[4].get(),
-                'inventory_name': row[5].get(),
-                'quantity': row[6].get(),
-                'status': row[7].get(),
-                'assigned_date': row[8].get(),
-                'submission_date': row[9].get(),
-                'purpose_reason': row[10].get(),
-                'comment': row[11].get(),
-                'assignment_return_date': row[12].get()
-            }
-            update_data['assignments'].append(assignment)
-        
-        try:
-            success = update_assigned_inventory(self.currently_editing_id, update_data)
-            if success:
-                messagebox.showinfo("Success", "Record updated successfully")
-                logger.info(f"Record {self.currently_editing_id} updated")
-                self.refresh_assigned_inventory_list()
-                self.load_recent_submissions()
-                self.clear_form()
-            else:
-                messagebox.showerror("Error", "Failed to update record")
-        except Exception as e:
-            logger.error(f"Error updating record: {e}")
-            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+        self.currently_editing_id = None
+        self.edit_mode = False
+        self.submit_btn.config(text="Assign", command=self.submit_form)
 
     def update_clock(self):
         """Update the clock display"""
