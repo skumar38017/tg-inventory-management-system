@@ -237,11 +237,6 @@ Eros City Square
                             font=('Helvetica', 10))
         delete_btn.pack(side=tk.LEFT, padx=5)
 
-        # Submit Button
-        submit_btn = tk.Button(action_frame, text="Submit", command=self.submit_selected_entry,
-                            font=('Helvetica', 10))
-        submit_btn.pack(side=tk.LEFT, padx=5)
-
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
         button_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=10)
@@ -260,11 +255,6 @@ Eros City Square
         add_row_btn = tk.Button(button_frame, text="Add Row", command=self.add_table_row,
                               font=('Helvetica', 12, 'bold'))
         add_row_btn.pack(side=tk.LEFT, padx=5)
-
-        # Submit/Update button
-        self.submit_btn = tk.Button(button_frame, text="Assign", command=self.submit_form,
-                                  font=('Helvetica', 12, 'bold'))
-        self.submit_btn.pack(side=tk.LEFT, padx=5)
 
         # Clear button
         clear_btn = tk.Button(button_frame, text="Clear", command=self.clear_form,
@@ -340,10 +330,7 @@ Eros City Square
             
             self.employee_name.delete(0, tk.END)
             self.employee_name.insert(0, values[2])  # Employee Name
-            
-            # Update button text and command
-            self.submit_btn.config(text="Update", command=self.update_selected_entry)
-            
+                        
         except Exception as e:
             logger.error(f"Error loading record to new entry: {e}")
             messagebox.showerror("Error", "Could not load record to new entry")
@@ -650,13 +637,263 @@ Eros City Square
             return dt.strftime('%Y-%m-%d')
         except Exception:
             return date_str.split('T')[0] if 'T' in date_str else date_str
-        
+
+# --------------------------- New Entry Popup ---------------------------
     def new_entry(self):
-        """Clear form for new entry"""
-        self.clear_form()
-        self.new_entry_tree.delete(*self.new_entry_tree.get_children())
-        self.edit_mode = False
-        self.submit_btn.config(text="Assign", command=self.submit_form)
+        """Create a popup window for new entry registration with proper scrolling"""
+        # Create popup window
+        popup = tk.Toplevel(self.window)
+        popup.title("Register New Assignment")
+        popup.geometry("1200x700")  # Larger size for better visibility
+        popup.resizable(True, True)
+        
+        # Make the popup modal
+        popup.grab_set()
+        
+        # Configure grid weights
+        popup.grid_rowconfigure(1, weight=1)
+        popup.grid_columnconfigure(0, weight=1)
+        
+        # Header
+        header_frame = tk.Frame(popup)
+        header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        
+        tk.Label(header_frame, text="NEW INVENTORY ASSIGNMENT", 
+                font=('Helvetica', 14, 'bold')).pack()
+        
+        # Main content area with improved scrolling
+        content_frame = tk.Frame(popup)
+        content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(0, weight=1)
+        
+        # Create a canvas and scrollbars
+        canvas = tk.Canvas(content_frame, borderwidth=0, highlightthickness=0)
+        vsb = ttk.Scrollbar(content_frame, orient="vertical", command=canvas.yview)
+        hsb = ttk.Scrollbar(content_frame, orient="horizontal", command=canvas.xview)
+        canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        canvas.grid(row=0, column=0, sticky="nsew")
+        
+        # Frame inside canvas
+        table_frame = tk.Frame(canvas)
+        canvas.create_window((0, 0), window=table_frame, anchor="nw")
+        
+        # Define headers
+        headers = [
+            "SNo.", "Assigned To", "Employee Name", "Inventory ID", "Project ID", 
+            "Product ID", "Inventory Name", "Description", "Quantity", "Status", 
+            "Assigned Date", "Purpose/Reason", "Assigned By", "Comments", 
+            "Assignment Return Date"
+        ]
+        
+        # Create Treeview with custom style
+        style = ttk.Style()
+        style.configure("Treeview", 
+                      rowheight=25, 
+                      font=('Helvetica', 10),
+                      highlightthickness=1,
+                      highlightcolor="#4CAF50",
+                      highlightbackground="#4CAF50")
+        style.map("Treeview", 
+                background=[('selected', '#4CAF50')],
+                foreground=[('selected', 'white')])
+        
+        tree = ttk.Treeview(table_frame, columns=headers, show="headings", height=15, selectmode="extended")
+        tree.pack(fill="both", expand=True)
+        
+        # Configure columns with initial widths
+        col_widths = {
+            "SNo.": 50,
+            "Assigned To": 120,
+            "Employee Name": 150,
+            "Inventory ID": 120,
+            "Project ID": 100,
+            "Product ID": 100,
+            "Inventory Name": 150,
+            "Description": 200,
+            "Quantity": 70,
+            "Status": 100,
+            "Assigned Date": 120,
+            "Purpose/Reason": 200,
+            "Assigned By": 120,
+            "Comments": 200,
+            "Assignment Return Date": 150
+        }
+        
+        for col in headers:
+            tree.heading(col, text=col, anchor='w')
+            tree.column(col, width=col_widths.get(col, 120), anchor='w', stretch=False)
+        
+        # Add sample data row
+        tree.insert("", "end", values=[""] * len(headers))
+        
+        # Function to auto-resize columns
+        def auto_resize_columns():
+            font = tk.font.Font()
+            for col in headers:
+                max_width = font.measure(col) + 20  # Header width
+                
+                # Check all rows for content width
+                for item in tree.get_children():
+                    cell_value = tree.set(item, col)
+                    cell_width = font.measure(cell_value) + 20
+                    if cell_width > max_width:
+                        max_width = cell_width
+                
+                # Set column width with reasonable limits
+                tree.column(col, width=min(max(max_width, col_widths.get(col, 120)), 300))
+        
+        # Make cells editable with highlighting
+        def on_double_click(event):
+            region = tree.identify("region", event.x, event.y)
+            if region == "cell":
+                column = tree.identify_column(event.x)
+                item = tree.identify_row(event.y)
+                
+                # Highlight the cell being edited
+                tree.selection_set(item)
+                tree.focus(item)
+                tree.focus_set()
+                
+                # Get column info
+                col_index = int(column[1:]) - 1
+                col_name = headers[col_index]
+                
+                # Get current value
+                current_value = tree.set(item, column)
+                
+                # Create entry widget with matching style
+                entry = ttk.Entry(table_frame, 
+                                font=('Helvetica', 10),
+                                style="Treeview")
+                entry.insert(0, current_value)
+                entry.select_range(0, tk.END)
+                entry.focus()
+                
+                def save_edit():
+                    tree.set(item, column, entry.get())
+                    entry.destroy()
+                    auto_resize_columns()  # Resize after edit
+                
+                entry.bind("<Return>", lambda e: save_edit())
+                entry.bind("<FocusOut>", lambda e: save_edit())
+                
+                # Place the entry widget exactly over the cell
+                x, y, width, height = tree.bbox(item, column)
+                entry.place(x=x, y=y, width=width, height=height)
+        
+        tree.bind("<Double-1>", on_double_click)
+        
+        # Highlight row on selection
+        def on_select(event):
+            for item in tree.selection():
+                tree.focus(item)
+        
+        tree.bind("<<TreeviewSelect>>", on_select)
+        
+        # Button frame
+        button_frame = tk.Frame(popup)
+        button_frame.grid(row=2, column=0, sticky="e", padx=10, pady=10)
+        
+        # Add Row button
+        add_row_btn = tk.Button(button_frame, text="Add Row",
+                              command=lambda: [tree.insert("", "end", values=[""] * len(headers)), auto_resize_columns()],
+                              font=('Helvetica', 10))
+        add_row_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Remove Row button
+        remove_row_btn = tk.Button(button_frame, text="Remove Row",
+                                 command=lambda: [tree.delete(tree.selection()), auto_resize_columns()],
+                                 font=('Helvetica', 10))
+        remove_row_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Submit button
+        submit_btn = tk.Button(button_frame, text="Submit",
+                             command=lambda: self.submit_new_entry(popup, tree, headers),
+                             font=('Helvetica', 10, 'bold'), bg="#4CAF50", fg="white")
+        submit_btn.pack(side=tk.RIGHT, padx=5)
+        
+        # Clear button
+        clear_btn = tk.Button(button_frame, text="Clear",
+                            command=lambda: [tree.delete(item) for item in tree.get_children()],
+                            font=('Helvetica', 10))
+        clear_btn.pack(side=tk.RIGHT, padx=5)
+        
+        # Back button
+        back_btn = tk.Button(button_frame, text="Back",
+                           command=popup.destroy,
+                           font=('Helvetica', 10))
+        back_btn.pack(side=tk.RIGHT, padx=5)
+        
+        # Update scrollregion when size changes
+        def update_scrollregion(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        table_frame.bind("<Configure>", update_scrollregion)
+        
+        # Initial auto-resize of columns
+        auto_resize_columns()
+
+    def submit_new_entry(self, popup, tree, headers):
+        """Submit the new entry form data"""
+        items = tree.get_children()
+        if not items:
+            messagebox.showwarning("Warning", "No items to submit")
+            return
+        
+        data = {'assignments': []}
+        
+        for item in items:
+            values = tree.item(item, 'values')
+            if not any(values):  # Skip empty rows
+                continue
+                
+            assignment = dict(zip(headers, values))
+            
+            # Convert to expected API format
+            formatted_data = {
+                'sno': assignment.get("SNo.", ""),
+                'assigned_to': assignment.get("Assigned To", ""),
+                'employee_name': assignment.get("Employee Name", ""),
+                'inventory_id': assignment.get("Inventory ID", ""),
+                'project_id': assignment.get("Project ID", ""),
+                'product_id': assignment.get("Product ID", ""),
+                'inventory_name': assignment.get("Inventory Name", ""),
+                'description': assignment.get("Description", ""),
+                'quantity': assignment.get("Quantity", "1"),
+                'status': assignment.get("Status", "Assigned"),
+                'assigned_date': assignment.get("Assigned Date", datetime.now().strftime('%Y-%m-%d')),
+                'purpose_reason': assignment.get("Purpose/Reason", ""),
+                'assigned_by': assignment.get("Assigned By", ""),
+                'comments': assignment.get("Comments", ""),
+                'assignment_return_date': assignment.get("Assignment Return Date", 
+                                                       (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d')),
+                'zone_activity': " "
+            }
+            data['assignments'].append(formatted_data)
+        
+        try:
+            # Show loading indicator
+            popup.config(cursor="watch")
+            popup.update()
+            
+            success = submit_assigned_inventory(data)
+            if success:
+                messagebox.showinfo("Success", f"{len(data['assignments'])} assignment(s) submitted successfully")
+                self.refresh_assigned_inventory_list()
+                self.load_recent_submissions()
+                popup.destroy()
+            else:
+                messagebox.showerror("Error", "Failed to submit assignment(s)")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to submit assignment(s): {str(e)}")
+        finally:
+            popup.config(cursor="")
+
+#  ----------------------- End of New Entry Popup -----------------------
 
     def add_table_row(self):
         """Add a new row to the input table in the new entry tree with auto-generated ID"""
@@ -831,7 +1068,6 @@ Eros City Square
         
         self.currently_editing_id = None
         self.edit_mode = False
-        self.submit_btn.config(text="Assign", command=self.submit_form)
 
     def update_clock(self):
         """Update the clock display"""
