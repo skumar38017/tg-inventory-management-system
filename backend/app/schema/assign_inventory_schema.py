@@ -29,7 +29,7 @@ class AssignmentInventoryBase(BaseModel):
     inventory_name:  Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[float, int, str]] = Field(None, ge=0)
-    status: StatusEnum = Field(default=StatusEnum.ASSIGNED)
+    status: Optional[str] = None
     purpose_reason:  Optional[str] = None
     assigned_date: Optional[date] = None
     assign_by:  Optional[str] = None
@@ -118,7 +118,7 @@ class AssignmentInventoryOut(BaseModel):
     inventory_name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None
-    status: Optional[StatusEnum] = None
+    status: Optional[str] = None
     purpose_reason: Optional[str] = None
     assigned_date: Optional[date]  = Field(None, frozen=True) 
     submission_date: Optional[datetime] = None
@@ -155,7 +155,7 @@ class AssignmentInventoryRedisIn(BaseModel):
     inventory_name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None
-    status: Optional[StatusEnum] = None
+    status: Optional[str] = None
     purpose_reason: Optional[str] = None
     assigned_date: Optional[date] = None
     submission_date: Optional[datetime] = None
@@ -240,7 +240,7 @@ class AssignmentInventoryUpdate(BaseModel):
     zone_activity: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[float, int, str]] = None
-    status: Optional[StatusEnum] = None
+    status: Optional[str] = None
     purpose_reason: Optional[str] = None
     assign_by: Optional[str] = None
     comment: Optional[str] = None
