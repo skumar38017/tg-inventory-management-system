@@ -356,25 +356,44 @@ Eros City Square
         edit_window = tk.Toplevel(self.window)
         edit_window.title("Edit Record")
         
+        # List of read-only fields (these won't be editable)
+        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'assignment_barcode','Employee Nmae', 'Assigned By']
+        
         # Create entry fields for each column
         entry_widgets = []
         for i, (header, value) in enumerate(zip(self.headers, values)):
             tk.Label(edit_window, text=header).grid(row=i, column=0, padx=5, pady=2)
-            entry = tk.Entry(edit_window)
-            entry.insert(0, value)
-            entry.grid(row=i, column=1, padx=5, pady=2)
-            entry_widgets.append(entry)
+            
+            if header in read_only_fields:
+                # Create a label for read-only fields
+                label = tk.Label(edit_window, text=value, relief="sunken", bg="#f0f0f0")
+                label.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
+                entry_widgets.append(label)  # Still append to maintain order
+            else:
+                # Create an entry widget for editable fields
+                entry = tk.Entry(edit_window)
+                entry.insert(0, value)
+                entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
+                entry_widgets.append(entry)
         
         # Save button
         save_btn = tk.Button(edit_window, text="Save Changes",
                             command=lambda: self.save_edited_entry(entry_widgets, edit_window))
         save_btn.grid(row=len(self.headers), column=0, columnspan=2, pady=5)
+        
+        # Make the window resizable
+        edit_window.grid_columnconfigure(1, weight=1)
 
     def save_edited_entry(self, entry_widgets, edit_window):
         """Save the edited entry back to the new entry tree"""
         try:
             # Get all edited values
-            edited_values = [entry.get() for entry in entry_widgets]
+            edited_values = []
+            for i, widget in enumerate(entry_widgets):
+                if isinstance(widget, tk.Label):  # Read-only field
+                    edited_values.append(widget.cget("text"))
+                else:  # Editable field
+                    edited_values.append(widget.get())
             
             # Update the record in new entry tree
             selected_item = self.new_entry_tree.selection()

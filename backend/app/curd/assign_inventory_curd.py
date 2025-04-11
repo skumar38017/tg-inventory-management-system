@@ -332,6 +332,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 'assignment_barcode': existing_dict.get('assignment_barcode'),
                 'assignment_barcode_unique_code': existing_dict.get('assignment_barcode_unique_code'),
                 'created_at': existing_dict.get('created_at'),
+                'assign_by': existing_dict.get('assign_by'),
                 'assigned_date': existing_dict.get('assigned_date')
             }
             
