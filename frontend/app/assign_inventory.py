@@ -640,7 +640,7 @@ Eros City Square
 
 # --------------------------- New Entry Popup ---------------------------
     def new_entry(self):
-        """Create a form-style popup window for new entry registration"""
+        """Create a centered form-style popup window with larger input boxes"""
         # Create popup window
         popup = tk.Toplevel(self.window)
         popup.title("Register New Assignment")
@@ -648,35 +648,38 @@ Eros City Square
         # Make the popup modal
         popup.grab_set()
         
-        # Window dimensions
-        popup.geometry("600x600")
-        popup.minsize(500, 500)
+        # Window dimensions (larger for better fit)
+        popup.geometry("700x700")
+        popup.minsize(600, 600)
         
         # Header
-        header_frame = tk.Frame(popup, bd=2, relief=tk.RIDGE, bg="#f0f0f0")
-        header_frame.pack(fill=tk.X, padx=5, pady=5)
+        header_frame = tk.Frame(popup, bg="#f0f0f0")
+        header_frame.pack(fill=tk.X, pady=10)
         tk.Label(header_frame, text="NEW INVENTORY ASSIGNMENT", 
-                font=('Helvetica', 12, 'bold'), bg="#f0f0f0").pack(pady=5)
+                font=('Helvetica', 14, 'bold'), bg="#f0f0f0").pack(pady=10)
         
         # Main content area with scrollbar
         container = tk.Frame(popup)
-        container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
         
-        canvas = tk.Canvas(container, borderwidth=0)
+        canvas = tk.Canvas(container, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas)
         
         canvas.configure(yscrollcommand=scrollbar.set)
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
         
         def on_frame_configure(event):
             canvas.configure(scrollregion=canvas.bbox("all"))
+            # Center the frame when it's smaller than canvas
+            if scrollable_frame.winfo_reqwidth() < canvas.winfo_width():
+                canvas.itemconfig(1, width=canvas.winfo_width())
         
         scrollable_frame.bind("<Configure>", on_frame_configure)
         
-        # Field definitions
+        # Field definitions (added 'level' field)
         fields = [
             ("assign_to", "Assigned To:"),
             ("employee_name", "Employee Name:"),
@@ -703,12 +706,12 @@ Eros City Square
             entries = {}
             for i, (field_name, label_text) in enumerate(fields):
                 # Label
-                lbl = tk.Label(parent_frame, text=label_text, anchor='e')
-                lbl.grid(row=i, column=0, sticky='e', padx=5, pady=2)
+                lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5)
+                lbl.grid(row=i, column=0, sticky='e', pady=3)
                 
-                # Entry field
-                entry = tk.Entry(parent_frame, borderwidth=1, relief="solid")
-                entry.grid(row=i, column=1, sticky='ew', padx=5, pady=2)
+                # Entry field (larger size)
+                entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", width=30)
+                entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
                 
                 # Set default values for certain fields
                 if field_name == "quantity":
@@ -724,20 +727,20 @@ Eros City Square
                 entries[field_name] = entry
             
             # Configure column weights
-            parent_frame.grid_columnconfigure(0, weight=0)
-            parent_frame.grid_columnconfigure(1, weight=1)
+            parent_frame.grid_columnconfigure(0, weight=1)
+            parent_frame.grid_columnconfigure(1, weight=2)
             
             return entries
         
-        # Create initial form
+        # Create initial form (centered)
         form_frame = tk.Frame(scrollable_frame)
-        form_frame.pack(fill=tk.X, padx=10, pady=5)
+        form_frame.pack(pady=10)
         all_entries.append(create_form_row(form_frame))
         
         # Button functions
         def add_row():
             new_form_frame = tk.Frame(scrollable_frame)
-            new_form_frame.pack(fill=tk.X, padx=10, pady=5)
+            new_form_frame.pack(pady=10)
             all_entries.append(create_form_row(new_form_frame))
         
         def remove_row():
@@ -749,34 +752,30 @@ Eros City Square
             for entries in all_entries:
                 for entry in entries.values():
                     entry.delete(0, tk.END)
+                    
+        def validate_assignment(assignment):
+            required_fields = ['inventory_id', 'assign_to', 'employee_name']
+            missing = [field for field in required_fields if not assignment.get(field)]
+            if missing:
+                messagebox.showwarning("Validation Error", 
+                    f"Missing required fields: {', '.join(missing)}")
+                return False
+            return True
         
         def submit_data():
             data = {'assignments': []}
             
             for entries in all_entries:
-                # Skip empty forms
-                if not any(entry.get() for entry in entries.values()):
-                    continue
-                    
-                assignment = {
-                    'assigned_to': entries['assign_to'].get(),
-                    'employee_name': entries['employee_name'].get(),
-                    'sno': entries['sno'].get(),
-                    'zone_activity': entries['zone_activity'].get(),
-                    'inventory_id': entries['inventory_id'].get(),
-                    'project_id': entries['project_id'].get(),
-                    'product_id': entries['product_id'].get(),
-                    'inventory_name': entries['inventory_name'].get(),
-                    'description': entries['description'].get(),
-                    'quantity': entries['quantity'].get(),
-                    'status': entries['status'].get(),
-                    'purpose_reason': entries['purpose_reason'].get(),
-                    'assigned_date': entries['assigned_date'].get(),
-                    'assigned_by': entries['assign_by'].get(),
-                    'assignment_return_date': entries['assignment_return_date'].get(),
-                    'comments': entries['comment'].get()
-                }
-                data['assignments'].append(assignment)
+                assignment = {}
+                for field_name, entry in entries.items():
+                    value = entry.get()
+                    if value:
+                        assignment[field_name] = value
+                
+                if assignment:
+                    if not validate_assignment(assignment):
+                        return
+                    data['assignments'].append(assignment)
             
             if not data['assignments']:
                 messagebox.showwarning("Warning", "No data to submit")
@@ -791,7 +790,7 @@ Eros City Square
                     messagebox.showinfo("Success", f"{len(data['assignments'])} assignment(s) submitted")
                     self.refresh_assigned_inventory_list()
                     self.load_recent_submissions()
-                    popup.destroy()
+                    clear_form()
                 else:
                     messagebox.showerror("Error", "Failed to submit assignment(s)")
             except Exception as e:
@@ -799,16 +798,26 @@ Eros City Square
             finally:
                 popup.config(cursor="")
         
-        # Button frame
-        button_frame = tk.Frame(popup, bg="#f0f0f0")
-        button_frame.pack(fill=tk.X, padx=5, pady=5)
+        # Button frame (centered)
+        button_frame = tk.Frame(popup)
+        button_frame.pack(pady=10)
         
-        tk.Button(button_frame, text="Add Row", command=add_row, width=10).pack(side=tk.LEFT, padx=2)
-        tk.Button(button_frame, text="Remove Row", command=remove_row, width=10).pack(side=tk.LEFT, padx=2)
-        tk.Button(button_frame, text="Clear", command=clear_form, width=10).pack(side=tk.LEFT, padx=2)
-        tk.Button(button_frame, text="Back", command=popup.destroy, width=10).pack(side=tk.RIGHT, padx=2)
-        tk.Button(button_frame, text="Submit", command=submit_data, width=10, bg="#e0e0e0").pack(side=tk.RIGHT, padx=2)
-#  ----------------------- End of New Entry Popup -----------------------
+        buttons = [
+            ("Add Row", add_row),
+            ("Remove Row", remove_row),
+            ("Clear", clear_form),
+            ("Back", popup.destroy),
+            ("Submit", submit_data)
+        ]
+        
+        for text, command in buttons:
+            btn = tk.Button(button_frame, text=text, command=command, width=12)
+            btn.pack(side=tk.LEFT, padx=5)
+        
+        # Make submit button stand out
+        button_frame.winfo_children()[-1].config(bg="#e0e0e0")
+        
+    #  ----------------------- End of New Entry Popup -----------------------
 
     def add_table_row(self):
         """Add a new row to the input table in the new entry tree with auto-generated ID"""

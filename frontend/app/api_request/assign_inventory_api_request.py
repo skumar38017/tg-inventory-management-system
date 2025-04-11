@@ -4,6 +4,7 @@ import requests
 from typing import List, Dict
 from datetime import datetime, timedelta, date
 import logging
+import json
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
@@ -114,46 +115,49 @@ def show_all_assigned_inventory_from_db() -> List[Dict]:
     
 def submit_assigned_inventory(data: Dict) -> bool:
     try:
-        payload = {
-            "employee_name": data.get("employee_name", ""),
-            "inventory_id": data.get("inventory_id", ""),
-            "assignments": []
-        }
-
-        for assignment in data.get("assignments", []):
-            payload["assignments"].append({
-                "assign_to": assignment.get("assigned_to", ""),
-                
+        # Prepare payload for each assignment
+        assignments = []
+        for assignment in data.get('assignments', []):
+            payload = {
+                "assign_to": assignment.get("assign_to", ""),
+                "employee_name": assignment.get("employee_name", ""),
                 "sno": assignment.get("sno", ""),
-                "product_id": assignment.get("product_id", ""),
-                "project_id": assignment.get("project_id", ""),
                 "zone_activity": assignment.get("zone_activity", ""),
                 "inventory_id": assignment.get("inventory_id", ""),
+                "project_id": assignment.get("project_id", ""),
+                "product_id": assignment.get("product_id", ""),
                 "inventory_name": assignment.get("inventory_name", ""),
                 "description": assignment.get("description", ""),
-                "quantity": assignment.get("quantity", ""),
-                "status": assignment.get("status", ""),
+                "quantity": assignment.get("quantity", "1"),
+                "status": assignment.get("status", "assigned"),
                 "purpose_reason": assignment.get("purpose_reason", ""),
-                "assigned_date": assignment.get("assigned_date", ""),
-                "submission_date": assignment.get("submission_date", ""),
-                "assign_by": assignment.get("assigned_by", ""),
-                "comment": assignment.get("comments", ""),
-                "assignment_return_date": assignment.get("assignment_return_date", ""),
-            })
+                "assigned_date": assignment.get("assigned_date", datetime.now().strftime('%Y-%m-%d')),
+                "assign_by": assignment.get("assign_by", ""),
+                "comment": assignment.get("comment", ""),
+                "assignment_return_date": assignment.get("assignment_return_date", 
+                    (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'))
+            }
+            assignments.append(payload)
+            logger.debug(f"Submitting payload: {json.dumps(payload, indent=2)}")
 
-        response = make_api_request("POST", "assign-inventory/", json=payload)
-        response.raise_for_status()
+        # Submit each assignment individually
+        for payload in assignments:
+            response = make_api_request("POST", "create-assign-inventory/", json=payload)
+            response.raise_for_status()
+            
         return True
 
     except requests.RequestException as e:
-        logger.error(f"Failed to submit assigned inventory: {e}")
-        messagebox.showerror("Error", "Could not submit assigned inventory data")
+        logger.error(f"API request failed to {e.request.url}: {e}")
+        logger.error(f"Response content: {e.response.text if e.response else 'No response'}")
+        messagebox.showerror("Error", f"Failed to submit data: {e}")
         return False
     except Exception as e:
+        
         logger.error(f"Unexpected error during submission: {e}")
         messagebox.showerror("Error", "An unexpected error occurred")
         return False
-        
+            
 # UPDATE: update/edit an existing Assigned Inventory by [EmployeeName, InventoryID]
 def update_assigned_inventory(employee_name: str, inventory_id: str, data: Dict) -> bool:
     """Update assigned inventory using employee_name and inventory_id"""
