@@ -262,6 +262,11 @@ Eros City Square
                             font=('Helvetica', 12, 'bold'))
         clear_btn.pack(side=tk.LEFT, padx=5)
 
+        # Refresh button
+        refresh_btn = tk.Button(button_frame, text="Refresh", command=self.refresh_all_data,
+                            font=('Helvetica', 12, 'bold'))
+        refresh_btn.pack(side=tk.LEFT, padx=5)
+
         # Return button
         return_btn = tk.Button(button_frame, text="Return to Main", command=self.on_close,
                              font=('Helvetica', 12, 'bold'))
@@ -994,7 +999,7 @@ Eros City Square
         else:
             self.submit_form()
 
-    def clear_form(self):
+    def clear_form(self): 
         """Clear all form fields"""
         self.inventory_id.delete(0, tk.END)
         self.project_id.delete(0, tk.END)
@@ -1004,6 +1009,16 @@ Eros City Square
         
         self.currently_editing_id = None
         self.edit_mode = False
+
+    def refresh_all_data(self):
+        """Refresh all data in the window"""
+        try:
+            self.refresh_assigned_inventory_list()
+            self.load_recent_submissions()
+            messagebox.showinfo("Success", "Data refreshed successfully")
+        except Exception as e:
+            logger.error(f"Error refreshing data: {e}")
+            messagebox.showerror("Error", "Failed to refresh data")
 
     def update_clock(self):
         """Update the clock display"""
