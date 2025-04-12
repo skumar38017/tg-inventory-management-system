@@ -110,7 +110,7 @@ Eros City Square
         # Centered inventory list title
         tk.Label(title_frame, text="ASSIGN INVENTORY TO EMPLOYEE",
                font=('Helvetica', 14, 'bold')).pack()
-
+#  ----------------------- Search Buttons Header Section -----------------------
         # Search fields in row 3
         search_frame = tk.Frame(self.window)
         search_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
@@ -139,6 +139,7 @@ Eros City Square
         search_btn = tk.Button(search_frame, text="Search", command=self.search_product, 
                              font=('Helvetica', 10))
         search_btn.grid(row=0, column=8, sticky='e', padx=5)
+#  ----------------------- End of Search Buttons Header Section -----------------------
 
         # New Entry button
         new_entry_btn = tk.Button(search_frame, text="New Entry", command=self.new_entry,
@@ -873,14 +874,19 @@ Eros City Square
             self.wrap_btn.config(text="Wrap")
             self.is_wrapped = False
 
+#  ----------------------- Search by Inventory_ID  Popup -----------------------
     def search_product(self):
-        """Handle product search"""
-        inventory_id = self.inventory_id.get()
-        project_id = self.project_id.get()
-        product_id = self.product_id.get()
-        employee_name = self.employee_name.get()
-        
+        """Handle product search with proper error handling"""
         try:
+            inventory_id = self.inventory_id.get().strip()
+            project_id = self.project_id.get().strip()
+            product_id = self.product_id.get().strip()
+            employee_name = self.employee_name.get().strip()
+            
+            if not any([inventory_id, project_id, product_id, employee_name]):
+                messagebox.showwarning("Warning", "Please enter at least one search criteria")
+                return
+
             results = search_assigned_inventory_by_id(
                 inventory_id=inventory_id,
                 project_id=project_id,
@@ -894,30 +900,33 @@ Eros City Square
                 
                 # Add search results
                 for item in results:
-                    values = [
+                    self.assigned_tree.insert('', 'end', values=[
                         item.get('id', ''),
+                        item.get('sno', ''),
                         item.get('assigned_to', ''),
                         item.get('employee_name', ''),
                         item.get('inventory_id', ''),
                         item.get('project_id', ''),
                         item.get('product_id', ''),
                         item.get('inventory_name', ''),
+                        item.get('description', ''),
                         item.get('quantity', ''),
                         item.get('status', ''),
                         self.format_date(item.get('assigned_date', '')),
                         self.format_date(item.get('submission_date', '')),
-                        self.get('assigned_by', ''),
-                        self.get('comments', ''),
-                        self.format_date(self.get('assignment_return_date', '')),
-                        self.get('assignment_barcode', ''),
                         item.get('purpose_reason', ''),
-                    ]
-                    self.assigned_tree.insert('', 'end', values=values)
+                        item.get('assigned_by', ''),
+                        item.get('comments', ''),
+                        self.format_date(item.get('assignment_return_date', '')),
+                        item.get('assignment_barcode', ''),
+                    ])
             else:
                 messagebox.showinfo("Info", "No matching records found")
+                
         except Exception as e:
-            logger.error(f"Error during search: {e}")
-            messagebox.showerror("Error", "Failed to perform search")
+            logger.error(f"Search error: {e}")
+            messagebox.showerror("Error", str(e))
+#  ----------------------- End of Search by Inventory_ID  Popup -----------------------
 
     def submit_form(self):
         """Handle form submission for new records - all fields are optional"""

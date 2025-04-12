@@ -9,72 +9,169 @@ import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
 from ..config import *
+import traceback
 
 
 logger = logging.getLogger(__name__)
 
 # Format a single assigned inventory item to match the table headers
 def format_assigned_inventory_item(item: Dict, include_timestamps: bool = False) -> Dict:
-    """Format a single assigned inventory item to match the table headers."""
-    formatted = {
-        "id": item.get("id", ""),
-        "sno": item.get("sno", "N/A"),
-        "assigned_to": item.get("assign_to", "N/A"),
-        "employee_name": item.get("employee_name", "N/A"),
-        "inventory_id": item.get("inventory_id", "N/A"),
-        "project_id": item.get("project_id", "N/A"),
-        "product_id": item.get("product_id", "N/A"),
-        "inventory_name": item.get("inventory_name", "N/A"),
-        "description": item.get("description", "N/A"),
-        "quantity": item.get("quantity", "N/A"),
-        "status": item.get("status", "N/A"),
-        "assigned_date": item.get("assigned_date", "N/A"),
-        "submission_date": item.get("submission_date", "N/A"),
-        "purpose_reason": item.get("purpose_reason", "N/A"),
-        "assigned_by": item.get("assign_by", "N/A"),
-        "comments": item.get("comment", "N/A"),
-        "assignment_return_date": item.get("assignment_return_date", "N/A"),
-        "assignment_barcode": item.get("assignment_barcode", "N/A"),
-        "zone_activity": item.get("zone_activity", "N/A")
-    }
-
-    if include_timestamps:
-        formatted.update({
-            "created_at": item.get("created_at", ""),
-            "updated_at": item.get("updated_at", "")
-        })
-
-    return formatted
-
-def search_assigned_inventory_by_id(inventory_id: str = None, project_id: str = None, 
-                                     employee_name: str = None, product_id: str = None) -> List[Dict]:
+    """Format a single assigned inventory item from Redis search result with enhanced field mapping."""
     try:
-        params = {}
-        if inventory_id: params['inventory_id'] = inventory_id
-        if project_id: params['project_id'] = project_id
-        if product_id: params['product_id'] = product_id
-        if employee_name: params['employee_name'] = employee_name
+        # Extract data from either the root or nested 'data' field
+        item_data = item.get('data', item)
+        
+        # Handle date formatting
+        def format_date(date_str):
+            if not date_str:
+                return "N/A"
+            try:
+                return datetime.strptime(date_str, '%Y-%m-%d').strftime('%Y-%m-%d')
+            except:
+                return date_str  # Return original if parsing fails
 
-        response = make_api_request("GET", "search-assigned-inventory/", params=params)
-        response.raise_for_status()
-        return [format_assigned_inventory_item(item) for item in response.json()]
+        formatted = {
+            "id": str(item_data.get("id", "")),
+            "sno": str(item_data.get("sno", "N/A")),
+            "assigned_to": str(item_data.get("assign_to", item_data.get("poc", "N/A"))),
+            "employee_name": str(item_data.get("employee_name", "N/A")),
+            "inventory_id": str(item_data.get("inventory_id", "N/A")).upper(),
+            "project_id": str(item_data.get("project_id", "N/A")).upper(),
+            "product_id": str(item_data.get("product_id", "N/A")).upper(),
+            "inventory_name": str(item_data.get("inventory_name", item_data.get("name", "N/A"))),
+            "description": str(item_data.get("description", "N/A")),
+            "quantity": str(item_data.get("quantity", "N/A")),
+            "status": str(item_data.get("status", "N/A")).capitalize(),
+            "assigned_date": format_date(item_data.get("assigned_date", item_data.get("event_date"))),
+            "submission_date": format_date(item_data.get("submission_date")),
+            "purpose_reason": str(item_data.get("purpose_reason", "N/A")),
+            "assigned_by": str(item_data.get("assign_by", item_data.get("submitted_by", "N/A"))),
+            "comments": str(item_data.get("comment", item_data.get("comments", "N/A"))),
+            "assignment_return_date": format_date(item_data.get("assignment_return_date")),
+            "assignment_barcode": str(item_data.get("assignment_barcode", "N/A")),
+            "zone_activity": str(item_data.get("zone_activity", item_data.get("zone_active", "N/A"))),
+            "location": str(item_data.get("location", "N/A")),
+            "client_name": str(item_data.get("client_name", "N/A"))
+        }
 
-    except requests.RequestException as e:
-        logger.error(f"Failed to fetch assigned inventory: {e}")
-        messagebox.showerror("Error", "Could not fetch assigned inventory data")
-        return []
+        if include_timestamps:
+            formatted.update({
+                "created_at": item_data.get("created_at", ""),
+                "updated_at": item_data.get("updated_at", "")
+            })
+
+        return formatted
+
     except Exception as e:
-        logger.error(f"Unexpected error during search: {e}")
-        messagebox.showerror("Error", "An unexpected error occurred")
-        return []
+        logger.error(f"Error formatting inventory item: {e}\nItem data: {item_data}")
+        return {
+            "error": f"Formatting error: {str(e)}",
+            "raw_data": item_data
+        }
+
+
+def search_assigned_inventory_by_id(
+    inventory_id: str = None, 
+    project_id: str = None, 
+    employee_name: str = None, 
+    product_id: str = None
+) -> List[Dict]:
+    """
+    Enhanced search function for assigned inventory with better parameter handling and error reporting.
     
-    except requests.RequestException as e:
-        logger.error(f"Failed to fetch assigned inventory: {e}")
-        messagebox.showerror("Error", "Could not fetch assigned inventory data")
+    Args:
+        inventory_id: Inventory ID (with or without INV prefix)
+        project_id: Project ID (with or without PRJ prefix)
+        employee_name: Employee name (partial matches supported)
+        product_id: Product ID (with or without PRD prefix)
+    
+    Returns:
+        List of properly formatted inventory items
+        Empty list on error with error message shown to user
+    """
+    try:
+        # Normalize and validate parameters
+        params = {}
+        
+        def normalize_id(id_value, prefix):
+            """Normalize ID by removing prefix if present and ensuring uppercase"""
+            if not id_value:
+                return None
+            id_value = str(id_value).strip().upper()
+            return id_value.replace(prefix, "") if id_value.startswith(prefix) else id_value
+
+        if inventory_id:
+            params['inventory_id'] = normalize_id(inventory_id, "INV")
+        if project_id:
+            params['project_id'] = normalize_id(project_id, "PRJ")
+        if product_id:
+            params['product_id'] = normalize_id(product_id, "PRD")
+        if employee_name:
+            params['employee_name'] = employee_name.strip()
+
+        if not params:
+            raise ValueError("Please provide at least one search parameter")
+
+        # API request with timeout
+        response = make_api_request(
+            "GET", 
+            "search-assigned-inventory/", 
+            params=params,
+            timeout=30  # 30 second timeout
+        )
+        
+        # Check for empty response
+        if not response.content:
+            raise ValueError("Server returned empty response")
+
+        response.raise_for_status()
+        results = response.json()
+
+        # Process and validate results
+        if not isinstance(results, list):
+            raise ValueError(f"Unexpected response format. Expected list, got {type(results)}")
+
+        formatted_results = []
+        error_count = 0
+        
+        for item in results:
+            formatted = format_assigned_inventory_item(item)
+            if "error" not in formatted:
+                formatted_results.append(formatted)
+            else:
+                error_count += 1
+
+        if error_count:
+            logger.warning(f"Skipped {error_count} malformed items in search results")
+
+        if not formatted_results:
+            messagebox.showinfo("No Results", "No matching inventory items found")
+            
+        return formatted_results
+
+    except requests.exceptions.Timeout:
+        error_msg = "Search timed out. Please try again later."
+        logger.error(error_msg)
+        messagebox.showerror("Timeout Error", error_msg)
+        return []
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Network error during search: {str(e)}"
+        if hasattr(e, 'response') and e.response:
+            try:
+                error_detail = e.response.json().get('detail', 'No details')
+                error_msg += f"\nServer response: {error_detail}"
+            except:
+                error_msg += f"\nStatus code: {e.response.status_code}"
+        logger.error(error_msg)
+        messagebox.showerror("Search Error", error_msg)
+        return []
+    except ValueError as ve:
+        logger.error(f"Invalid search parameters: {ve}")
+        messagebox.showwarning("Invalid Search", str(ve))
         return []
     except Exception as e:
-        logger.error(f"Unexpected error during search: {e}")
-        messagebox.showerror("Error", "An unexpected error occurred")
+        logger.error(f"Unexpected search error: {str(e)}\n{traceback.format_exc()}")
+        messagebox.showerror("Error", "An unexpected error occurred during search")
         return []
 
 
