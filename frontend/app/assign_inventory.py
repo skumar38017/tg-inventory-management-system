@@ -352,7 +352,7 @@ Eros City Square
         edit_window.title("Edit Record")
         
         # List of read-only fields (these won't be editable)
-        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'assignment_barcode','Employee Name', 'Assigned By']
+        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date',"Assignment Return Date", "Assignment Barcode" ,'Employee Name', 'Assigned By']
         
         # Create entry fields for each column
         entry_widgets = []
@@ -536,7 +536,10 @@ Eros City Square
                     item.get('assigned_by', ''),
                     item.get('comments', ''),
                     self.format_date(item.get('assignment_return_date', '')),
-                    item.get('assignment_barcode', '')
+                    item.get('assignment_barcode', ''),
+                    item.get('zone_activity', ''),
+                    item.get('location', ''),
+                    item.get('client_name', '')
                 ]
                 self.assigned_tree.insert('', 'end', values=values)
             
