@@ -27,7 +27,11 @@ pip install --no-cache-dir --force-reinstall -r requirements.txt
 alembic init alembic
 
 alembic revision --autogenerate -m "Initial migration"
+rm alembic/versions/bc58965f1ce9_add_wastage_migration.py
+rm alembic/versions/902ae2280c62_add_wastage_migration.py
+psql -h localhost -p 5432 -U tg-inventory -d tg-inventory -c "DELETE FROM alembic_version;"
 
+rm -rf alembic/versions/*
 
 alembic upgrade head
 alembic history --verbose
