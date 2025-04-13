@@ -130,7 +130,6 @@ class WastageInventoryOut(BaseModel):
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
     wastage_barcode:  Optional[str] = Field(None, frozen=True) 
-    wastage_barcode_unique_code:  Optional[str]  = Field(None, frozen=True) 
     wastage_barcode_image_url: Optional[str] = Field(None, frozen=True) 
     
     # Wastage specific fields
@@ -181,7 +180,7 @@ class WastageInventoryRedisIn(BaseModel):
     check_status: Optional[str] = None
     location: Optional[str] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[date]  = Field(None, frozen=True) 
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
     wastage_barcode:  Optional[str] = Field(None, frozen=True) 
@@ -249,9 +248,6 @@ class WastageInventorySearch(BaseModel):
 class WastageInventoryUpdate(BaseModel):
     assign_to: Optional[str] = None
     sno: Optional[str] = None
-    inventory_id: Optional[str] = None
-    project_id: Optional[str] = None
-    product_id: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[int] = None
     status: Optional[str] = None
@@ -259,8 +255,7 @@ class WastageInventoryUpdate(BaseModel):
     receive_by: Optional[str] = None
     check_status: Optional[str] = None
     location: Optional[str] = None
-    project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    project_name: Optional[str] = Field(None, frozen=True) 
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
     
