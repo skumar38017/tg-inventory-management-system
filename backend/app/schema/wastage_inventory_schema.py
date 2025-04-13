@@ -164,7 +164,6 @@ class WastageInventoryOut(BaseModel):
         extra='ignore'
     )
 
-
 class WastageInventoryRedisIn(BaseModel):
     id: Optional[str]  = Field(None, frozen=True) 
     assign_to: Optional[str] = None
