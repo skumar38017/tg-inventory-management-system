@@ -182,7 +182,7 @@ class WastageInventoryService(WastageInventoryInterface):
             # Get all keys matching your project pattern
             keys = await self.redis.keys("wastage_inventory:*")
             
-            projects = []
+            wastage = []
             for key in keys:
                 data = await self.redis.get(key)
                 if data:
@@ -193,18 +193,18 @@ class WastageInventoryService(WastageInventoryInterface):
                             wastage_data['created_at'] = wastage_data['cretaed_at']                            
                         # Validate the data against your schema
                         validated_project = WastageInventoryRedisOut.model_validate(wastage_data)
-                        projects.append(validated_project)
+                        wastage.append(validated_project)
                     except ValidationError as ve:
                         logger.warning(f"Validation error for project {key}: {ve}")
                         continue
             
             # Sort by updated_at (descending)
-            projects.sort(key=lambda x: x.updated_at, reverse=True)
+            wastage.sort(key=lambda x: x.updated_at, reverse=True)
             
             # Apply pagination
-            paginated_projects = projects[skip:skip+500]  # Assuming page size of 100
+            paginated_wastage = wastage[skip:skip+1000]  # Assuming page size of 1000
             
-            return paginated_projects
+            return paginated_wastage
         except Exception as e:
             logger.error(f"Redis error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Redis error")
@@ -383,34 +383,52 @@ class WastageInventoryService(WastageInventoryInterface):
     #  Show all WastageInventory from local Redis 
     async def show_all_wastage_inventory_from_redis(self, skip: int = 0) -> List[WastageInventoryRedisOut]:
         try:
-            # Get all keys matching your project pattern
+            # Get all keys matching the pattern
             keys = await self.redis.keys("wastage_inventory:*")
             
-            projects = []
+            wastage_items = []
             for key in keys:
                 data = await self.redis.get(key)
                 if data:
                     try:
                         wastage_data = json.loads(data)
-                        # Handle the 'cretaed_at' typo if present
-                        if 'cretaed_at' in wastage_data and wastage_data['cretaed_at'] is not None:
-                            wastage_data['created_at'] = wastage_data['cretaed_at']                            
-                        # Validate the data against your schema
-                        validated_project = WastageInventoryRedisOut.model_validate(wastage_data)
-                        projects.append(validated_project)
+                        
+                        # Fix any typos in field names
+                        if 'cretaed_at' in wastage_data:
+                            wastage_data['created_at'] = wastage_data.pop('cretaed_at')
+                        
+                        # Convert string datetimes to datetime objects for comparison
+                        if 'updated_at' in wastage_data and isinstance(wastage_data['updated_at'], str):
+                            try:
+                                wastage_data['updated_at'] = datetime.fromisoformat(wastage_data['updated_at'])
+                            except ValueError:
+                                wastage_data['updated_at'] = datetime.now()
+                        
+                        # Validate the data
+                        validated_item = WastageInventoryRedisOut.model_validate(wastage_data)
+                        wastage_items.append(validated_item)
                     except ValidationError as ve:
-                        logger.warning(f"Validation error for project {key}: {ve}")
+                        logger.warning(f"Validation error for key {key}: {ve}")
                         continue
             
-            # Sort by updated_at (descending)
-            projects.sort(key=lambda x: x.updated_at, reverse=True)
+            # Sort by updated_at (descending) with proper datetime handling
+            wastage_items.sort(
+                key=lambda x: (
+                    x.updated_at.replace(tzinfo=None) 
+                    if x.updated_at and x.updated_at.tzinfo 
+                    else x.updated_at
+                ) if x.updated_at else datetime.min,
+                reverse=True
+            )
             
             # Apply pagination
-            paginated_projects = projects[skip:skip+250]  # Assuming page size of 100
+            paginated_items = wastage_items[skip : skip + 1000]  # Assuming page size of 1000
             
-            return paginated_projects                        
+            return paginated_items
+                            
         except Exception as e:            
             logger.error(f"Redis error fetching entries: {e}")
+            raise ValueError(f"Error retrieving wastage inventory: {e}")
 
     # Delete an wastage inventory
     async def delete_wastage_inventory(

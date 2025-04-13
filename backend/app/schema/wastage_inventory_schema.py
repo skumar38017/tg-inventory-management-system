@@ -142,11 +142,19 @@ class WastageInventoryOut(BaseModel):
     created_at: Optional[datetime]  = Field(None, frozen=True) 
     updated_at: Optional[datetime] = None
 
-    @field_validator('created_at', 'updated_at', mode='before')
-    def ensure_timezone_naive(cls, v):
-        if isinstance(v, datetime):
-            return v.replace(tzinfo=None)
-        return v
+    @field_validator('updated_at', 'created_at', mode='before')
+    def parse_datetime(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                # Parse and make timezone-naive for consistent comparison
+                return datetime.fromisoformat(value).replace(tzinfo=None)
+            except ValueError:
+                return None
+        elif isinstance(value, datetime):
+            return value.replace(tzinfo=None)
+        return value
     
     model_config = ConfigDict(
         json_encoders={
@@ -215,11 +223,11 @@ class WastageInventoryRedisIn(BaseModel):
 class WastageInventoryRedisOut(WastageInventoryOut):
     success: Optional[bool] = Field(None, exclude=True) 
     message: Optional[str] = Field(None, exclude=True)  
-
+    
     model_config = ConfigDict(
         json_encoders={
-            date: lambda v: v.isoformat(),
-            datetime: lambda v: v.isoformat(),
+            datetime: lambda v: v.isoformat() if v else None,
+            date: lambda v: v.isoformat() if v else None,
         },
         extra='ignore'
     )

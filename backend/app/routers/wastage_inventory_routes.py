@@ -104,6 +104,7 @@ async def show_wastage_inventory(
 ):
     """Get all inventory items"""
     try:
+        logger.info("Fetching all inventory data from Redis")
         items = await service.show_all_wastage_inventory_from_redis()
         
         if not items:
