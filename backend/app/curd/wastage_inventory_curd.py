@@ -343,8 +343,6 @@ class WastageInventoryService(WastageInventoryInterface):
                 'wastage_barcode': existing_dict.get('wastage_barcode'),
                 'wastage_barcode_unique_code': existing_dict.get('wastage_barcode_unique_code'),
                 'created_at': existing_dict.get('created_at'),
-                'wastage_by': existing_dict.get('wastage_by'),
-                'wastage_date': existing_dict.get('wastage_date')
             }
             
             # Update only allowed fields (remove the path parameters)
