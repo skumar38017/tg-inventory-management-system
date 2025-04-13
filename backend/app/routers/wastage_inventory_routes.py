@@ -172,7 +172,7 @@ async def search_wastage_inventory(
     db: AsyncSession = Depends(get_async_db),
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
-    results = await service.search_entries_by_fields(
+    results = await service.search_wastage_by_fields(
         db,
         inventory_id=inventory_id,
         project_id=project_id,

@@ -46,7 +46,7 @@ class WastageInventoryInterface:
         pass
 
 
-    async def search_entries_by_employee_name(self, db: AsyncSession, search_filter: WastageInventorySearch) -> List[WastageInventoryRedisOut]:
+    async def search_wastage_by_fields(self, db: AsyncSession, search_filter: WastageInventorySearch) -> List[WastageInventoryRedisOut]:
         """
         Search all entries in local Redis by employee_name.
         Returns a list of AssignmentInventoryRedisOut schema instances.
