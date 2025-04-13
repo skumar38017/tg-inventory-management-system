@@ -111,6 +111,7 @@ class WastageInventoryService(WastageInventoryInterface):
             raise
 
         # Create new entry of wastage inventory for to_event which is directly stored in redis
+    
     async def create_wastage_inventory(self,  db: AsyncSession, item: Union[WastageInventoryCreate, dict]) -> WastageInventory:
         try:
             if isinstance(item, WastageInventoryCreate):
@@ -459,4 +460,53 @@ class WastageInventoryService(WastageInventoryInterface):
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to delete wastage inventory: {str(e)}"
-            )           
+            )
+        
+    # Get the wastage inventory by it's Employee name inventory_id
+    async def get_wastage_inventory(
+        self, 
+        employee_name: str, 
+        inventory_id: str
+    ) -> WastageInventoryRedisOut:
+        try:
+            # Create the Redis key pattern
+            redis_key = f"wastage_inventory:{employee_name}{inventory_id}"
+            
+            # Alternative pattern if the key might be different
+            # redis_key_pattern = f"wastage_inventory:*{inventory_id}"
+            # matching_keys = await self.redis.keys(redis_key_pattern)
+            # if matching_keys:
+            #     redis_key = matching_keys[0]
+            
+            # Get data from Redis
+            wastage_data = await self.redis.get(redis_key)
+            
+            if not wastage_data:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Wastage not found with key: {redis_key}"
+                )
+            
+            # Parse and validate the data
+            try:
+                data = json.loads(wastage_data)
+                # Handle any field name inconsistencies
+                if 'cretaed_at' in data:
+                    data['created_at'] = data.pop('cretaed_at')
+                
+                return WastageInventoryRedisOut.model_validate(data)
+            except ValidationError as ve:
+                logger.error(f"Validation error for key {redis_key}: {ve}")
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Invalid data format in Redis: {str(ve)}"
+                )
+                
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error fetching wastage inventory: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error fetching wastage inventory: {str(e)}"
+            )

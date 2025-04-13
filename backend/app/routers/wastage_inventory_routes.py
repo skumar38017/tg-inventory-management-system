@@ -273,21 +273,21 @@ async def delete_wastage_inventory(
 @router.get("/get-wastage-inventory/{employee_name}/{inventory_id}/",
             response_model=WastageInventoryRedisOut,
             status_code=200,
-            summary="Get wastage inventory by multiple fields",
-            description="Get inventory wastage by inventory_id, project_id, product_id, or employee_name",
+            summary="Get wastage inventory by employee and inventory ID",
+            description="Get inventory wastage by employee_name and inventory_id",
             response_model_exclude_unset=True,
-            tags=["get Inventory (Redis)"]
+            tags=["Get Inventory (Redis)"]
 )
 async def get_wastage_inventory_by_id(
     employee_name: str,
     inventory_id: str,
-    db: AsyncSession = Depends(get_async_db),
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
-    """Fetch inventory data filtered by search criteria from the API"""
+    """Fetch inventory data from Redis by employee name and inventory ID"""
     try:
-        item = await service.get_wastage_inventory_by_id(db, employee_name, inventory_id)
-        return item
+        return await service.get_wastage_inventory(employee_name, inventory_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching inventory item: {e}") 
         raise HTTPException(status_code=500, detail=str(e))
