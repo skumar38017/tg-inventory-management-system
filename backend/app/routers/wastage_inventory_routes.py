@@ -244,30 +244,30 @@ async def update_wastage_inventory(
 @router.delete(
     "/delete-wastage-inventory/{employee_name}/{inventory_id}/",
     status_code=200,
-    response_model=WastageInventoryRedisOut,  # Define this model if needed
+    response_model=WastageInventoryRedisOut,  # Or create a proper response model
     summary="Delete wastage inventory",
     description="Delete an inventory wastage by employee name and inventory ID",
-    tags=["delete Inventory (Redis)"]
+    tags=["Delete Inventory (Redis)"]
 )
 async def delete_wastage_inventory(
     employee_name: str,
     inventory_id: str,
-    db: AsyncSession = Depends(get_async_db),
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
-    deleted = await service.delete_wastage_inventory(
-        db=db,
-        employee_name=employee_name,
-        inventory_id=inventory_id
-    )
-    
-    if not deleted:
-        raise HTTPException(
-            status_code=404,
-            detail="Wastage not found"
+    try:
+        result = await service.delete_wastage_inventory(
+            employee_name=employee_name,
+            inventory_id=inventory_id
         )
-    
-    return {"status": "success", "message": "Wastage deleted"}
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting wastage inventory: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e))
 
 # GET: Get inventory by inventory_id, and employee_name
 @router.get("/get-wastage-inventory/{employee_name}/{inventory_id}/",

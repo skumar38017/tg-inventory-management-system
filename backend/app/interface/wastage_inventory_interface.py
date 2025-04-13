@@ -76,10 +76,6 @@ class WastageInventoryInterface:
         pass
 
     # ------------------------------------------------------------------------------------------------
-    async def delete_assigned_inventory(
-        self,
-        db: AsyncSession,
-        employee_name: str,
-        update_data: WastageInventoryUpdate
-    ) -> Optional[WastageInventoryRedisOut]:
+    async def delete_wastage_inventory(self, db: AsyncSession, employee_name: str, inventory_id: str) -> Optional[WastageInventoryRedisOut]:
+        """Delete a wastage inventory by employee name and inventory ID"""
         pass
