@@ -260,7 +260,7 @@ async def update_assigned_inventory(
     response_model=AssignmentInventoryRedisOut,  # Define this model if needed
     summary="Delete assigned inventory",
     description="Delete an inventory assignment by employee name and inventory ID",
-    tags=["delete Inventory (Redis)"]
+    tags=["Delete Inventory (Redis)"]
 )
 async def delete_assigned_inventory(
     employee_name: str,
@@ -289,7 +289,7 @@ async def delete_assigned_inventory(
             summary="Get assigned inventory by multiple fields",
             description="Get inventory assignment by inventory_id, project_id, product_id, or employee_name",
             response_model_exclude_unset=True,
-            tags=["get Inventory (Redis)"]
+            tags=["Get Inventory (Redis)"]
 )
 async def get_assigned_inventory_by_id(
     employee_name: str,
