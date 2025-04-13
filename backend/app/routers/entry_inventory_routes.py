@@ -41,6 +41,7 @@ logger.setLevel(logging.INFO)
     summary="Filter inventory by date range",
     description="Get inventory items within a specific date range",
     response_model_exclude_unset=True,
+    tags=["Filter Inventory (Redis)"]
 )
 async def get_inventory_by_date_range(
     from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
@@ -91,7 +92,9 @@ async def get_inventory_by_date_range(
     responses={
         200: {"description": "Successfully synced with Redis"},
         500: {"description": "Internal server error during sync"}
-    }
+    },
+    tags=["Sync Inventory (Redis)"]
+
 )
 async def sync_redis(
     service: EntryInventoryService = Depends(get_entry_inventory_service),
@@ -140,7 +143,8 @@ async def sync_redis(
         200: {"description": "Successfully retrieved cached data"},
         404: {"description": "No cached data found"},
         500: {"description": "Internal server error during retrieval"}
-    }
+    },
+    tags=["Show all Inventory (Redis)"]
 )
 async def show_all_redis(
     service: EntryInventoryService = Depends(get_entry_inventory_service)
@@ -200,6 +204,7 @@ async def show_all_redis(
     summary="Create a new entry in the inventory",
     description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
     response_model_exclude_unset=True,
+    tags=["create Inventory (Redis)"]
 )
 async def create_inventory_item_route(
     item: EntryInventoryCreate,
@@ -228,6 +233,7 @@ async def create_inventory_item_route(
             summary="Get an entry from the inventory by its inventory_id",
             description="This endpoint is used to get an entry from the inventory by its inventory_id. It takes a inventory_id as a parameter and returns the entry with the specified inventory_id.",
             response_model_exclude_unset=True,
+            tags=["Get Inventory (Redis)"]
 )
 async def get_inventory_item(
     inventory_id: str, 
@@ -246,6 +252,7 @@ async def get_inventory_item(
             summary="Get all entries from the inventory",
             description="This endpoint is used to get all entries from the inventory. It returns a list of entries.",
             response_model_exclude_unset=True,
+            tags=["Get Inventory (Redis)"]
 )
 async def get_all_entire_inventory(
     skip: int = 0,
@@ -324,6 +331,7 @@ async def search_inventory(
             summary="Update an entry in the inventory",
             description="This endpoint is used to update an entry in the inventory. It takes a inventory_id and a JSON payload with the updated fields and values, and returns the updated entry.",
             response_model_exclude_unset=True,
+            tags=["update Inventory (Redis)"]
 )
 async def update_inventory_item(
     inventory_id: str,
@@ -349,6 +357,7 @@ async def update_inventory_item(
                status_code=200,
                summary="Delete an entry from the inventory",
                description="This endpoint is used to delete an entry from the inventory. It takes a UUID as a parameter and deletes the entry with the specified UUID.",
+               tags=["Delete Inventory (Redis)"]
                )
 async def delete_inventory_item(
     inventory_id: str,
@@ -381,6 +390,7 @@ async def delete_inventory_item(
             summary="List all entries from the inventory",
             description="This endpoint is used to list all entries from the inventory. It returns a list of entries.",
             response_model_exclude_unset=True,
+            tags=["List Inventory (Redis)"]
             )
 async def list_all_entries(
     db: AsyncSession = Depends(get_async_db),
