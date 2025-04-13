@@ -434,15 +434,15 @@ class WastageInventoryService(WastageInventoryInterface):
         self,
         employee_name: str,
         inventory_id: str
-    ) -> None:
+    ) -> WastageInventoryRedisOut:
         try:
             # Format inventory_id if needed
             if not inventory_id.startswith('INV'):
                 inventory_id = f"INV{inventory_id}"
             
-            # Create the Redis key pattern
+            # Create the Redis key pattern (match your actual key structure)
             redis_key = f"wastage_inventory:{employee_name}{inventory_id}"
-            
+                        
             # Check if the wastage inventory exists
             if not await self.redis.exists(redis_key):
                 raise HTTPException(
@@ -450,8 +450,18 @@ class WastageInventoryService(WastageInventoryInterface):
                     detail=f"Wastage not found for employee {employee_name} and inventory {inventory_id}"
                 )
             
+            # Get the data before deleting (for returning)
+            wastage_data = await self.redis.get(redis_key)
+            deleted_item = json.loads(wastage_data) if wastage_data else None
+            
             # Delete the specific wastage inventory
             await self.redis.delete(redis_key)
+            
+            return {
+                "status": "success",
+                "message": "Wastage deleted successfully",
+                "deleted_item": deleted_item
+            }
             
         except HTTPException:
             raise
