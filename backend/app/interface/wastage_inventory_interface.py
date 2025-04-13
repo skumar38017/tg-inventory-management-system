@@ -69,7 +69,7 @@ class WastageInventoryInterface:
         """
         pass
 
-    async def get_by_employee_name(self, db: AsyncSession, employee_name: str) -> Optional[WastageInventoryRedisOut]:
+    async def get_wastage_inventory(self, db: AsyncSession, employee_name: str, inventory_id: str) -> Optional[WastageInventoryRedisOut]:
         """Get WastageInventory entry by its employee_name (not UUID).
         Returns single WastageInventoryRedisOut instance or None if not found.
         """
