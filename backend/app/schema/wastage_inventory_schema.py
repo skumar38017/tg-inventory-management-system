@@ -264,7 +264,6 @@ class WastageInventoryUpdate(BaseModel):
     wastage_date: Optional[date] = None
     wastage_approved_by: Optional[str] = None
     wastage_status: Optional[str] = None
-    
     updated_at: Optional[datetime] = None
        
     model_config = ConfigDict(
