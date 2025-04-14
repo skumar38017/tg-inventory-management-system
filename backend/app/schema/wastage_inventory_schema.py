@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, field_validator, ConfigDict, Field
 from datetime import datetime, date, timezone
-from typing import Optional, Union, Dict, Any
+from typing import Optional, Union, Dict, Any, List
 import uuid
 import json
 import re
@@ -301,3 +301,4 @@ class RedisSearchResult(BaseModel):
     model_config = ConfigDict(
         extra="allow"
     )
+

@@ -17,10 +17,12 @@ from backend.app.schema.wastage_inventory_schema import (
     WastageInventorySearch,
     RedisSearchResult
 )
+from typing import Optional, Union, Dict, Any
 from pydantic import ValidationError
 from backend.app.models.wastege_inventory_model import WastageInventory
 from backend.app.curd.wastage_inventory_curd import WastageInventoryService
 from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
+from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
 # Dependency to get the Wastage inventory service
 def get_Wastage_inventory_service() -> WastageInventoryService:
@@ -293,23 +295,27 @@ async def get_wastage_inventory_by_id(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-#  Drop Down search list option  ComboBox Widget for wastage inventory
-@router.get("/wastage-inventory-ComboBox/",
-            response_model=List[WastageInventoryRedisOut],
+#  Drop Down search list option  ComboBox Widget for inventory_name across multiple key patterns
+@router.get("/inventory-combobox/",
+            response_model=InventoryComboBoxResponse,
             status_code=200,
-            summary="Load wastage inventory from the database",
-            description="This endpoint is used to get all entries from the database. It returns a list of entries.",
-            response_model_exclude_unset=True,
-            tags=["Show all ComboBox  option  list (Redis)"]
+            summary="Search inventory items",
+            description="Search inventory items across multiple Redis key patterns",
+            tags=["Inventory Search"]
 )
-async def wastage_inventory_ComboBox(
+async def inventory_ComboBox(
+    search_term: Optional[str] = None,
+    skip: int = 0,
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
-    """Fetch inventory data from Redis by inventory name"""
+    """Search inventory items by name across multiple key patterns"""
     try:
-        return await service.wastage_inventory_ComboBox()
+        return await service.inventory_ComboBox(
+            search_term=search_term,
+            skip=skip
+        )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching inventory item: {e}") 
-        raise HTTPException(status_code=500, detail=str(e)) 
+        logger.error(f"Error searching inventory items: {e}") 
+        raise HTTPException(status_code=500, detail=str(e))
