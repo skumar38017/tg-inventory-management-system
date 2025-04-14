@@ -243,6 +243,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 "inventory:*", 
                 "inventory_item:*",
                 "to_event_inventory:*"
+                "wastage_inventory:*",
             ]
 
             # Scan Redis
