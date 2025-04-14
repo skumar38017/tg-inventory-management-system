@@ -1,4 +1,4 @@
-# backend/app/validations/inventory_validations.py
+# backend/app/utils/field_validators.py
 import re
 from datetime import datetime, date, timezone
 from typing import Optional, Union, Dict, Any, Tuple
@@ -6,9 +6,8 @@ from enum import Enum
 from pydantic import field_validator, model_validator, validator, ValidationInfo
 
 # ---------------------------- Common Enums ----------------------------
-class AssignmentStatusEnum(str, Enum):
+class StatusEnum(str, Enum):
     ASSIGNED = "assigned"
-    RETURNED = "returned"
     SUBMITTED = "submitted"
     GRADED = "graded"
     PENDING_REVIEW = "pending_review"
@@ -17,7 +16,6 @@ class AssignmentStatusEnum(str, Enum):
     OVERDUE = "overdue"
     EXEMPT = "exempt"
     RESUBMITTED = "resubmitted"
-    IN_PROGRESS = "in_progress"
     NOT_STARTED = "not_started"
     COMPLETED = "completed"
     CANCELED = "canceled"
@@ -50,17 +48,12 @@ class AssignmentStatusEnum(str, Enum):
     RECOUNTED = "recounted"
     UNGRADED = "ungraded"
     ADJUSTED = "adjusted"
-
-class EventStatusEnum(str, Enum):
     SCHEDULED = "Scheduled"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
     CANCELLED = "Cancelled"
     INHOUSE = "In House"
     OUTSIDE = "Outside"
     PURCHASED = "Purchased"
     RETURNED = "Returned"
-    REJECTED = "Rejected"
     PENDING = "Pending"
     FAILED = "Failed"
     APPROVED = "Approved"
@@ -78,7 +71,6 @@ class EventStatusEnum(str, Enum):
     INACTIVE = "Inactive"
     RESERVED = "Reserved"
     WAITLISTED = "Waitlisted"
-    IN_HOUSE = "In House"
     POSTPONED = "Postponed"
     CONFIRMED = "Confirmed"
     TENTATIVE = "Tentative"
@@ -102,7 +94,6 @@ class EventStatusEnum(str, Enum):
     UNPUBLISHED = "Unpublished"
     HIDDEN = "Hidden"
     VISIBLE = "Visible"
-    ARCHIVED = "Archived"
     SUSPENDED = "Suspended"
     REACTIVATED = "Reactivated"
     REMOVED = "Removed"
@@ -352,7 +343,7 @@ class EntryInventoryValidations(BaseValidators):
             return v.lower()
         return "false"
 
-    @field_validator('barcode_image_url', pre=True)
+    @field_validator('barcode_image_url', mode='before')
     def clean_barcode_url(cls, v):
         return cls.empty_string_to_none(v.replace('\"', ''))
 

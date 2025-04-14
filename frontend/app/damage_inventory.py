@@ -11,6 +11,8 @@ from .api_request.damage_inventory_api_request import (
     load_submitted_wastage_inventory,
     show_all_wastage_inventory
 )
+# Import StatusEnum from validations
+from backend.app.utils.field_validators import StatusEnum
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,9 @@ class DamageWindow:
         self.parent = parent
         self.window = tk.Toplevel(parent)
         self.window.title("Inventory Damage/Waste Management")
+        
+        # Get status options from StatusEnum
+        self.status_options = [status.value for status in StatusEnum]
         
         # Define the fields based on API schema
         self.fields = [
@@ -91,15 +96,22 @@ class DamageWindow:
             col = (i % 3) * 2
             
             tk.Label(input_frame, text=display + ":").grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
-            entry = tk.Entry(input_frame, width=25)
-            entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
-            self.entries[field] = entry
+            
+            # Use Combobox for status and wastage_status fields
+            if field in ["status", "wastage_status"]:
+                combo = ttk.Combobox(input_frame, width=23, values=self.status_options)
+                combo.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.entries[field] = combo
+            else:
+                entry = tk.Entry(input_frame, width=25)
+                entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.entries[field] = entry
             
             # Set default values for certain fields
             if field == "wastage_date":
-                entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
+                self.entries[field].insert(0, datetime.now().strftime("%Y-%m-%d"))
             elif field == "status":
-                entry.insert(0, "damaged")
+                self.entries[field].set("damaged")
         
         # Button frame
         button_frame = tk.Frame(main_frame)
@@ -168,13 +180,17 @@ class DamageWindow:
             if not messagebox.askyesno("Confirm", "Discard changes and create new entry?"):
                 return
         
-        for entry in self.entries.values():
-            entry.config(state=tk.NORMAL)  # Ensure all fields are editable
-            entry.delete(0, tk.END)
+        for field, widget in self.entries.items():
+            if isinstance(widget, ttk.Combobox):
+                widget.set('')
+                widget.config(state='normal')
+            else:
+                widget.config(state='normal')
+                widget.delete(0, tk.END)
         
         # Set default values
         self.entries["wastage_date"].insert(0, datetime.now().strftime("%Y-%m-%d"))
-        self.entries["status"].insert(0, "damaged")
+        self.entries["status"].set("damaged")
         
         self.edit_mode = False
         self.current_edit_id = None
@@ -212,8 +228,11 @@ class DamageWindow:
         
         # Populate fields with selected item
         for field, value in zip(self.fields, values):
-            self.entries[field].delete(0, tk.END)
-            self.entries[field].insert(0, value)
+            if isinstance(self.entries[field], ttk.Combobox):
+                self.entries[field].set(value)
+            else:
+                self.entries[field].delete(0, tk.END)
+                self.entries[field].insert(0, value)
         
         # Make read-only fields for fields that shouldn't be edited
         for field in ["inventory_id", "employee_name", "product_id", "project_id"]:
@@ -269,8 +288,11 @@ class DamageWindow:
         
         # Prepare data from form
         data = {}
-        for field, entry in self.entries.items():
-            data[field] = entry.get().strip()
+        for field, widget in self.entries.items():
+            if isinstance(widget, ttk.Combobox):
+                data[field] = widget.get().strip()
+            else:
+                data[field] = widget.get().strip()
         
         # Validate required fields
         if not data["inventory_id"] or not data["employee_name"]:

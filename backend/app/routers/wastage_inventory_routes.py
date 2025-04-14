@@ -291,3 +291,25 @@ async def get_wastage_inventory_by_id(
     except Exception as e:
         logger.error(f"Error fetching inventory item: {e}") 
         raise HTTPException(status_code=500, detail=str(e))
+
+
+#  Drop Down search list option  ComboBox Widget for wastage inventory
+@router.get("/wastage-inventory-ComboBox/",
+            response_model=List[WastageInventoryRedisOut],
+            status_code=200,
+            summary="Load wastage inventory from the database",
+            description="This endpoint is used to get all entries from the database. It returns a list of entries.",
+            response_model_exclude_unset=True,
+            tags=["Show all ComboBox  option  list (Redis)"]
+)
+async def wastage_inventory_ComboBox(
+    service: WastageInventoryService = Depends(get_Wastage_inventory_service)
+):
+    """Fetch inventory data from Redis by inventory name"""
+    try:
+        return await service.wastage_inventory_ComboBox()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching inventory item: {e}") 
+        raise HTTPException(status_code=500, detail=str(e)) 

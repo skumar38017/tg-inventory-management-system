@@ -254,7 +254,8 @@ class WastageInventoryService(WastageInventoryInterface):
                 "from_event_inventory:*",
                 "inventory:*", 
                 "inventory_item:*",
-                "to_event_inventory:*"
+                "to_event_inventory:*",
+                "assignment:*",
             ]
 
             # Scan Redis
@@ -520,3 +521,55 @@ class WastageInventoryService(WastageInventoryInterface):
                 status_code=500,
                 detail=f"Error fetching wastage inventory: {str(e)}"
             )
+        
+    #  Drop Down search list option  ComboBox Widget for wastage inventory directly from redis
+    async def wastage_inventory_ComboBox(self, db: AsyncSession, skip: int = 0, keys: str = None) -> List[WastageInventoryRedisOut]:
+        try:
+            # Get all keys matching your project pattern
+            keys = await self.redis.keys(
+            # Determine key patterns to search
+            key_patterns = [keys] if keys else [
+                "wastage_inventory:*",
+                "from_event_inventory:*",
+                "inventory:*", 
+                "inventory_item:*",
+                "to_event_inventory:*",
+                "assignment:*",
+            ])
+
+            
+            wastage_items = []
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        wastage_data = json.loads(data)
+                        # Handle the 'cretaed_at' typo if present
+                        if 'cretaed_at' in wastage_data and wastage_data['cretaed_at'] is not None:
+                            wastage_data['created_at'] = wastage_data.pop('cretaed_at')
+                        
+                        # Validate the data
+                        validated_item = WastageInventoryRedisOut.model_validate(wastage_data)
+                        wastage_items.append(validated_item)
+                    except ValidationError as ve:
+                        logger.warning(f"Validation error for key {key}: {ve}")
+                        continue
+            
+            # Sort by updated_at (descending) with proper datetime handling
+            wastage_items.sort(
+                key=lambda x: (
+                    x.updated_at.replace(tzinfo=None) 
+                    if x.updated_at and x.updated_at.tzinfo 
+                    else x.updated_at
+                ) if x.updated_at else datetime.min,
+                reverse=True
+            )
+            
+            # Apply pagination
+            paginated_items = wastage_items[skip : skip + 1000]  # Assuming page size of 1000
+            
+            return paginated_items
+                            
+        except Exception as e:            
+            logger.error(f"Redis error fetching entries: {e}")            
+            raise ValueError(f"Error retrieving wastage inventory: {e}")
