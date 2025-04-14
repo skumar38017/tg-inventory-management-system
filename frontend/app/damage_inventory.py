@@ -3,6 +3,7 @@ from tkinter import messagebox, ttk
 from datetime import datetime
 import platform
 import logging
+from tkcalendar import Calendar, DateEntry
 from .api_request.damage_inventory_api_request import (
     search_wastage_inventory_by_id,
     submit_wastage_inventory,
@@ -98,10 +99,16 @@ class DamageWindow:
             tk.Label(input_frame, text=display + ":").grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
             
             # Use Combobox for status and wastage_status fields
-            if field in ["status", "wastage_status"]:
+            if field in ["status", "wastage_status", "check_status"]:
                 combo = ttk.Combobox(input_frame, width=23, values=self.status_options)
                 combo.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
                 self.entries[field] = combo
+            # Use DateEntry for date fields
+            elif field in ["wastage_date", "event_date", "receive_date"]:
+                date_entry = DateEntry(input_frame, width=22, background='darkblue',
+                                      foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
+                date_entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.entries[field] = date_entry
             else:
                 entry = tk.Entry(input_frame, width=25)
                 entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
@@ -109,7 +116,7 @@ class DamageWindow:
             
             # Set default values for certain fields
             if field == "wastage_date":
-                self.entries[field].insert(0, datetime.now().strftime("%Y-%m-%d"))
+                self.entries[field].set_date(datetime.now().date())
             elif field == "status":
                 self.entries[field].set("damaged")
         
@@ -184,12 +191,15 @@ class DamageWindow:
             if isinstance(widget, ttk.Combobox):
                 widget.set('')
                 widget.config(state='normal')
+            elif isinstance(widget, DateEntry):
+                widget.set_date(datetime.now().date())
+                widget.config(state='normal')
             else:
                 widget.config(state='normal')
                 widget.delete(0, tk.END)
         
         # Set default values
-        self.entries["wastage_date"].insert(0, datetime.now().strftime("%Y-%m-%d"))
+        self.entries["wastage_date"].set_date(datetime.now().date())
         self.entries["status"].set("damaged")
         
         self.edit_mode = False
@@ -230,6 +240,12 @@ class DamageWindow:
         for field, value in zip(self.fields, values):
             if isinstance(self.entries[field], ttk.Combobox):
                 self.entries[field].set(value)
+            elif isinstance(self.entries[field], DateEntry):
+                try:
+                    date_val = datetime.strptime(value, "%Y-%m-%d").date()
+                    self.entries[field].set_date(date_val)
+                except (ValueError, AttributeError):
+                    pass
             else:
                 self.entries[field].delete(0, tk.END)
                 self.entries[field].insert(0, value)
@@ -291,6 +307,8 @@ class DamageWindow:
         for field, widget in self.entries.items():
             if isinstance(widget, ttk.Combobox):
                 data[field] = widget.get().strip()
+            elif isinstance(widget, DateEntry):
+                data[field] = widget.get_date().strftime("%Y-%m-%d")
             else:
                 data[field] = widget.get().strip()
         
@@ -322,7 +340,7 @@ class DamageWindow:
             "description": self.entries["description"].get().strip(),
             "quantity": self.entries["quantity"].get().strip(),
             "status": self.entries["status"].get().strip(),
-            "receive_date": self.entries["receive_date"].get().strip(),
+            "receive_date": self.entries["receive_date"].get_date().strftime("%Y-%m-%d"),
             "receive_by": self.entries["receive_by"].get().strip(),
             "check_status": self.entries["check_status"].get().strip(),
             "location": self.entries["location"].get().strip(),
@@ -330,7 +348,7 @@ class DamageWindow:
             "comment": self.entries["comment"].get().strip(),
             "zone_activity": self.entries["zone_activity"].get().strip(),
             "wastage_reason": self.entries["wastage_reason"].get().strip(),
-            "wastage_date": self.entries["wastage_date"].get().strip(),
+            "wastage_date": self.entries["wastage_date"].get_date().strftime("%Y-%m-%d"),
             "wastage_approved_by": self.entries["wastage_approved_by"].get().strip(),
             "wastage_status": self.entries["wastage_status"].get().strip()
         }
