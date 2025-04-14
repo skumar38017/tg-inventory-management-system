@@ -12,7 +12,6 @@ from .api_request.damage_inventory_api_request import (
     load_submitted_wastage_inventory,
     show_all_wastage_inventory
 )
-# Import StatusEnum from validations
 from backend.app.utils.field_validators import StatusEnum
 
 logger = logging.getLogger(__name__)
@@ -47,6 +46,10 @@ class DamageWindow:
         self.edit_mode = False
         self.current_edit_id = None
         self.current_edit_employee = None
+        
+        # Data storage for comboboxes
+        self.inventory_data = []
+        self.project_data = []
         
         # Hide parent window (optional)
         self.parent.withdraw()
@@ -98,8 +101,27 @@ class DamageWindow:
             
             tk.Label(input_frame, text=display + ":").grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
             
+            # Special handling for inventory_name and project_name
+            if field == "inventory_name":
+                self.inventory_name_combobox = ttk.Combobox(
+                    input_frame, 
+                    width=23,
+                    postcommand=self.update_inventory_combobox
+                )
+                self.inventory_name_combobox.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.inventory_name_combobox.bind("<<ComboboxSelected>>", self.on_inventory_selected)
+                self.entries[field] = self.inventory_name_combobox
+            elif field == "project_name":
+                self.project_name_combobox = ttk.Combobox(
+                    input_frame, 
+                    width=23,
+                    postcommand=self.update_project_combobox
+                )
+                self.project_name_combobox.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.project_name_combobox.bind("<<ComboboxSelected>>", self.on_project_selected)
+                self.entries[field] = self.project_name_combobox
             # Use Combobox for status and wastage_status fields
-            if field in ["status", "wastage_status", "check_status"]:
+            elif field in ["status", "wastage_status", "check_status"]:
                 combo = ttk.Combobox(input_frame, width=23, values=self.status_options)
                 combo.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
                 self.entries[field] = combo
@@ -180,6 +202,106 @@ class DamageWindow:
         # Configure grid weights
         results_frame.grid_rowconfigure(0, weight=1)
         results_frame.grid_columnconfigure(0, weight=1)
+
+    def update_inventory_combobox(self):
+        """Update inventory_name combobox with data from API"""
+        try:
+            # Get inventory data from API
+            self.inventory_data = show_all_wastage_inventory() or []
+            inventory_names = list({item.get('inventory_name', '') for item in self.inventory_data if item.get('inventory_name')})
+            self.inventory_name_combobox['values'] = inventory_names
+        except Exception as e:
+            logger.error(f"Error updating inventory combobox: {str(e)}")
+            messagebox.showerror("Error", "Failed to load inventory names")
+
+    def on_inventory_selected(self, event):
+        """Auto-fill fields when inventory name is selected"""
+        selected_name = self.inventory_name_combobox.get()
+        if not selected_name:
+            return
+            
+        # Find the selected inventory in our data
+        selected_inventory = next(
+            (item for item in self.inventory_data 
+             if item.get('inventory_name') == selected_name), 
+            None
+        )
+        
+        if selected_inventory:
+            # Auto-fill related fields
+            fields_to_fill = {
+                'product_id': selected_inventory.get('product_id', ''),
+                'sno': selected_inventory.get('sno', ''),
+                'inventory_id': selected_inventory.get('inventory_id', ''),
+                'project_id': selected_inventory.get('project_id', ''),
+                'project_name': selected_inventory.get('project_name', ''),
+                'description': selected_inventory.get('description', ''),
+                'quantity': selected_inventory.get('quantity', ''),
+                'location': selected_inventory.get('location', '')
+            }
+            
+            for field, value in fields_to_fill.items():
+                if field in self.entries:
+                    if isinstance(self.entries[field], ttk.Combobox):
+                        self.entries[field].set(value)
+                    elif isinstance(self.entries[field], DateEntry):
+                        try:
+                            if value:  # Only try to set date if there's a value
+                                date_val = datetime.strptime(value, "%Y-%m-%d").date()
+                                self.entries[field].set_date(date_val)
+                        except (ValueError, AttributeError):
+                            pass
+                    else:
+                        self.entries[field].delete(0, tk.END)
+                        self.entries[field].insert(0, value)
+
+    def update_project_combobox(self):
+        """Update project_name combobox with data from API"""
+        try:
+            # Get project data from API
+            self.project_data = show_all_wastage_inventory() or []
+            project_names = list({item.get('project_name', '') for item in self.project_data if item.get('project_name')})
+            self.project_name_combobox['values'] = project_names
+        except Exception as e:
+            logger.error(f"Error updating project combobox: {str(e)}")
+            messagebox.showerror("Error", "Failed to load project names")
+
+    def on_project_selected(self, event):
+        """Auto-fill fields when project name is selected"""
+        selected_name = self.project_name_combobox.get()
+        if not selected_name:
+            return
+            
+        # Find the selected project in our data
+        selected_project = next(
+            (item for item in self.project_data 
+             if item.get('project_name') == selected_name), 
+            None
+        )
+        
+        if selected_project:
+            # Auto-fill related fields
+            fields_to_fill = {
+                'project_id': selected_project.get('project_id', ''),
+                'event_date': selected_project.get('event_date', ''),
+                'location': selected_project.get('location', ''),
+                'zone_activity': selected_project.get('zone_activity', '')
+            }
+            
+            for field, value in fields_to_fill.items():
+                if field in self.entries:
+                    if isinstance(self.entries[field], ttk.Combobox):
+                        self.entries[field].set(value)
+                    elif isinstance(self.entries[field], DateEntry):
+                        try:
+                            if value:  # Only try to set date if there's a value
+                                date_val = datetime.strptime(value, "%Y-%m-%d").date()
+                                self.entries[field].set_date(date_val)
+                        except (ValueError, AttributeError):
+                            pass
+                    else:
+                        self.entries[field].delete(0, tk.END)
+                        self.entries[field].insert(0, value)
 
     def new_entry(self):
         """Clear all fields for a new entry"""
@@ -268,6 +390,10 @@ class DamageWindow:
         """Refresh all data from API"""
         results = show_all_wastage_inventory()
         self.display_results(results)
+        
+        # Also update our stored data for comboboxes
+        self.inventory_data = results or []
+        self.project_data = results or []
         
         logger.info("Data refreshed")
 

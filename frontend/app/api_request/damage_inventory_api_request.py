@@ -337,10 +337,10 @@ def delete_wastage_inventory(employee_name: str, inventory_id: str) -> bool:
         return False
     
 #  Drop Down search list option  ComboBox Widget for damage inventory directly from redis with related details of `inventory_id`
-async def inventory_ComboBox(self, search_term: str = None, skip: int = 0) -> List[Dict]:
+async def inventory_ComboBox(self, search_term: str = None) -> List[Dict]:
     """Search damage inventory from Redis by inventory name across multiple key patterns"""
     try:
-        response = make_api_request("GET", f"wastage_inventory_ComboBox/{search_term}/{skip}")
+        response = make_api_request("GET", f"inventory-combobox/{search_term}")
         response.raise_for_status()
         return format_wastage_inventory_item(response.json())
 

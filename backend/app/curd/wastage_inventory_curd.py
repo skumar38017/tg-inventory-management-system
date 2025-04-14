@@ -20,6 +20,7 @@ from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
 from typing import Union
 from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
+from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -523,53 +524,56 @@ class WastageInventoryService(WastageInventoryInterface):
             )
         
     #  Drop Down search list option  ComboBox Widget for wastage inventory directly from redis
-    async def wastage_inventory_ComboBox(self, db: AsyncSession, skip: int = 0, keys: str = None) -> List[WastageInventoryRedisOut]:
+    async def inventory_ComboBox(self, search_term: str = None, skip: int = 0) -> InventoryComboBoxResponse:
         try:
-            # Get all keys matching your project pattern
-            keys = await self.redis.keys(
-            # Determine key patterns to search
-            key_patterns = [keys] if keys else [
+            key_patterns = [
+                "inventory:*",
                 "wastage_inventory:*",
                 "from_event_inventory:*",
-                "inventory:*", 
-                "inventory_item:*",
                 "to_event_inventory:*",
-                "assignment:*",
-            ])
+                "assignment:*"
+            ]
 
+            results = []
             
-            wastage_items = []
-            for key in keys:
-                data = await self.redis.get(key)
-                if data:
-                    try:
-                        wastage_data = json.loads(data)
-                        # Handle the 'cretaed_at' typo if present
-                        if 'cretaed_at' in wastage_data and wastage_data['cretaed_at'] is not None:
-                            wastage_data['created_at'] = wastage_data.pop('cretaed_at')
-                        
-                        # Validate the data
-                        validated_item = WastageInventoryRedisOut.model_validate(wastage_data)
-                        wastage_items.append(validated_item)
-                    except ValidationError as ve:
-                        logger.warning(f"Validation error for key {key}: {ve}")
-                        continue
+            for pattern in key_patterns:
+                keys = await self.redis.keys(pattern)
+                for key in keys:
+                    data = await self.redis.get(key)
+                    if data:
+                        item_data = json.loads(data)
+                        # Check both 'name' and 'inventory_name' fields
+                        item_name = item_data.get("name") or item_data.get("inventory_name")
+                        if search_term:
+                            if item_name and search_term.lower() in item_name.lower():
+                                results.append({
+                                    "key_type": pattern.split(":")[0],
+                                    **item_data  # Include all item data
+                                })
+                        else:
+                            results.append({
+                                "key_type": pattern.split(":")[0],
+                                **item_data
+                            })
             
-            # Sort by updated_at (descending) with proper datetime handling
-            wastage_items.sort(
+            # Sort by updated_at if available
+            results.sort(
                 key=lambda x: (
-                    x.updated_at.replace(tzinfo=None) 
-                    if x.updated_at and x.updated_at.tzinfo 
-                    else x.updated_at
-                ) if x.updated_at else datetime.min,
+                    datetime.fromisoformat(x.get("updated_at")).replace(tzinfo=None)
+                    if x.get("updated_at") 
+                    else datetime.min
+                ),
                 reverse=True
             )
             
-            # Apply pagination
-            paginated_items = wastage_items[skip : skip + 1000]  # Assuming page size of 1000
+            paginated_items = results[skip : skip + 1000]
             
-            return paginated_items
-                            
+            return InventoryComboBoxResponse(
+                items=paginated_items,
+                total_count=len(results)
+            )
+            
         except Exception as e:            
-            logger.error(f"Redis error fetching entries: {e}")            
-            raise ValueError(f"Error retrieving wastage inventory: {e}")
+            logger.error(f"Redis search error: {e}")            
+            raise ValueError(f"Error searching inventory: {e}")
+    

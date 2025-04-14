@@ -16,6 +16,7 @@ from backend.app.schema.wastage_inventory_schema import (
 from pydantic import BaseModel
 from datetime import date, datetime
 from backend.app.models.wastege_inventory_model import WastageInventory
+from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
 from datetime import date
 
@@ -78,4 +79,9 @@ class WastageInventoryInterface:
     # ------------------------------------------------------------------------------------------------
     async def delete_wastage_inventory(self, db: AsyncSession, employee_name: str, inventory_id: str) -> Optional[WastageInventoryRedisOut]:
         """Delete a wastage inventory by employee name and inventory ID"""
+        pass
+
+    #  Drop Down search list option  ComboBox Widget for wastage inventory directly from redis
+    async def inventory_ComboBox(self, search_term: str = None, skip: int = 0)  -> List[InventoryComboBoxResponse]:
+        """Get all wastage inventory entries from redis and return them as a list of dropdown options"""
         pass
