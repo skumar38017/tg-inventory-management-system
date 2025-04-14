@@ -33,7 +33,7 @@ def format_wastage_inventory_item(item: Dict, include_timestamps: bool = False) 
         formatted = {
             "id": str(item_data.get("id", "")),
             "sno": str(item_data.get("sno", "N/A")),
-            "assigned_to": str(item_data.get("assign_to", item_data.get("poc", "N/A"))),
+            "assign_to": str(item_data.get("assign_to", item_data.get("poc", "N/A"))),
             "employee_name": str(item_data.get("employee_name", "N/A")),
             "inventory_id": str(item_data.get("inventory_id", "N/A")).upper(),
             "project_id": str(item_data.get("project_id", "N/A")).upper(),
