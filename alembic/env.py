@@ -9,10 +9,12 @@ from alembic import context
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.models.to_event_inventry_model import ToEventInventory
 from backend.app.models.assign_inventory_model import AssignmentInventory
+from backend.app.models.wastege_inventory_model import WastageInventory
 
 EntryInventory=EntryInventory()
 ToEventInventory=ToEventInventory()
 AssignmentInventory=AssignmentInventory()
+WastageInventory=WastageInventory()
 
 # Add the project's root directory to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
