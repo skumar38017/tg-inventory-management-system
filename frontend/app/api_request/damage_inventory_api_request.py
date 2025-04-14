@@ -335,3 +335,17 @@ def delete_wastage_inventory(employee_name: str, inventory_id: str) -> bool:
         logger.error(f"Unexpected error during deletion: {e}")
         messagebox.showerror("Error", "An unexpected error occurred")
         return False
+    
+#  Drop Down search list option  ComboBox Widget for damage inventory directly from redis with related details of `inventory_id`
+async def inventory_ComboBox(self, search_term: str = None, skip: int = 0) -> List[Dict]:
+    """Search damage inventory from Redis by inventory name across multiple key patterns"""
+    try:
+        response = make_api_request("GET", f"wastage_inventory_ComboBox/{search_term}/{skip}")
+        response.raise_for_status()
+        return format_wastage_inventory_item(response.json())
+
+    except requests.exceptions.Timeout:
+        error_msg = "Search timed out. Please try again later."
+        logger.error(error_msg)
+        messagebox.showerror("Timeout Error", error_msg)
+        return []
