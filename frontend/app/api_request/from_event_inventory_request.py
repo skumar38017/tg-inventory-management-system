@@ -1,7 +1,5 @@
 #  frontend/app/to_event_functions_request.py
 
-#  frontend/app/to_event_functions_request.py
-
 import requests
 from typing import List, Dict
 import logging
@@ -157,7 +155,7 @@ def create_to_return_inventory_list(item_data: dict):
                 "total_power": clean_number(inventory_item.get('total_power')),
                 "status": clean_value(inventory_item.get('status')),
                 "poc": clean_value(inventory_item.get('poc')),
-                "material": clean_value(inventory_item.get('material', "")),
+                "RecQty": clean_value(inventory_item.get('RecQty', "")),
             }
 
             # Remove None values except for project_id which is required
@@ -272,7 +270,7 @@ def update_submitted__return_project_in_db(work_id: str, data: dict) -> bool:
                 "name": str(item.get('name', '')),
                 "description": str(item.get('description', '')),
                 "quantity": str(item.get('quantity', '0')),
-                "material": str(item.get('material', '')),
+                "RecQty": str(item.get('RecQty', '')),
                 "comments": str(item.get('comments', '')),
                 "total": str(item.get('total', '0')),
                 "unit": str(item.get('unit', 'pcs')),
@@ -329,7 +327,7 @@ def format_return_project_item(item: dict) -> dict:
             'name': item.get('name'),
             'description': item.get('description'),
             'quantity': item.get('quantity'),
-            'material': item.get('material'),
+            'RecQty': item.get('RecQty'),
             'comments': item.get('comments'),
             'total': item.get('total'),
             'unit': item.get('unit'),
