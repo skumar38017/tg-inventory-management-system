@@ -31,6 +31,9 @@ class AssignInventoryWindow:
         # Get status options from StatusEnum
         self.status_options = [status.value for status in StatusEnum]
 
+        # Initialize inventory combo box data
+        self.inventory_combo_data = []
+
         # Track edit state
         self.currently_editing_id = None
         self.edit_mode = False
@@ -364,10 +367,10 @@ Eros City Square
         edit_window.title("Edit Record")
         
         # List of read-only fields (these won't be editable)
-        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'Assignment Barcode', 'Employee Name', 'Assigned By']
+        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'Assignment Return Date', 'Assignment Barcode', 'Employee Name', 'Assigned By']
         
         # Date fields that should use DateEntry widgets
-        date_fields = ['Assignment Return Date', 'Submission Date']
+        date_fields = [ 'Submission Date']
         
         # Create entry fields for each column
         entry_widgets = []
@@ -713,8 +716,8 @@ Eros City Square
         popup.grab_set()
         
         # Window dimensions (larger for better fit)
-        popup.geometry("700x700")
-        popup.minsize(600, 600)
+        popup.geometry("800x800")  # Increased size to accommodate combo boxes
+        popup.minsize(700, 700)
         
         # Header
         header_frame = tk.Frame(popup, bg="#f0f0f0")
@@ -737,13 +740,12 @@ Eros City Square
         
         def on_frame_configure(event):
             canvas.configure(scrollregion=canvas.bbox("all"))
-            # Center the frame when it's smaller than canvas
             if scrollable_frame.winfo_reqwidth() < canvas.winfo_width():
                 canvas.itemconfig(1, width=canvas.winfo_width())
         
         scrollable_frame.bind("<Configure>", on_frame_configure)
         
-        # Field definitions (added 'level' field)
+        # Field definitions
         fields = [
             ("assign_to", "Assigned To:"),
             ("employee_name", "Employee Name:"),
@@ -773,13 +775,11 @@ Eros City Square
                 lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5)
                 lbl.grid(row=i, column=0, sticky='e', pady=3)
                 
-                # Special handling for date fields
                 if field_name in ["assigned_date", "assignment_return_date"]:
-                    # Create a frame to hold the date entry and calendar button
+                    # DateEntry for date fields
                     date_frame = tk.Frame(parent_frame)
                     date_frame.grid(row=i, column=1, sticky='ew', pady=3)
                     
-                    # Date entry with calendar
                     entry = DateEntry(
                         date_frame,
                         width=18,
@@ -790,44 +790,47 @@ Eros City Square
                     )
                     entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
                     
-                    # Set default dates
                     if field_name == "assigned_date":
                         entry.set_date(date.today())
                     elif field_name == "assignment_return_date":
                         entry.set_date(date.today() + timedelta(days=15))
                 elif field_name == "status":
-                    # Create a Combobox for Status field
+                    # Combobox for status
                     status_frame = tk.Frame(parent_frame)
                     status_frame.grid(row=i, column=1, sticky='ew', pady=3)
                     
-                    status_var = tk.StringVar()
                     status_combo = ttk.Combobox(
                         status_frame,
-                        textvariable=status_var,
                         values=self.status_options,
                         state="readonly"
                     )
-                    status_combo.set("Assigned")  # Default value
+                    status_combo.set("Assigned")
                     status_combo.pack(fill=tk.X, expand=True)
                     entries[field_name] = status_combo
+                elif field_name == "inventory_name":
+                    # InventoryComboBox for inventory name
+                    combo_frame = tk.Frame(parent_frame)
+                    combo_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    
+                    entry = InventoryComboBox(combo_frame)
+                    entry.pack(fill=tk.X, expand=True)
+                    
+                    # Bind selection to update related fields
+                    entry.bind('<<ComboboxSelected>>', 
+                            lambda e: self._update_inventory_fields(entries, e))
+                    entries[field_name] = entry
                 else:
-                    # Regular entry field (larger size)
+                    # Regular Entry for other fields
                     entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", width=30)
                     entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
                     
-                    # Set default values for certain fields
                     if field_name == "quantity":
                         entry.insert(0, "1")
-                
-                if field_name != "status":  # We already added status to entries
+                    
                     entries[field_name] = entry
             
-            # Configure column weights
-            parent_frame.grid_columnconfigure(0, weight=1)
-            parent_frame.grid_columnconfigure(1, weight=2)
-            
             return entries
-        
+                    
         # Create initial form (centered)
         form_frame = tk.Frame(scrollable_frame)
         form_frame.pack(pady=10)
@@ -929,8 +932,28 @@ Eros City Square
         # Make submit button stand out
         button_frame.winfo_children()[-1].config(bg="#e0e0e0")
         
+    def _update_inventory_fields(self, entries, event):
+        """Update related fields when an inventory item is selected"""
+        # Get the combobox widget that triggered the event
+        combo_box = event.widget
+        
+        # Get the selected item data
+        selected_item = combo_box.get_selected_item()
+        if selected_item:
+            # Update all relevant fields from the selected inventory item
+            field_mappings = {
+                'sno': 'sno',
+                'inventory_id': 'inventory_id',
+                'product_id': 'product_id',
+                'project_id': 'project_id',
+            }
+            
+            for field_name, item_key in field_mappings.items():
+                if field_name in entries and item_key in selected_item:
+                    entries[field_name].delete(0, tk.END)
+                    entries[field_name].insert(0, str(selected_item[item_key]))
+    
     #  ----------------------- End of New Entry Popup -----------------------
-
     def add_table_row(self):
         """Add a new row to the input table in the new entry tree with auto-generated ID"""
         # Generate default values for a new row

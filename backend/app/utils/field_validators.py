@@ -53,7 +53,7 @@ class StatusEnum(str, Enum):
     INHOUSE = "In House"
     OUTSIDE = "Outside"
     PURCHASED = "Purchased"
-    RETURNED = "Returned"
+    RETURN = "Returned"
     PENDING = "Pending"
     FAILED = "Failed"
     APPROVED = "Approved"
