@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkcalendar import Calendar, DateEntry
 from datetime import datetime, timedelta, date
 import logging
 from tkinter import font
@@ -7,6 +8,8 @@ import uuid
 import os
 import platform
 from typing import Dict, List
+from backend.app.utils.field_validators import StatusEnum
+from frontend.app.widgets.inventory_combobox import InventoryComboBox
 from .api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
@@ -24,6 +27,9 @@ class AssignInventoryWindow:
         self.parent = parent
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs's Inventory - Assign Inventory To Employee")
+
+        # Get status options from StatusEnum
+        self.status_options = [status.value for status in StatusEnum]
 
         # Track edit state
         self.currently_editing_id = None
@@ -341,6 +347,7 @@ Eros City Square
             logger.error(f"Error loading record to new entry: {e}")
             messagebox.showerror("Error", "Could not load record to new entry")
 
+# ---------------------------------------- Edit/Update section --------------------------------------------
     def edit_selected_entry(self):
         """Enable editing of the selected entry in new entry tree"""
         selected_item = self.new_entry_tree.selection()
@@ -357,7 +364,10 @@ Eros City Square
         edit_window.title("Edit Record")
         
         # List of read-only fields (these won't be editable)
-        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date',"Assignment Return Date", "Assignment Barcode" ,'Employee Name', 'Assigned By']
+        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'Assignment Barcode', 'Employee Name', 'Assigned By']
+        
+        # Date fields that should use DateEntry widgets
+        date_fields = ['Assignment Return Date', 'Submission Date']
         
         # Create entry fields for each column
         entry_widgets = []
@@ -369,6 +379,45 @@ Eros City Square
                 label = tk.Label(edit_window, text=value, relief="sunken", bg="#f0f0f0")
                 label.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
                 entry_widgets.append(label)  # Still append to maintain order
+            elif header in date_fields:
+                # Create a frame to hold the date entry
+                date_frame = tk.Frame(edit_window)
+                date_frame.grid(row=i, column=1, sticky="ew", padx=5, pady=2)
+                
+                # Create DateEntry widget
+                date_entry = DateEntry(
+                    date_frame,
+                    width=18,
+                    background='darkblue',
+                    foreground='white',
+                    borderwidth=2,
+                    date_pattern='yyyy-mm-dd'
+                )
+                
+                # Set the date if available
+                try:
+                    if value and value.strip():
+                        date_entry.set_date(datetime.strptime(value, '%Y-%m-%d'))
+                except ValueError:
+                    pass
+                
+                date_entry.pack(fill=tk.X, expand=True)
+                entry_widgets.append(date_entry)
+            elif header == "Status":
+                # Create a Combobox for Status field
+                status_frame = tk.Frame(edit_window)
+                status_frame.grid(row=i, column=1, sticky="ew", padx=5, pady=2)
+                
+                status_var = tk.StringVar()
+                status_combo = ttk.Combobox(
+                    status_frame,
+                    textvariable=status_var,
+                    values=self.status_options,
+                    state="readonly"
+                )
+                status_combo.set(value if value else "Assigned")
+                status_combo.pack(fill=tk.X, expand=True)
+                entry_widgets.append(status_combo)
             else:
                 # Create an entry widget for editable fields
                 entry = tk.Entry(edit_window)
@@ -392,7 +441,11 @@ Eros City Square
             for i, widget in enumerate(entry_widgets):
                 if isinstance(widget, tk.Label):  # Read-only field
                     edited_values.append(widget.cget("text"))
-                else:  # Editable field
+                elif isinstance(widget, DateEntry):  # DateEntry field
+                    edited_values.append(widget.get_date().strftime('%Y-%m-%d'))
+                elif isinstance(widget, ttk.Combobox):  # Combobox field (Status)
+                    edited_values.append(widget.get())
+                else:  # Regular Entry field
                     edited_values.append(widget.get())
             
             # Update the record in new entry tree
@@ -406,7 +459,7 @@ Eros City Square
         except Exception as e:
             logger.error(f"Error saving edited entry: {e}")
             messagebox.showerror("Error", "Failed to save edited entry")
-
+            
     def update_selected_entry(self):
         """Update the selected entry in the database using employee_name and inventory_id"""
         selected_item = self.new_entry_tree.selection()
@@ -462,6 +515,8 @@ Eros City Square
         except Exception as e:
             logger.error(f"Error updating record: {e}")
             messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+
+# ---------------------------------------- End of Edit/Update section --------------------------------------------
 
     def format_api_date(self, date_str: str) -> str:
         """Format date string for API (convert empty to None)"""
@@ -649,7 +704,7 @@ Eros City Square
 
 # --------------------------- New Entry Popup ---------------------------
     def new_entry(self):
-        """Create a centered form-style popup window with larger input boxes"""
+        """Create a centered form-style popup window with larger input boxes and date pickers"""
         # Create popup window
         popup = tk.Toplevel(self.window)
         popup.title("Register New Assignment")
@@ -710,7 +765,7 @@ Eros City Square
         
         # Store all entry widgets for each row
         all_entries = []
-        
+# ---------------------------------------------- Create Form ----------------------------------------------------------    
         def create_form_row(parent_frame):
             entries = {}
             for i, (field_name, label_text) in enumerate(fields):
@@ -718,22 +773,54 @@ Eros City Square
                 lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5)
                 lbl.grid(row=i, column=0, sticky='e', pady=3)
                 
-                # Entry field (larger size)
-                entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", width=30)
-                entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
-                
-                # Set default values for certain fields
-                if field_name == "quantity":
-                    entry.insert(0, "1")
+                # Special handling for date fields
+                if field_name in ["assigned_date", "assignment_return_date"]:
+                    # Create a frame to hold the date entry and calendar button
+                    date_frame = tk.Frame(parent_frame)
+                    date_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    
+                    # Date entry with calendar
+                    entry = DateEntry(
+                        date_frame,
+                        width=18,
+                        background='darkblue',
+                        foreground='white',
+                        borderwidth=2,
+                        date_pattern='yyyy-mm-dd'
+                    )
+                    entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                    
+                    # Set default dates
+                    if field_name == "assigned_date":
+                        entry.set_date(date.today())
+                    elif field_name == "assignment_return_date":
+                        entry.set_date(date.today() + timedelta(days=15))
                 elif field_name == "status":
-                    entry.insert(0, "Assigned")
-                elif field_name == "assigned_date":
-                    entry.insert(0, datetime.now().strftime('%Y-%m-%d'))
-                elif field_name == "assignment_return_date":
-                    return_date = (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d')
-                    entry.insert(0, return_date)
+                    # Create a Combobox for Status field
+                    status_frame = tk.Frame(parent_frame)
+                    status_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    
+                    status_var = tk.StringVar()
+                    status_combo = ttk.Combobox(
+                        status_frame,
+                        textvariable=status_var,
+                        values=self.status_options,
+                        state="readonly"
+                    )
+                    status_combo.set("Assigned")  # Default value
+                    status_combo.pack(fill=tk.X, expand=True)
+                    entries[field_name] = status_combo
+                else:
+                    # Regular entry field (larger size)
+                    entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", width=30)
+                    entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
+                    
+                    # Set default values for certain fields
+                    if field_name == "quantity":
+                        entry.insert(0, "1")
                 
-                entries[field_name] = entry
+                if field_name != "status":  # We already added status to entries
+                    entries[field_name] = entry
             
             # Configure column weights
             parent_frame.grid_columnconfigure(0, weight=1)
@@ -759,8 +846,19 @@ Eros City Square
         
         def clear_form():
             for entries in all_entries:
-                for entry in entries.values():
-                    entry.delete(0, tk.END)
+                for field_name, entry in entries.items():
+                    if field_name in ["assigned_date", "assignment_return_date"]:
+                        if field_name == "assigned_date":
+                            entry.set_date(date.today())
+                        elif field_name == "assignment_return_date":
+                            entry.set_date(date.today() + timedelta(days=15))
+                    else:
+                        entry.delete(0, tk.END)
+                        # Restore defaults if needed
+                        if field_name == "quantity":
+                            entry.insert(0, "1")
+                        elif field_name == "status":
+                            entry.insert(0, "Assigned")
 
         def validate_assignment(assignment):
             required_fields = ['inventory_id', 'assign_to', 'employee_name']
@@ -777,7 +875,12 @@ Eros City Square
             for entries in all_entries:
                 assignment = {}
                 for field_name, entry in entries.items():
-                    value = entry.get()
+                    if field_name in ["assigned_date", "assignment_return_date"]:
+                        # Get date from DateEntry widget
+                        value = entry.get_date().strftime('%Y-%m-%d')
+                    else:
+                        value = entry.get()
+                    
                     if value:
                         assignment[field_name] = value
                 
