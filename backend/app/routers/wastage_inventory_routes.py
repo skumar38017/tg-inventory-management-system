@@ -301,7 +301,7 @@ async def get_wastage_inventory_by_id(
             status_code=200,
             summary="Search inventory items",
             description="Search inventory items across multiple Redis key patterns",
-            tags=["Inventory Search"]
+            tags=["Combobox Search"]
 )
 async def inventory_ComboBox(
     search_term: Optional[str] = None,

@@ -542,10 +542,10 @@ class WastageInventoryService(WastageInventoryInterface):
                     data = await self.redis.get(key)
                     if data:
                         item_data = json.loads(data)
-                        # Check both 'name' and 'inventory_name' fields
-                        item_name = item_data.get("name") or item_data.get("inventory_name")
+                        # Check only 'inventory_name' field
                         if search_term:
-                            if item_name and search_term.lower() in item_name.lower():
+                            inventory_name = item_data.get("inventory_name") or item_data.get("name")
+                            if inventory_name and search_term.lower() in inventory_name.lower():
                                 results.append({
                                     "key_type": pattern.split(":")[0],
                                     **item_data  # Include all item data
@@ -555,16 +555,6 @@ class WastageInventoryService(WastageInventoryInterface):
                                 "key_type": pattern.split(":")[0],
                                 **item_data
                             })
-            
-            # Sort by updated_at if available
-            results.sort(
-                key=lambda x: (
-                    datetime.fromisoformat(x.get("updated_at")).replace(tzinfo=None)
-                    if x.get("updated_at") 
-                    else datetime.min
-                ),
-                reverse=True
-            )
             
             paginated_items = results[skip : skip + 1000]
             
