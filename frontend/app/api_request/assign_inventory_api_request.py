@@ -11,7 +11,6 @@ from datetime import datetime
 from ..config import *
 import traceback
 
-
 logger = logging.getLogger(__name__)
 
 # Format a single assigned inventory item to match the table headers
@@ -42,6 +41,7 @@ def format_assigned_inventory_item(item: Dict, include_timestamps: bool = False)
             "description": str(item_data.get("description", "N/A")),
             "quantity": str(item_data.get("quantity", "N/A")),
             "status": str(item_data.get("status", "N/A")).capitalize(),
+            
             "assigned_date": format_date(item_data.get("assigned_date", item_data.get("event_date"))),
             "submission_date": format_date(item_data.get("submission_date")),
             "purpose_reason": str(item_data.get("purpose_reason", "N/A")),

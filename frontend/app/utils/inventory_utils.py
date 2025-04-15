@@ -10,9 +10,9 @@ from tkinter import messagebox
 from datetime import datetime
 from ..config import *
 
-# Format a single assigned inventory item to match the table headers
+# Format a single  inventory item to match the table headers
 def format_wastage_inventory_item(item: Dict, include_timestamps: bool = False) -> Dict:
-    """Format a single assigned inventory item from Redis search result with enhanced field mapping."""
+    """Format a single  inventory item from Redis search result with enhanced field mapping."""
     try:
         # Extract data from either the root or nested 'data' field
         item_data = item.get('data', item)
@@ -38,6 +38,7 @@ def format_wastage_inventory_item(item: Dict, include_timestamps: bool = False) 
             "description": str(item_data.get("description", "N/A")),
             "quantity": str(item_data.get("quantity", "N/A")),
             "status": str(item_data.get("status", "N/A")).capitalize(),
+            
             "receive_date": format_date(item_data.get("receive_date", item_data.get("receive_date"))),
             "receive_by": format_date(item_data.get("receive_by")),
             "check_status": str(item_data.get("check_status", "N/A")),
