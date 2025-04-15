@@ -66,7 +66,7 @@ class InventoryItem(Base):
     name = Column(String, nullable=True)  # Changed to match migration
     description = Column(String, nullable=True)
     quantity = Column(String, nullable=True)
-    material = Column(String, nullable=True)
+    RecQty = Column(String, nullable=True)
     comments = Column(String, nullable=True)
     total = Column(String, nullable=True)
     unit = Column(String, nullable=True)
@@ -90,7 +90,7 @@ class InventoryItem(Base):
             f"\n\tName: {self.name}"
             f"\n\tDescription: {self.description}"
             f"\n\tQuantity: {self.quantity}"
-            f"\n\tMaterial: {self.material}"
+            f"\n\tRecQty: {self.RecQty}"
             f"\n\tComments: {self.comments}"
             f"\n\tTotal: {self.total}"
             f"\n\tUnit: {self.unit}"

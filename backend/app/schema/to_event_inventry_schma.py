@@ -48,7 +48,7 @@ class InventoryItemBase(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    material: Optional[str] = None
+    RecQty: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None
@@ -63,7 +63,7 @@ class InventoryItemBase(BaseModel):
             return None
         return str(v) if not isinstance(v, str) else v
 
-    @field_validator('material', 'comments', mode='before')
+    @field_validator('RecQty', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
 
@@ -85,7 +85,7 @@ class InventoryItemOut(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    material: Optional[str] = None
+    RecQty: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
@@ -123,7 +123,7 @@ class InventoryItemOut(BaseModel):
             return 0  # or return None, based on your preference
         return v
         
-    @field_validator('material', 'comments', mode='before')
+    @field_validator('RecQty', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
 
@@ -408,7 +408,7 @@ class RedisInventoryItem(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    material: Optional[str] = None
+    RecQty: Optional[str] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
@@ -428,7 +428,7 @@ class RedisInventoryItem(BaseModel):
             raise ValueError("Project_id must contain only numbers after prefix")
         return f"PRJ{clean_id}"
 
-    @field_validator('material', 'comments', mode='before')
+    @field_validator('RecQty', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
     

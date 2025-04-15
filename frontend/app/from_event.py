@@ -286,7 +286,7 @@ class FromEventWindow:
         self.headers = [
             "Zone/Activity", "Sr. No.", "Inventory", "Description",
             "Quantity", "Comments", "Total", "Units", "Per Unit Power (W)",
-            "Total Power (W)", "Status", "POC", "Material"
+            "Total Power (W)", "Status", "POC", "RecQty"
         ]
 
         self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
@@ -591,7 +591,7 @@ class FromEventWindow:
             fields = [
                 'zone_active', 'sno', 'name', 'description', 
                 'quantity', 'comments', 'total', 'unit', 
-                'per_unit_power', 'total_power', 'status', 'poc', 'material'
+                'per_unit_power', 'total_power', 'status', 'poc', 'RecQty'
             ]
             
             for col, field in enumerate(fields):
@@ -670,7 +670,7 @@ class FromEventWindow:
                         'total_power': self._validate_number(row[9].get(), default=0),
                         'status': row[10].get() or 'active',
                         'poc': row[11].get() or '',
-                        'material': row[12].get() if len(row) > 12 else ''
+                        'RecQty': row[12].get() if len(row) > 12 else ''
                     }
                     data['inventory_items'].append(item)
                 except Exception as e:
@@ -869,7 +869,7 @@ class FromEventWindow:
                         'total_power': float(row[9].get()) if row[9].get() and row[9].get().replace('.','',1).isdigit() else 0.0,
                         'status': row[10].get() or "active",  # Provide default if empty
                         'poc': row[11].get() or "",  # Optional field
-                        'material': row[12].get() if len(row) > 12 else ""  # Handle optional material field
+                        'RecQty': row[12].get() if len(row) > 12 else ""  # Handle optional RecQty field
                     }
                     data['inventory_items'].append(item)
 
