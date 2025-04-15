@@ -1,4 +1,4 @@
-# frontend/app/to_event.py
+# frontend/app/from_event.py
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -13,10 +13,10 @@ from tkcalendar import Calendar, DateEntry
 from backend.app.utils.field_validators import StatusEnum
 import pandas as pd
 from .api_request.from_event_inventory_request import (
-    search_return_details_by_id, 
     create_to_return_inventory_list,
     load_submitted_project_return_from_db,
-    update_submitted__return_project_in_db
+    update_submitted__return_project_in_db,
+    search_return_details_by_id, 
 )
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class FromEventWindow:
     def __init__(self, parent):
         self.parent = parent
         self.window = tk.Toplevel(parent)
-        self.window.title("Tagglabs - To Event")
+        self.window.title("Tagglabs - Return From Event")
 
         # Track wrap state
         self.is_wrapped = False

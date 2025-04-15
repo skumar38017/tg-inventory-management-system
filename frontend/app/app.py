@@ -15,4 +15,4 @@ def home():
 
 # Run the Flask Application on port 5555
 if __name__ == '__main__':
-    app.run(debug=True, port=5555)  # Specify port 5555
+    app.run(port=5555)  # Specify port 5555

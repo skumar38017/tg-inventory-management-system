@@ -9,6 +9,8 @@ import random
 import string
 import json
 import os
+from tkcalendar import Calendar, DateEntry
+from backend.app.utils.field_validators import StatusEnum
 from .api_request.to_event_inventory_request import (
     create_to_event_inventory_list, 
     load_submitted_project_from_db,
@@ -27,6 +29,9 @@ class ToEventWindow:
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
+
+        # Get status options from StatusEnum
+        self.status_options = [status.value for status in StatusEnum]
         
         # Database file
         self.db_file = "inventory_data.json"
@@ -194,7 +199,7 @@ class ToEventWindow:
                font=('Helvetica', 14, 'bold')).pack()
         
         tk.Label(title_frame, 
-               text="INVENTORY LIST",
+               text="Return To Create Event Inventory List",
                font=('Helvetica', 12, 'bold')).pack()
 
         # Information fields
@@ -218,6 +223,21 @@ class ToEventWindow:
                                   font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
         self.update_btn.grid(row=0, column=4, padx=5)
 
+        # Add new entry button on the same row (column 5)
+        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
+                                font=('Helvetica', 9, 'bold'))
+        self.add_btn.grid(row=0, column=5, padx=5)
+
+        # Add clear button on the same row (column 6)
+        self.clear_btn = tk.Button(info_frame, text="Clear", command=self.clear_form,
+                                font=('Helvetica', 9, 'bold'))
+        self.clear_btn.grid(row=0, column=6, padx=5)
+
+        # Add refresh button on the same row (column 7)
+        self.refresh_btn = tk.Button(info_frame, text="Refresh", command=self.refresh_data,
+                                   font=('Helvetica', 9, 'bold'))
+        self.refresh_btn.grid(row=0, column=7, padx=5)
+
         # Second row - all fields (added Work ID at the end)
         tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
         self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
@@ -232,15 +252,28 @@ class ToEventWindow:
         self.client_name.grid(row=1, column=5, sticky='w', padx=2)
 
         tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=1, column=6, sticky='e', padx=2)
-        self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.setup_date = DateEntry(info_frame, 
+                                font=('Helvetica', 9), 
+                                width=15,
+                                date_pattern='dd/mm/yyyy',
+                                background='darkblue',
+                                foreground='white',
+                                borderwidth=2)
         self.setup_date.grid(row=1, column=7, sticky='w', padx=2)
+
 
         tk.Label(info_frame, text="Project Name:", font=('Helvetica', 9)).grid(row=1, column=8, sticky='e', padx=2)
         self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_name.grid(row=1, column=9, sticky='w', padx=2)
 
         tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=1, column=10, sticky='e', padx=2)
-        self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.event_date = DateEntry(info_frame, 
+                                font=('Helvetica', 9), 
+                                width=15,
+                                date_pattern='dd/mm/yyyy',
+                                background='darkblue',
+                                foreground='white',
+                                borderwidth=2)
         self.event_date.grid(row=1, column=11, sticky='w', padx=2)
 
         # Current Work ID display
@@ -248,10 +281,6 @@ class ToEventWindow:
         self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
         self.work_id.grid(row=1, column=13, sticky='w', padx=2)
 
-        # Add new entry button on the same row (column 14)
-        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
-                                font=('Helvetica', 9, 'bold'))
-        self.add_btn.grid(row=1, column=14, padx=5, sticky='e')
 
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
@@ -286,7 +315,7 @@ class ToEventWindow:
         self.headers = [
             "Zone/Activity", "Sr. No.", "Inventory", "Description",
             "Quantity", "Comments", "Total", "Units", "Per Unit Power (W)",
-            "Total Power (W)", "Status", "POC", "Material"
+            "Total Power (W)", "Status", "POC", "RecQty"
         ]
 
         self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
@@ -300,10 +329,26 @@ class ToEventWindow:
         for row in range(1, 2):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
-                entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
-                               width=self.original_column_widths[col])
-                entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
-                row_entries.append(entry)
+                if col == 10:  # Status column
+                    # Create Combobox for Status
+                    status_var = tk.StringVar()
+                    combo = ttk.Combobox(
+                        self.scrollable_frame,
+                        textvariable=status_var,
+                        values=self.status_options,
+                        state="state",
+                        font=('Helvetica', 9)
+                    )
+                    combo.set(self.status_options[0])  # Set default status
+                    combo.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    row_entries.append(combo)
+                else:
+                    # Regular Entry for other columns
+                    entry = tk.Entry(self.scrollable_frame, 
+                                font=('Helvetica', 9), 
+                                width=self.original_column_widths[col])
+                    entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    row_entries.append(entry)
             self.table_entries.append(row_entries)
 
         # Create Notebook for tabs
@@ -591,14 +636,21 @@ class ToEventWindow:
             fields = [
                 'zone_active', 'sno', 'name', 'description', 
                 'quantity', 'comments', 'total', 'unit', 
-                'per_unit_power', 'total_power', 'status', 'poc', 'material'
+                'per_unit_power', 'total_power', 'status', 'poc', 'RecQty'
             ]
             
             for col, field in enumerate(fields):
                 if col < len(row):  # Make sure we don't exceed row length
-                    row[col].delete(0, tk.END)
                     value = str(item.get(field, ''))
-                    row[col].insert(0, value)
+                    if col == 10:  # Status column (Combobox)
+                        try:
+                            row[col].set(value if value in self.status_options else self.status_options[0])
+                        except Exception as e:
+                            logger.error(f"Error setting status for row {i}: {str(e)}")
+                            row[col].set(self.status_options[0])
+                    else:  # Regular Entry
+                        row[col].delete(0, tk.END)
+                        row[col].insert(0, value)
         
         # Switch back to form view
         self.tab_control.select(0)
@@ -668,15 +720,15 @@ class ToEventWindow:
                         'unit': row[7].get() or 'pcs',
                         'per_unit_power': self._validate_number(row[8].get(), default=0),
                         'total_power': self._validate_number(row[9].get(), default=0),
-                        'status': row[10].get() or 'active',
+                        'status': row[10].get(),  # Simplified - just get the Combobox value
                         'poc': row[11].get() or '',
-                        'material': row[12].get() if len(row) > 12 else ''
+                        'RecQty': row[12].get() if len(row) > 12 else ''
                     }
                     data['inventory_items'].append(item)
                 except Exception as e:
                     logger.error(f"Error processing row {row_idx}: {str(e)}")
                     continue
-                    
+                        
             if not data['inventory_items']:
                 messagebox.showwarning("Warning", "No valid inventory items to update")
                 return
@@ -804,10 +856,24 @@ class ToEventWindow:
         
         row_entries = []
         for col in range(len(self.headers)):
-            entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
-                           width=self.original_column_widths[col])
-            entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
-            row_entries.append(entry)
+            if col == 10:  # Status column
+                status_var = tk.StringVar()
+                combo = ttk.Combobox(
+                    self.scrollable_frame,
+                    textvariable=status_var,
+                    values=self.status_options,
+                    state="state",
+                    font=('Helvetica', 9)
+                )
+                combo.set(self.status_options[0])  # Set default status
+                combo.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                row_entries.append(combo)
+            else:
+                entry = tk.Entry(self.scrollable_frame, 
+                            font=('Helvetica', 9), 
+                            width=self.original_column_widths[col])
+                entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                row_entries.append(entry)
         self.table_entries.append(row_entries)
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -867,9 +933,9 @@ class ToEventWindow:
                         'unit': row[7].get() or "pcs",  # Provide default if empty
                         'per_unit_power': float(row[8].get()) if row[8].get() and row[8].get().replace('.','',1).isdigit() else 0.0,
                         'total_power': float(row[9].get()) if row[9].get() and row[9].get().replace('.','',1).isdigit() else 0.0,
-                        'status': row[10].get() or "active",  # Provide default if empty
+                        'status': row[10].get(),
                         'poc': row[11].get() or "",  # Optional field
-                        'material': row[12].get() if len(row) > 12 else ""  # Handle optional material field
+                        'RecQty': row[12].get() if len(row) > 12 else ""  # Handle optional RecQty field
                     }
                     data['inventory_items'].append(item)
 
@@ -899,19 +965,47 @@ class ToEventWindow:
             logger.error(f"Submit failed: {str(e)}")
 
     def clear_form(self):
-        """Clear all form fields"""
-        self.project_id.delete(0, tk.END)
-        self.employee_name.delete(0, tk.END)
-        self.location.delete(0, tk.END)
-        self.client_name.delete(0, tk.END)
-        self.setup_date.delete(0, tk.END)
-        self.project_name.delete(0, tk.END)
-        self.event_date.delete(0, tk.END)
-        
-        # Clear table entries
-        for row in self.table_entries:
-            for entry in row:
-                entry.delete(0, tk.END)
+        """Clear all form fields and generate new Work ID"""
+        try:
+            self.project_id.delete(0, tk.END)
+            self.employee_name.delete(0, tk.END)
+            self.location.delete(0, tk.END)
+            self.client_name.delete(0, tk.END)
+            
+            # Clear DateEntry widgets properly
+            self.setup_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            self.project_name.delete(0, tk.END)
+            self.event_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            
+            # Clear table entries
+            for row in self.table_entries:
+                for entry in row:
+                    entry.delete(0, tk.END)
+            
+            # Generate new Work ID
+            self.generate_work_id()
+            
+            # Set fields to editable state
+            self.set_fields_readonly(False)
+            
+            messagebox.showinfo("Cleared", "Form has been cleared")
+            logger.info("Form cleared successfully")
+        except Exception as e:
+            messagebox.showerror("Clear Error", f"Failed to clear form: {str(e)}")
+            logger.error(f"Clear failed: {str(e)}")
+
+    def refresh_data(self):
+        """Refresh the form and data lists"""
+        try:
+            # Clear existing items
+            self.clear_form()
+            # If we have a work_id loaded, refresh that specific record
+            current_work_id = self.work_id.get()              
+            messagebox.showinfo("Refreshed", "Data has been refreshed")
+            logger.info("Data refreshed successfully")
+        except Exception as e:
+            messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
+            logger.error(f"Refresh failed: {str(e)}")
 
     def update_clock(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
