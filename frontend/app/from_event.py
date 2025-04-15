@@ -220,6 +220,21 @@ class FromEventWindow:
                                   font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
         self.update_btn.grid(row=0, column=4, padx=5)
 
+        # Add new entry button on the same row (column 5)
+        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
+                                font=('Helvetica', 9, 'bold'))
+        self.add_btn.grid(row=0, column=5, padx=5)
+
+        # Add clear button on the same row (column 6)
+        self.clear_btn = tk.Button(info_frame, text="Clear", command=self.clear_form,
+                                font=('Helvetica', 9, 'bold'))
+        self.clear_btn.grid(row=0, column=6, padx=5)
+
+        # Add refresh button on the same row (column 7)
+        self.refresh_btn = tk.Button(info_frame, text="Refresh", command=self.refresh_data,
+                                   font=('Helvetica', 9, 'bold'))
+        self.refresh_btn.grid(row=0, column=7, padx=5)
+
         # Second row - all fields (added Work ID at the end)
         tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
         self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
@@ -263,10 +278,6 @@ class FromEventWindow:
         self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
         self.work_id.grid(row=1, column=13, sticky='w', padx=2)
 
-        # Add new entry button on the same row (column 14)
-        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
-                                font=('Helvetica', 9, 'bold'))
-        self.add_btn.grid(row=1, column=14, padx=5, sticky='e')
 
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
@@ -914,19 +925,47 @@ class FromEventWindow:
             logger.error(f"Submit failed: {str(e)}")
 
     def clear_form(self):
-        """Clear all form fields"""
-        self.project_id.delete(0, tk.END)
-        self.employee_name.delete(0, tk.END)
-        self.location.delete(0, tk.END)
-        self.client_name.delete(0, tk.END)
-        self.setup_date.delete(0, tk.END)
-        self.project_name.delete(0, tk.END)
-        self.event_date.delete(0, tk.END)
-        
-        # Clear table entries
-        for row in self.table_entries:
-            for entry in row:
-                entry.delete(0, tk.END)
+        """Clear all form fields and generate new Work ID"""
+        try:
+            self.project_id.delete(0, tk.END)
+            self.employee_name.delete(0, tk.END)
+            self.location.delete(0, tk.END)
+            self.client_name.delete(0, tk.END)
+            
+            # Clear DateEntry widgets properly
+            self.setup_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            self.project_name.delete(0, tk.END)
+            self.event_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            
+            # Clear table entries
+            for row in self.table_entries:
+                for entry in row:
+                    entry.delete(0, tk.END)
+            
+            # Generate new Work ID
+            self.generate_work_id()
+            
+            # Set fields to editable state
+            self.set_fields_readonly(False)
+            
+            messagebox.showinfo("Cleared", "Form has been cleared")
+            logger.info("Form cleared successfully")
+        except Exception as e:
+            messagebox.showerror("Clear Error", f"Failed to clear form: {str(e)}")
+            logger.error(f"Clear failed: {str(e)}")
+
+    def refresh_data(self):
+        """Refresh the form and data lists"""
+        try:
+            # Clear existing items
+            self.clear_form()
+            # If we have a work_id loaded, refresh that specific record
+            current_work_id = self.work_id.get()              
+            messagebox.showinfo("Refreshed", "Data has been refreshed")
+            logger.info("Data refreshed successfully")
+        except Exception as e:
+            messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
+            logger.error(f"Refresh failed: {str(e)}")
 
     def update_clock(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
