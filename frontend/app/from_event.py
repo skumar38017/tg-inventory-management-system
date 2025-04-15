@@ -11,6 +11,7 @@ import json
 import os
 from tkcalendar import Calendar, DateEntry
 from backend.app.utils.field_validators import StatusEnum
+import pandas as pd
 from .api_request.from_event_inventory_request import (
     search_return_details_by_id, 
     create_to_return_inventory_list,
@@ -29,6 +30,9 @@ class FromEventWindow:
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
+
+        # Get status options from StatusEnum
+        self.status_options = [status.value for status in StatusEnum]
         
         # Database file
         self.db_file = "inventory_data.json"
@@ -326,10 +330,26 @@ class FromEventWindow:
         for row in range(1, 2):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
-                entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
-                               width=self.original_column_widths[col])
-                entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
-                row_entries.append(entry)
+                if col == 10:  # Status column
+                    # Create Combobox for Status
+                    status_var = tk.StringVar()
+                    combo = ttk.Combobox(
+                        self.scrollable_frame,
+                        textvariable=status_var,
+                        values=self.status_options,
+                        state="state",
+                        font=('Helvetica', 9)
+                    )
+                    combo.set(self.status_options[0])  # Set default status
+                    combo.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    row_entries.append(combo)
+                else:
+                    # Regular Entry for other columns
+                    entry = tk.Entry(self.scrollable_frame, 
+                                font=('Helvetica', 9), 
+                                width=self.original_column_widths[col])
+                    entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    row_entries.append(entry)
             self.table_entries.append(row_entries)
 
         # Create Notebook for tabs
@@ -611,7 +631,7 @@ class FromEventWindow:
         for i, item in enumerate(record.get('inventory_items', [])):
             if i >= len(self.table_entries):
                 break
-                
+                    
             row = self.table_entries[i]
             # Ensure we have all the fields we need
             fields = [
@@ -620,8 +640,11 @@ class FromEventWindow:
                 'per_unit_power', 'total_power', 'status', 'poc', 'RecQty'
             ]
             
-            for col, field in enumerate(fields):
-                if col < len(row):  # Make sure we don't exceed row length
+        for col, field in enumerate(fields):
+            if col < len(row):  # Make sure we don't exceed row length
+                if col == 10:  # Status column (Combobox)
+                    row[col].set(item.get(field, self.status_options[0]))
+                else:  # Regular Entry
                     row[col].delete(0, tk.END)
                     value = str(item.get(field, ''))
                     row[col].insert(0, value)
@@ -694,7 +717,7 @@ class FromEventWindow:
                         'unit': row[7].get() or 'pcs',
                         'per_unit_power': self._validate_number(row[8].get(), default=0),
                         'total_power': self._validate_number(row[9].get(), default=0),
-                        'status': row[10].get() or 'active',
+                        'status': row[10].get(),  # Simplified - just get the Combobox value
                         'poc': row[11].get() or '',
                         'RecQty': row[12].get() if len(row) > 12 else ''
                     }
@@ -702,7 +725,7 @@ class FromEventWindow:
                 except Exception as e:
                     logger.error(f"Error processing row {row_idx}: {str(e)}")
                     continue
-                    
+                        
             if not data['inventory_items']:
                 messagebox.showwarning("Warning", "No valid inventory items to update")
                 return
@@ -830,10 +853,24 @@ class FromEventWindow:
         
         row_entries = []
         for col in range(len(self.headers)):
-            entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
-                           width=self.original_column_widths[col])
-            entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
-            row_entries.append(entry)
+            if col == 10:  # Status column
+                status_var = tk.StringVar()
+                combo = ttk.Combobox(
+                    self.scrollable_frame,
+                    textvariable=status_var,
+                    values=self.status_options,
+                    state="state",
+                    font=('Helvetica', 9)
+                )
+                combo.set(self.status_options[0])  # Set default status
+                combo.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                row_entries.append(combo)
+            else:
+                entry = tk.Entry(self.scrollable_frame, 
+                            font=('Helvetica', 9), 
+                            width=self.original_column_widths[col])
+                entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                row_entries.append(entry)
         self.table_entries.append(row_entries)
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -893,7 +930,7 @@ class FromEventWindow:
                         'unit': row[7].get() or "pcs",  # Provide default if empty
                         'per_unit_power': float(row[8].get()) if row[8].get() and row[8].get().replace('.','',1).isdigit() else 0.0,
                         'total_power': float(row[9].get()) if row[9].get() and row[9].get().replace('.','',1).isdigit() else 0.0,
-                        'status': row[10].get() or "active",  # Provide default if empty
+                        'status': row[10].get(),
                         'poc': row[11].get() or "",  # Optional field
                         'RecQty': row[12].get() if len(row) > 12 else ""  # Handle optional RecQty field
                     }
