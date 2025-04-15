@@ -9,6 +9,8 @@ import random
 import string
 import json
 import os
+from tkcalendar import Calendar, DateEntry
+from backend.app.utils.field_validators import StatusEnum
 from .api_request.from_event_inventory_request import (
     search_return_details_by_id, 
     create_to_return_inventory_list,
@@ -232,15 +234,28 @@ class FromEventWindow:
         self.client_name.grid(row=1, column=5, sticky='w', padx=2)
 
         tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=1, column=6, sticky='e', padx=2)
-        self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.setup_date = DateEntry(info_frame, 
+                                font=('Helvetica', 9), 
+                                width=15,
+                                date_pattern='dd/mm/yyyy',
+                                background='darkblue',
+                                foreground='white',
+                                borderwidth=2)
         self.setup_date.grid(row=1, column=7, sticky='w', padx=2)
+
 
         tk.Label(info_frame, text="Project Name:", font=('Helvetica', 9)).grid(row=1, column=8, sticky='e', padx=2)
         self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_name.grid(row=1, column=9, sticky='w', padx=2)
 
         tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=1, column=10, sticky='e', padx=2)
-        self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.event_date = DateEntry(info_frame, 
+                                font=('Helvetica', 9), 
+                                width=15,
+                                date_pattern='dd/mm/yyyy',
+                                background='darkblue',
+                                foreground='white',
+                                borderwidth=2)
         self.event_date.grid(row=1, column=11, sticky='w', padx=2)
 
         # Current Work ID display
