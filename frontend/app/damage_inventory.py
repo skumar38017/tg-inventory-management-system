@@ -232,10 +232,13 @@ class DamageWindow:
             'sno': selected_item.get('sno', ''),
             'inventory_id': selected_item.get('inventory_id', ''),
             'project_id': selected_item.get('project_id', ''),
-            'project_name': selected_item.get('project_name', ''),
             'description': selected_item.get('description', ''),
             'quantity': selected_item.get('quantity', ''),
-            'location': selected_item.get('location', '')
+            'location': selected_item.get('location', ''),
+            'employee_name': selected_item.get('employee_name', ''),
+            'assign_to': selected_item.get('assign_to', ''),
+            'status': selected_item.get('status', ''),
+            'zone_activity': selected_item.get('zone_activity', '')
         }
         
         for field, value in fields_to_fill.items():
@@ -252,17 +255,48 @@ class DamageWindow:
                 else:
                     self.entries[field].delete(0, tk.END)
                     self.entries[field].insert(0, value)
+    
+        # Update project combobox with related projects
+        self.update_project_combobox()
 
     def update_project_combobox(self):
-        """Update project_name combobox with data from API"""
+        """Update project_name combobox with projects related to selected inventory"""
         try:
-            # Get project data from API
-            self.project_data = show_all_wastage_inventory() or []
-            project_names = list({item.get('project_name', '') for item in self.project_data if item.get('project_name')})
-            self.project_name_combobox['values'] = project_names
+            # Get currently selected inventory item
+            selected_inventory = self.inventory_name_combobox.get_selected_item()
+            
+            if selected_inventory:
+                # Get all inventory data from combobox
+                all_inventory = self.inventory_name_combobox.get_all_inventory_data()
+                
+                # Filter projects that match the selected inventory's product_id or inventory_id
+                related_projects = []
+                for item in all_inventory:
+                    # Match by product_id if available, otherwise by inventory_id
+                    if (selected_inventory.get('product_id') and 
+                        item.get('product_id') == selected_inventory.get('product_id')):
+                        related_projects.append(item)
+                    elif (selected_inventory.get('inventory_id') and 
+                        item.get('inventory_id') == selected_inventory.get('inventory_id')):
+                        related_projects.append(item)
+                
+                # Extract unique project names
+                project_names = list({item.get('project_name', '') 
+                                    for item in related_projects 
+                                    if item.get('project_name')})
+                
+                self.project_name_combobox['values'] = project_names
+            else:
+                # If no inventory selected, show all projects
+                self.project_data = show_all_wastage_inventory() or []
+                project_names = list({item.get('project_name', '') 
+                                    for item in self.project_data 
+                                    if item.get('project_name')})
+                self.project_name_combobox['values'] = project_names
+                
         except Exception as e:
             logger.error(f"Error updating project combobox: {str(e)}")
-            messagebox.showerror("Error", "Failed to load project names")
+            messagebox.showerror("Error", "Failed to load related projects")
 
     def on_project_selected(self, event):
         """Auto-fill fields when project name is selected"""
@@ -270,16 +304,29 @@ class DamageWindow:
         if not selected_name:
             return
             
-        # Find the selected project in our data
-        selected_project = next(
-            (item for item in self.project_data 
-             if item.get('project_name') == selected_name), 
-            None
-        )
+        # Get currently selected inventory item
+        selected_inventory = self.inventory_name_combobox.get_selected_item()
+        
+        if not selected_inventory:
+            return
+            
+        # Find the selected project that matches both project_name and inventory criteria
+        all_inventory = self.inventory_name_combobox.get_all_inventory_data()
+        
+        selected_project = None
+        for item in all_inventory:
+            if (item.get('project_name') == selected_name and 
+                ((selected_inventory.get('product_id') and 
+                item.get('product_id') == selected_inventory.get('product_id')) or
+                (selected_inventory.get('inventory_id') and 
+                item.get('inventory_id') == selected_inventory.get('inventory_id')))):
+                selected_project = item
+                break
         
         if selected_project:
             # Auto-fill related fields
             fields_to_fill = {
+                'project_name': selected_project.get('project_name'),
                 'project_id': selected_project.get('project_id', ''),
                 'event_date': selected_project.get('event_date', ''),
                 'location': selected_project.get('location', ''),
