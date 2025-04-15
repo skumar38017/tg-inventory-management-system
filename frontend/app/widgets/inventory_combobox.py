@@ -20,12 +20,39 @@ class InventoryComboBox(ttk.Combobox):
         self._last_search = ""
         
     def _on_keyrelease(self, event):
-        """Handle key releases to trigger search"""
+        """Handle key releases to trigger search without losing focus"""
         if event.keysym in ('BackSpace', 'Delete') or len(event.keysym) == 1:
             current = self.get()
             if current != self._last_search:
                 self._last_search = current
-                self._search_inventory(current)
+                
+                # Save cursor position
+                cursor_pos = self.index(tk.INSERT)
+                
+                # Perform search in the background
+                self.after(100, lambda: self._async_search(current, cursor_pos))
+                
+    def _async_search(self, search_term: str, cursor_pos: int):
+        """Perform search asynchronously to avoid UI blocking"""
+        try:
+            items = self._fetch_inventory_items(search_term)
+            self._inventory_data = items
+            names = [item['inventory_name'] for item in items if item['inventory_name']]
+            
+            # Update the combobox values
+            self['values'] = names
+            
+            # Only show dropdown if there are matches
+            if names and search_term:
+                self.event_generate('<Down>')
+                
+            # Restore cursor position
+            self.icursor(cursor_pos)
+            self.focus_set()
+            
+        except Exception as e:
+            logging.error(f"Error searching inventory: {e}")
+            messagebox.showerror("Error", f"Failed to search inventory: {e}")
                 
     def _on_select(self, event):
         """Handle selection from dropdown"""
@@ -34,19 +61,6 @@ class InventoryComboBox(ttk.Combobox):
             selected_item = self._inventory_data[selected_index]
             print(f"Selected: {selected_item['inventory_name']} (ID: {selected_item['inventory_id']})")
             
-    def _search_inventory(self, search_term: str):
-        """Search inventory and update dropdown list"""
-        try:
-            items = self._fetch_inventory_items(search_term)
-            self._inventory_data = items
-            names = [item['inventory_name'] for item in items if item['inventory_name']]
-            self['values'] = names
-            if names and search_term:
-                self.event_generate('<Down>')
-        except Exception as e:
-            logging.error(f"Error searching inventory: {e}")
-            messagebox.showerror("Error", f"Failed to search inventory: {e}")
-    
     def get_selected_item(self) -> Dict:
         """Get the full data for the currently selected item"""
         selected_index = self.current()
