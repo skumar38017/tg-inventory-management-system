@@ -142,8 +142,12 @@ class ToEventWindow:
         
         # Table entries
         for row in self.table_entries:
-            for entry in row:
-                entry.config(state=state)
+            for col, entry in enumerate(row):
+                if col == 12:  # RecQty column (index 11)
+                    entry.config(state='readonly')  # Always readonly
+                else:
+                    entry.config(state=state)
+
 
     def maximize_window(self):
         try:
@@ -347,6 +351,8 @@ class ToEventWindow:
                     entry = tk.Entry(self.scrollable_frame, 
                                 font=('Helvetica', 9), 
                                 width=self.original_column_widths[col])
+                    if col == 12:  # RecQty column (index 12) RecQty is readonly
+                        entry.config(state='readonly')
                     entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
                     row_entries.append(entry)
             self.table_entries.append(row_entries)
@@ -872,11 +878,14 @@ class ToEventWindow:
                 entry = tk.Entry(self.scrollable_frame, 
                             font=('Helvetica', 9), 
                             width=self.original_column_widths[col])
+                if col == 12:  # RecQty column (index 12) RecQty is readonly
+                    entry.config(state='readonly')
                 entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
                 row_entries.append(entry)
         self.table_entries.append(row_entries)
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
 
     def remove_table_row(self):
         """Remove the last row from the table"""
