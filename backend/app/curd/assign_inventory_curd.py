@@ -434,3 +434,4 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 status_code=500,
                 detail=f"Failed to delete assignment: {str(e)}"
             )
+        
