@@ -65,7 +65,7 @@ class EntryInventoryCreate(EntryInventoryBase):
     class Config:
         exclude = {'created_at', 'updated_at', 'id', 'bar_code'}
         
-    @validator('on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse', pre=True)
+    @validator('on_rent', 'rented_inventory_returned','on_event', 'in_office', 'in_warehouse', pre=True)
     def validate_booleans(cls, v):
         if isinstance(v, bool):
             return "true" if v else "false"
@@ -92,6 +92,7 @@ class EntryInventoryOut(EntryInventoryBase):
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
+    returned_date: Optional[date] = None
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
@@ -129,6 +130,7 @@ class EntryInventoryUpdate(BaseModel):
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
+    returned_date: Optional[date] = None
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
@@ -136,17 +138,11 @@ class EntryInventoryUpdate(BaseModel):
     balance_qty: Optional[Union[str, float, int]] = None
     submitted_by: Optional[str] = None
     submitted_by: Optional[str] = None
-    updated_at: Optional[datetime] = None
-
     class Config:
         from_attributes = True
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-
-    @field_validator('updated_at', mode='before')
-    def set_updated_at(cls, v):
-        return datetime.now(timezone.utc)
     
 class EntryInventoryUpdateOut(EntryInventoryBase):
     pass
@@ -169,6 +165,7 @@ class EntryInventoryOut(EntryInventoryBase):
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"
+    returned_date: Optional[date] = None
     on_event: Optional[str] = "false"
     in_office: Optional[str] = "false"
     in_warehouse: Optional[str] = "false"
@@ -248,6 +245,7 @@ class StoreInventoryRedis(BaseModel):
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
+    returned_date: Optional[date] = None
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
@@ -287,6 +285,7 @@ class InventoryRedisOut(BaseModel):
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
+    returned_date: Optional[date] = None
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
