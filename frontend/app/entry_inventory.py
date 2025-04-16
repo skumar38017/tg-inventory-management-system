@@ -5,12 +5,14 @@ import platform
 import uuid
 import re
 import logging
-
-from .api_request.entry_inventory_api_request import (sync_inventory, 
+from .api_request.entry_inventory_api_request import (
+                            sync_inventory, 
+                            show_all_inventory,
                             filter_inventory_by_date_range,
                             add_new_inventory_item,
                             search_inventory_by_id
                             )
+from tkcalendar import Calendar, DateEntry
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
 from .assign_inventory import AssignInventoryWindow
@@ -66,7 +68,7 @@ def update_main_inventory_list():
     if inventory_listbox:
         inventory_listbox.delete(0, tk.END)
         try:
-            inventory = sync_inventory() # This now returns formatted data from the API
+            inventory = show_all_inventory() # This now returns formatted data from the API
             display_inventory_items(inventory)
         except Exception as e:
             logger.error(f"Failed to Sync inventory: {e}")
@@ -279,6 +281,22 @@ def add_new_row(scrollable_frame, header_labels):
                 relief='solid'
             )
             entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
+        elif field in ['Purchase Date', 'Returned Date']:
+            # Create a frame to hold the date entry
+            date_frame = tk.Frame(scrollable_frame)
+            date_frame.grid(row=row_num, column=col, sticky="ew", padx=1, pady=1)
+            
+            # Create DateEntry widget
+            date_entry = DateEntry(
+                date_frame,
+                width=18,
+                background='darkblue',
+                foreground='white',
+                borderwidth=1,
+                date_pattern='yyyy-mm-dd',
+                font=('Helvetica', 9))
+            date_entry.pack(fill=tk.X, expand=True)
+            entries[var_name] = date_entry
         else:
             entries[var_name] = tk.Entry(
                 scrollable_frame, 
@@ -449,15 +467,29 @@ def create_list_frames(root):
     
     # From Date
     tk.Label(left_frame, text="From Date:", font=('Helvetica', 9)).grid(row=0, column=0, padx=5, sticky='e')
-    from_date_entry = tk.Entry(left_frame, font=('Helvetica', 9), width=12)
+    from_date_entry = DateEntry(
+        left_frame,
+        width=18,
+        background='darkblue',
+        foreground='white',
+        borderwidth=2,
+        date_pattern='yyyy-mm-dd',
+        font=('Helvetica', 9))
     from_date_entry.grid(row=0, column=1, padx=5, sticky='w')
-    from_date_entry.insert(0, datetime.now().strftime("%Y-%m-01"))
+    from_date_entry.set_date(datetime.now().replace(day=1))  # First day of current month
     
     # To Date
     tk.Label(left_frame, text="To Date:", font=('Helvetica', 9)).grid(row=0, column=2, padx=5, sticky='e')
-    to_date_entry = tk.Entry(left_frame, font=('Helvetica', 9), width=12)
+    to_date_entry = DateEntry(
+        left_frame,
+        width=18,
+        background='darkblue',
+        foreground='white',
+        borderwidth=2,
+        date_pattern='yyyy-mm-dd',
+        font=('Helvetica', 9))
     to_date_entry.grid(row=0, column=3, padx=5, sticky='w')
-    to_date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
+    to_date_entry.set_date(datetime.now())  # Current date
     
     # Filter button
     filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
@@ -581,6 +613,22 @@ def create_list_frames(root):
                 relief='solid'
             )
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
+        elif field in ['Purchase Date', 'Returned Date']:
+            # Create a frame to hold the date entry
+            date_frame = tk.Frame(scrollable_frame)
+            date_frame.grid(row=1, column=col, sticky="ew", padx=1, pady=1)
+            
+            # Create DateEntry widget
+            date_entry = DateEntry(
+                date_frame,
+                width=18,
+                background='darkblue',
+                foreground='white',
+                borderwidth=1,
+                date_pattern='yyyy-mm-dd',
+                font=('Helvetica', 9))
+            date_entry.pack(fill=tk.X, expand=True)
+            entries[var_name] = date_entry
         else:
             entries[var_name] = tk.Entry(
                 scrollable_frame, 
@@ -588,7 +636,7 @@ def create_list_frames(root):
                 borderwidth=1,
                 relief='solid'
             )
-            entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
+        entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
     
     # Configure column weights
     for col in range(len(header_labels)):

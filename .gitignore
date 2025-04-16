@@ -16,6 +16,9 @@ db.sqlite3
 db.sqlite3-journal
 media
 backend/app/.env
+credentials.json
+authorized_user.json
+inventory_data.json
 
 staticfiles/
 /static/barcodes

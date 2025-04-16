@@ -15,18 +15,21 @@ logger = logging.getLogger(__name__)
 def sync_inventory() -> List[Dict]:
     """Fetch inventory data from the API and return formatted data"""
     try:
-        response = requests.get("http://localhost:8000/api/v1/show-all/")
-        response.raise_for_status()
+        response = make_api_request(
+            "POST",
+            "/sync-from-sheets/",
+        )
         
+        response.raise_for_status()
         # Map backend fields to frontend display names
         formatted_data = []
         for item in response.json():
             formatted_item = {
-                'ID': item.get('uuid', 'N/A'),
+                'ID': item.get('id', 'N/A'),
                 'Serial No.': item.get('sno', 'N/A'),
-                'InventoryID': item.get('inventory_id', 'N/A'),
                 'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
+                'InventoryID': item.get('inventory_id', 'N/A'),
+                'Name': item.get('inventory_name', 'N/A'),
                 'Material': item.get('material', 'N/A'),
                 'Total Quantity': item.get('total_quantity', 'N/A'),
                 'Manufacturer': item.get('manufacturer', 'N/A'),
@@ -48,8 +51,8 @@ def sync_inventory() -> List[Dict]:
                 'Submitted By': item.get('submitted_by', 'N/A'),
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
+                'BarCode': item.get('inventory_barcode', 'N/A'),
+                'BacodeUrl': item.get('inventory_barcode_url', 'N/A'),
                 # Add any other fields you want to display
             }
             formatted_data.append(formatted_item)
@@ -66,8 +69,9 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
     """Fetch inventory data filtered by date range from the API"""
     try:
         # Make the API request with the date strings
-        response = requests.get(
-            "http://localhost:8000/api/v1/date-range/",
+        response = make_api_request(
+            "GET",
+            "date-range/",
             params={
                 "from_date": from_date,
                 "to_date": to_date
@@ -83,7 +87,7 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
                 'Serial No.': item.get('sno', 'N/A'),
                 'InventoryID': item.get('inventory_id', 'N/A'),
                 'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
+                'Name': item.get('inventory_name', 'N/A'),
                 'Material': item.get('material', 'N/A'),
                 'Total Quantity': item.get('total_quantity', 'N/A'),
                 'Manufacturer': item.get('manufacturer', 'N/A'),
@@ -121,7 +125,7 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
 def show_all_inventory():
     """Show all inventory from local database"""
     try:
-        response = requests.get("http://localhost:8000/api/v1/show-all/")
+        response = make_api_request("GET", "show-all/")
         response.raise_for_status()
         
         # Map backend fields to frontend display names
@@ -132,7 +136,7 @@ def show_all_inventory():
                 'Serial No.': item.get('sno', 'N/A'),
                 'InventoryID': item.get('inventory_id', 'N/A'),
                 'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
+                'Name': item.get('inventory_name', 'N/A'),
                 'Material': item.get('material', 'N/A'),
                 'Total Quantity': item.get('total_quantity', 'N/A'),
                 'Manufacturer': item.get('manufacturer', 'N/A'),                
@@ -154,8 +158,8 @@ def show_all_inventory():
                 'Submitted By': item.get('submitted_by', 'N/A'),
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
+                'BarCode': item.get('inventory_barcode', 'N/A'),
+                'BacodeUrl': item.get('inventory_barcode_url', 'N/A'),
             }
             formatted_data.append(formatted_item)
         
@@ -222,7 +226,7 @@ def add_new_inventory_item(item_data: dict):
             "product_id": product_id,
             "inventory_id": inventory_id,
             "sno": clean_value(item_data.get('Sno')),
-            "name": clean_value(item_data.get('Name')),
+            "inventory_name": clean_value(item_data.get('Name')),
             "material": clean_value(item_data.get('Material')),
             "manufacturer": clean_value(item_data.get('Manufacturer')),
             "submitted_by": clean_value(item_data.get('Submitedby')),
@@ -258,8 +262,9 @@ def add_new_inventory_item(item_data: dict):
         logger.debug(f"Sending payload: {payload}")
 
         # API request
-        response = requests.post(
-            url="http://localhost:8000/api/v1/create-item/",
+        response = make_api_request(
+            "POST",
+            "create-item/",
             headers={"Content-Type": "application/json"},
             json=payload
         )
@@ -311,7 +316,7 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> 
                 'Sno': item.get('sno', 'N/A'),
                 'InventoryID': item.get('inventory_id', 'N/A'),
                 'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
+                'Name': item.get('inventory_name', 'N/A'),
                 'Material': item.get('material', 'N/A'),
                 'Qty': item.get('total_quantity', 'N/A'),
                 'Manufacturer': item.get('manufacturer', 'N/A'),
@@ -430,7 +435,7 @@ def format_project_item(item: dict) -> dict:
             'project_id': item.get('work_id') or item.get('project_id'),
             'zone_active': item.get('zone_active'),
             'sno': item.get('sno'),
-            'name': item.get('name'),
+            'name': item.get('inventory_name'),
             'description': item.get('description'),
             'quantity': item.get('quantity'),
             'material': item.get('material'),
