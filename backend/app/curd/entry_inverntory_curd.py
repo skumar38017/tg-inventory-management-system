@@ -409,11 +409,10 @@ class EntryInventoryService(EntryInventoryInterface):
                 status_code=500,
                 detail="Error searching inventory items"
             )
-            
+
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 #  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
 # ------------------------------------------------------------------------------------------------------------------------------------------------
-
     #  Store all recored in Redis after clicking {sync} button
     async def store_inventory_in_redis(self, db: AsyncSession) -> bool:
         """Store all inventory entries in Redis"""
@@ -448,8 +447,8 @@ class EntryInventoryService(EntryInventoryInterface):
                     issued_qty=entry.issued_qty,
                     balance_qty=entry.balance_qty,
                     submitted_by=entry.submitted_by,
-                    bar_code=entry.bar_code,
-                    barcode_image_url=entry.barcode_image_url,
+                    inventory_barcode=entry.inventory_barcode,
+                    inventory_barcode_url=entry.inventory_barcode_url,
                     created_at=entry.created_at,
                     updated_at=entry.updated_at
                 )
@@ -496,11 +495,35 @@ class EntryInventoryService(EntryInventoryInterface):
     # List all inventory entries function
     async def list_entry_inventories_curd(self, db: AsyncSession):
         try:
-            # Execute query to fetch all entries
-            result = await db.execute(select(EntryInventory))
-            # Retrieve all rows as a list
-            entry_inventory_list = result.scalars().all()
-            return entry_inventory_list
-        except SQLAlchemyError as e:
-            logger.error(f"Error listing entry inventories: {e}")
-            raise e
+            # Get all inventory keys from Redis
+            keys = await self.redis.keys("inventory:*")
+            all_entries = []
+            
+            for key in keys:
+                inventory_data = await self.redis.get(key)
+                if inventory_data:
+                    try:
+                        data = json.loads(inventory_data)
+                        # Convert timestamps if they exist
+                        if 'created_at' in data:
+                            data['created_at'] = datetime.fromisoformat(data['created_at'])
+                        if 'updated_at' in data:
+                            data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+                        # Validate against schema
+                        entry = EntryInventoryOut(**data)
+                        all_entries.append(entry)
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
+                        continue
+            
+            # Sort by created_at (newest first)
+            all_entries.sort(key=lambda x: x.created_at, reverse=True)
+            
+            return all_entries
+
+        except Exception as e:
+            logger.error(f"Redis list failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Error listing inventory items"
+            )
