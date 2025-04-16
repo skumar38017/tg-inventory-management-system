@@ -4,6 +4,7 @@ from datetime import datetime
 import platform
 import uuid
 import re
+import json
 import logging
 from .api_request.entry_inventory_api_request import (
                             sync_inventory, 
@@ -75,25 +76,67 @@ def update_main_inventory_list():
             messagebox.showerror("Error", "Could not Sync inventory data")
 
 def display_inventory_items(items):
-    """Display formatted inventory items in the listbox"""
+    """Display inventory items in a horizontal table format with fixed headers"""
     if inventory_listbox:
         inventory_listbox.delete(0, tk.END)
-        for item in items:
-            # Format the display string
-            display_str = (
-                f"{item['Name']} |{item['Serial No.']} | {item['InventoryID']} | {item['Product ID']} | "
-                f"{item['Vendor Name']} | {item['Material']} | {item['Total Quantity']} | "
-                f"{item['Manufacturer']} | {item['Purchase Dealer']} | {item['Purchase Date']} | "
-                f"{item['Purchase Amount']} | {item['Repair Quantity']} | {item['Repair Cost']} | "
-                f"{item['On Rent']} | {item['Total Rent']} | "
-                f"{item['Rented Inventory Returned']} | {item['Returned Date']} | {item['On Event']} | "
-                f"{item['In Office']} | {item['In Warehouse']} | {item['Issued Qty']} | "
-                f"{item['Balance Qty']} | {item['Submitted By']} | {item['ID']} | {item['Created At']} | "
-                f"{item['Updated At']} | {item['BarCode']} "
-            )
-            # Insert the formatted string into the listbox
-            inventory_listbox.insert(tk.END, display_str)
+        
+        if not items:
+            inventory_listbox.insert(tk.END, "No inventory items found")
+            return
 
+        # Define the column headers and their display widths
+        headers = [
+            ("ID", 10),
+            ("Serial No.", 15),
+            ("InventoryID", 15),
+            ("Product ID", 15),
+            ("Name", 20),
+            ("Material", 15),
+            ("Total Quantity", 15),
+            ("Manufacturer", 15),
+            ("Purchase Dealer", 20),
+            ("Purchase Date", 15),
+            ("Purchase Amount", 15),
+            ("Repair Quantity", 15),
+            ("Repair Cost", 15),
+            ("On Rent", 10),
+            ("Vendor Name", 20),
+            ("Total Rent", 15),
+            ("Rented Inventory Returned", 25),
+            ("Returned Date", 15),
+            ("On Event", 10),
+            ("In Office", 10),
+            ("In Warehouse", 15),
+            ("Issued Qty", 15),
+            ("Balance Qty", 15),
+            ("Submitted By", 20),
+            ("Created At", 20),
+            ("Updated At", 20),
+            ("BarCode", 20),
+            ("BacodeUrl", 20)
+        ]
+
+        # Create header row
+        header_row = "".join(f"{h[0]:<{h[1]}}" for h in headers)
+        inventory_listbox.insert(tk.END, header_row)
+        
+        # Add separator line
+        separator = "-" * sum(h[1] for h in headers)
+        inventory_listbox.insert(tk.END, separator)
+        
+        # Add each item's values in a row
+        for item in items:
+            row_values = []
+            for h in headers:
+                # Get the value directly using the same keys as in the API response
+                value = item.get(h[0], 'N/A')
+                
+                # Format the value to fit the column width
+                display_value = str(value)[:h[1]-2] + ".." if len(str(value)) > h[1] else str(value)
+                row_values.append(f"{display_value:<{h[1]}}")
+            
+            inventory_listbox.insert(tk.END, "".join(row_values))
+            
 #  Filter inventory by date range by `filter` button
 def filter_by_date_range():
     """Filter inventory items by date range"""
@@ -522,14 +565,18 @@ def create_list_frames(root):
     list_container.pack(fill="both", expand=True)
     
     global inventory_listbox
+    # In create_list_frames function, replace inventory_listbox creation with:
     inventory_listbox = tk.Listbox(
         list_container,
         height=listbox_height,
-        font=('Helvetica', 9),
+        font=('Courier New', 9),  # Monospace font for proper alignment
         activestyle='none',
         selectbackground='#4a6984',
-        selectforeground='white'
+        selectforeground='white',
+        bg='white',
+        fg='black'
     )
+
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
     scrollbar = tk.Scrollbar(

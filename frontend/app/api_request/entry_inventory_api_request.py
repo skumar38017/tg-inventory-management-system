@@ -83,7 +83,7 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
         formatted_data = []
         for item in response.json():
             formatted_item = {
-                'ID': item.get('uuid', 'N/A'),
+                'ID': item.get('id', 'N/A'),
                 'Serial No.': item.get('sno', 'N/A'),
                 'InventoryID': item.get('inventory_id', 'N/A'),
                 'Product ID': item.get('product_id', 'N/A'),
@@ -132,7 +132,7 @@ def show_all_inventory():
         formatted_data = []
         for item in response.json():
             formatted_item = {
-                'ID': item.get('uuid', 'N/A'),
+                'ID': item.get('id', 'N/A'),
                 'Serial No.': item.get('sno', 'N/A'),
                 'InventoryID': item.get('inventory_id', 'N/A'),
                 'Product ID': item.get('product_id', 'N/A'),
