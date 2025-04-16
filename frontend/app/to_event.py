@@ -964,7 +964,6 @@ class ToEventWindow:
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-
     def remove_table_row(self):
         """Remove the last row from the table"""
         if len(self.table_entries) <= 1:
