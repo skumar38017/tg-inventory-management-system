@@ -182,6 +182,7 @@ class ToEventWindow:
         self.clock_label = tk.Label(clock_frame, font=('Helvetica', 8))
         self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
         self.update_clock()
+        self.add_table_row() 
 
         # Company info
         company_frame = tk.Frame(self.window)

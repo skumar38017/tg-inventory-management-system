@@ -200,7 +200,7 @@ async def show_all_redis(
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
     response_model=EntryInventoryOut,
-    status_code=200,
+    status_code=201,
     summary="Create a new entry in the inventory",
     description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
     response_model_exclude_unset=True,
@@ -212,18 +212,13 @@ async def create_inventory_item_route(
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     try:
-        # Convert to dict and process
         item_data = item.dict(exclude_unset=True)
         logger.info(f"New item created: {item_data}")
-
-        if not item_data:
-            logger.error("Failed to create inventory item: item is None.")
-            raise HTTPException(status_code=400, detail="Failed to create inventory item")
-        
         return await service.create_entry_inventory(db, item_data)
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+# ____________________________________________________________
 # ________________________________________________________________________________________
 
 # READ: Get an inventory which is match from inventry ID
