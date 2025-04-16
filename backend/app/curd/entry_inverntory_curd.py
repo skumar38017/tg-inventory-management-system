@@ -22,6 +22,9 @@ from typing import List, Optional
 from backend.app.database.redisclient import redis_client
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import ValidationError
+
 from typing import Union
 import json
 import redis.asyncio as redis
@@ -146,19 +149,37 @@ class EntryInventoryService(EntryInventoryInterface):
             logger.error(f"Database error filtering by date: {e}")
             raise HTTPException(status_code=500, detail="Database error")
 
-    # READ ALL: Get all inventory entries
-    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[EntryInventoryOut]:
+    # READ ALL: Get all inventory entries directly from redis
+    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[InventoryRedisOut]:
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .order_by(EntryInventory.name)  # Alphabetical order
-                .offset(skip)
-            )
-            return result.scalars().all()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching entries: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
-
+            # Get all keys matching your project pattern
+            keys = await self.redis.keys("inventory:*")
+            
+            projects = []
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        assigned_data = json.loads(data)
+                        # Handle the 'cretaed_at' typo if present
+                        if 'cretaed_at' in assigned_data and assigned_data['cretaed_at'] is not None:
+                            assigned_data['created_at'] = assigned_data['cretaed_at']
+                        # Validate the data against your schema
+                        validated_project = InventoryRedisOut.model_validate(assigned_data)
+                        projects.append(validated_project)
+                    except ValidationError as ve:
+                        logger.warning(f"Validation error for project {key}: {ve}")
+                        continue
+            
+            # Sort by updated_at (descending)
+            projects.sort(key=lambda x: x.updated_at, reverse=True)
+            
+            # Apply pagination
+            paginated_projects = projects[skip:skip+1000]  # Assuming page size of 100
+            
+            return paginated_projects
+        except Exception as e:
+            logger.error(f"Redis error fetching entries: {e}")
     # READ: Get an inventory entry by its inventry_id
     async def get_by_inventory_id(self, db: AsyncSession, inventory_id: str) -> Optional[EntryInventoryOut]:
         try:
