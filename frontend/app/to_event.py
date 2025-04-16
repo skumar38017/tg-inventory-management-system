@@ -11,6 +11,7 @@ import json
 import os
 from tkcalendar import Calendar, DateEntry
 from backend.app.utils.field_validators import StatusEnum
+from frontend.app.widgets.inventory_combobox import InventoryComboBox
 from .api_request.to_event_inventory_request import (
     create_to_event_inventory_list, 
     load_submitted_project_from_db,
@@ -35,6 +36,9 @@ class ToEventWindow:
         
         # Database file
         self.db_file = "inventory_data.json"
+
+        # Initialize inventory combo box data
+        self.inventory_combo_data = []
         
         # Initialize database
         self.initialize_db()
@@ -143,8 +147,10 @@ class ToEventWindow:
         # Table entries
         for row in self.table_entries:
             for col, entry in enumerate(row):
-                if col == 12:  # RecQty column (index 11)
+                if col == 12:  # RecQty column (index 12)
                     entry.config(state='readonly')  # Always readonly
+                elif col == 2:  # Inventory column (InventoryComboBox)
+                    entry.config(state='readonly' if readonly else 'normal')
                 else:
                     entry.config(state=state)
 
@@ -203,7 +209,7 @@ class ToEventWindow:
                font=('Helvetica', 14, 'bold')).pack()
         
         tk.Label(title_frame, 
-               text="Return To Create Event Inventory List",
+               text="To Create Event Inventory List",
                font=('Helvetica', 12, 'bold')).pack()
 
         # Information fields
@@ -333,7 +339,18 @@ class ToEventWindow:
         for row in range(1, 2):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
-                if col == 10:  # Status column
+                if col == 2:  # Inventory column - use InventoryComboBox
+                    combo_frame = tk.Frame(self.scrollable_frame)
+                    combo_frame.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    
+                    combo = InventoryComboBox(combo_frame)
+                    combo.pack(fill=tk.X, expand=True)
+                    
+                    # Bind selection to update related fields
+                    combo.bind('<<ComboboxSelected>>', 
+                            lambda e, r=row_entries: self._update_inventory_fields(r, e))
+                    row_entries.append(combo)
+                elif col == 10:  # Status column
                     # Create Combobox for Status
                     status_var = tk.StringVar()
                     combo = ttk.Combobox(
@@ -409,6 +426,25 @@ class ToEventWindow:
         self.window.grid_rowconfigure(7, weight=0)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
+
+    def _update_inventory_fields(self, row_entries, event):
+        """Update related fields when an inventory item is selected"""
+        # Get the combobox widget that triggered the event
+        combo_box = event.widget
+        
+        # Get the selected item data
+        selected_item = combo_box.get_selected_item()
+        if selected_item:
+            # Update all relevant fields from the selected inventory item
+            if len(row_entries) > 1:  # Ensure we have at least the sno field
+                # Update sno field (column 1)
+                row_entries[1].delete(0, tk.END)
+                row_entries[1].insert(0, str(selected_item.get('sno', '')))
+                
+                # Update description field (column 3) if it exists
+                if len(row_entries) > 3:
+                    row_entries[3].delete(0, tk.END)
+                    row_entries[3].insert(0, str(selected_item.get('description', '')))
 
     def new_button_click(self):
         """Handle New Entry button click - clears the form and generates new Work ID"""
@@ -677,7 +713,9 @@ class ToEventWindow:
             for col, field in enumerate(fields):
                 if col < len(row):  # Make sure we don't exceed row length
                     value = str(item.get(field, ''))
-                    if col == 10:  # Status column (Combobox)
+                    if col == 2:  # Inventory column (InventoryComboBox)
+                        row[col].set(value)  # Set the inventory name
+                    elif col == 10:  # Status column (Combobox)
                         try:
                             row[col].set(value if value in self.status_options else self.status_options[0])
                         except Exception as e:
@@ -686,7 +724,7 @@ class ToEventWindow:
                     else:  # Regular Entry
                         row[col].delete(0, tk.END)
                         row[col].insert(0, value)
-        
+            
         # Switch back to form view
         self.tab_control.select(0)
         
@@ -891,7 +929,18 @@ class ToEventWindow:
         
         row_entries = []
         for col in range(len(self.headers)):
-            if col == 10:  # Status column
+            if col == 2:  # Inventory column - use InventoryComboBox
+                combo_frame = tk.Frame(self.scrollable_frame)
+                combo_frame.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                
+                combo = InventoryComboBox(combo_frame)
+                combo.pack(fill=tk.X, expand=True)
+                
+                # Bind selection to update related fields
+                combo.bind('<<ComboboxSelected>>', 
+                        lambda e, r=row_entries: self._update_inventory_fields(r, e))
+                row_entries.append(combo)
+            elif col == 10:  # Status column
                 status_var = tk.StringVar()
                 combo = ttk.Combobox(
                     self.scrollable_frame,
