@@ -16,9 +16,23 @@ from backend.app.schema.entry_inventory_schema import (
 )
 from pydantic import BaseModel
 from datetime import date
+import requests
 
 class EntryInventoryInterface:
     """Interface for EntryInventory operations with immutable core fields."""
+
+    #  Store all recored in Redis after clicking {sync} button
+    async def sync_inventory_from_google_sheets(self) -> List[InventoryRedisOut]:
+        """
+        Sync inventory data from Google Sheets to Redis
+        
+        Returns:
+            bool: True if sync was successful
+            
+        Raises:
+            HTTPException: If sync fails
+        """
+        pass
     
     async def create_entry_inventory(self, db: AsyncSession, entry_inventory: EntryInventoryCreate) -> EntryInventory:
         """

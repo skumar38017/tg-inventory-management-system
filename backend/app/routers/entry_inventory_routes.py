@@ -12,8 +12,11 @@ from backend.app.schema.entry_inventory_schema import (
     EntryInventoryOut,
     InventoryRedisOut,
     EntryInventorySearch,
-    DateRangeFilter
+    DateRangeFilter,
+    InventoryRedisOut
 )
+import requests
+from fastapi import Request
 from backend.app.curd.entry_inverntory_curd import EntryInventoryService
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 
@@ -34,7 +37,7 @@ logger.setLevel(logging.INFO)
 
 #  Filter inventory from database by date range without passing any `IDs`
 @router.get(
-    "/date-range",
+    "/date-range/",
     response_model=List[EntryInventoryOut],
     status_code=200,
     summary="Filter inventory by date range",
@@ -84,52 +87,50 @@ async def get_inventory_by_date_range(
         )
 
 # Refrech record in UI and show all updated data directly after clicking {sync} button [/sync/]
-@router.post("/sync/",
+@router.post("/sync-from-sheets/",
+    response_model=List[InventoryRedisOut],
     status_code=200,
-    summary="Sync database with Redis",
-    description="Stores all inventory entries in Redis cache",
+    summary="Sync inventory from Google Sheets",
+    description="Fetch inventory data from Google Sheets and store in Redis",
+    response_model_exclude_unset=True,
     responses={
         200: {"description": "Successfully synced with Redis"},
+        401: {"description": "Authentication required"},
         500: {"description": "Internal server error during sync"}
     },
     tags=["Sync Inventory (Redis)"]
-
 )
-async def sync_redis(
-    service: EntryInventoryService = Depends(get_entry_inventory_service),
-    db: AsyncSession = Depends(get_async_db)
+async def sync_from_sheets(
+    request: Request,
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
     """
-    Synchronize all inventory data from database to Redis cache.
+    Synchronize inventory data from Google Sheets to Redis cache.
     
     This endpoint will:
-    1. Fetch all inventory entries from the database
-    2. Store them in Redis with proper serialization
-    3. Return success/failure status
+    1. Authenticate with Google using sumitkumar@tagglabs.in
+    2. Fetch all inventory entries from the Google Sheet
+    3. Store them in Redis with proper serialization
+    4. Return the list of synced items
     """
     try:
-        logger.info("Starting Redis sync operation")
-        success = await service.store_inventory_in_redis(db)
+        logger.info("Starting Google Sheets sync operation")
+        synced_items = await service.sync_inventory_from_google_sheets(request)
         
-        if not success:
-            logger.warning("Redis sync completed with warnings")
-            return {"status": "completed with warnings"}
+        if not synced_items:
+            logger.warning("Google Sheets sync completed with no items")
+            return []
             
-        logger.info("Redis sync completed successfully")
-        return {"status": "success", "message": "All inventory entries synced to Redis"}
+        logger.info(f"Google Sheets sync completed with {len(synced_items)} items")
+        return synced_items
         
     except HTTPException:
-        # Re-raise HTTPExceptions (they're intentional)
         raise
     except Exception as e:
-        logger.error(f"Critical error during Redis sync: {str(e)}", exc_info=True)
+        logger.error(f"Critical error during Google Sheets sync: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={
-                "status": "failed",
-                "message": "Failed to sync with Redis",
-                "error": str(e)
-            }
+            detail="Failed to sync with Google Sheets"
         )
 
 # Show all inventory entries directly from local Redis Database  (no search) according in sequence alphabetical order after clicking `Show All` button
