@@ -162,14 +162,35 @@ class EntryInventoryService(EntryInventoryInterface):
     # READ: Get an inventory entry by its inventry_id
     async def get_by_inventory_id(self, db: AsyncSession, inventory_id: str) -> Optional[EntryInventoryOut]:
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.inventory_id == inventory_id)
+            # Search all inventory keys in Redis
+            keys = await self.redis.keys("inventory:*")
+            
+            for key in keys:
+                # Get the inventory data from Redis
+                inventory_data = await self.redis.get(key)
+                if inventory_data:
+                    data = json.loads(inventory_data)
+                    # Check if this is the inventory we're looking for
+                    if data.get('inventory_id') == inventory_id:
+                        # Convert string timestamps back to datetime objects
+                        if 'updated_at' in data:
+                            data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+                        return EntryInventoryOut(**data)
+            
+            return None  # Return None if not found
+
+        except json.JSONDecodeError as je:
+            logger.error(f"Error decoding Redis data: {str(je)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error decoding inventory data"
             )
-            return result.scalar_one_or_none()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+        except Exception as e:
+            logger.error(f"Redis error fetching inventory: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error fetching inventory from Redis"
+            )
 
     # UPDATE: Update an existing inventory entry {} {Inventory ID}
     async def update_entry(self, db: AsyncSession, inventory_id: str, update_data: EntryInventoryUpdate):

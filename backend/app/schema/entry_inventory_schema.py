@@ -207,8 +207,8 @@ class EntryInventorySearch(BaseModel):
 
 # Schema for search date range filter
 class DateRangeFilter(BaseModel):
-    from_date: date
-    to_date: date
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
 
     @field_validator('to_date')
     def validate_dates(cls, v: date, info) -> date:
