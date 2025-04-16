@@ -239,34 +239,86 @@ class EntryInventoryService(EntryInventoryInterface):
     # UPDATE: Update an existing inventory entry {} {Inventory ID}
     async def update_entry(self, db: AsyncSession, inventory_id: str, update_data: EntryInventoryUpdate):
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.inventory_id == inventory_id)
-            )
-            entry = result.scalar_one_or_none()
+            # Format inventory_id if needed
+            if not inventory_id.startswith('INV'):
+                inventory_id = f"INV{inventory_id}"
 
-            if not entry:
-                return None
+            # Search all inventory keys to find matching inventory_id
+            keys = await self.redis.keys("inventory:*")
+            redis_key = None
+            
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    item_data = json.loads(data)
+                    if item_data.get('inventory_id') == inventory_id:
+                        redis_key = key
+                        break
 
+            if not redis_key:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Inventory not found with ID: {inventory_id}"
+                )
+
+            # Get existing record from Redis
+            existing_data = await self.redis.get(redis_key)
+            if not existing_data:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Inventory data not found in Redis"
+                )
+
+            existing_dict = json.loads(existing_data)
             update_dict = update_data.model_dump(exclude_unset=True)
-            IMMUTABLE_FIELDS = ['uuid', 'sno', 'inventory_id', 'product_id', 'created_at']
+            
+            # Define immutable fields that shouldn't be updated
+            IMMUTABLE_FIELDS = {
+                'id', 'sno', 'inventory_id', 'product_id', 
+                'created_at', 'inventory_barcode', 
+                'inventory_unique_code', 'inventory_barcode_url'
+            }
 
-            # Update mutable fields
+            # Apply updates while preserving immutable fields
+            updated_dict = existing_dict.copy()
             for field, value in update_dict.items():
                 if field not in IMMUTABLE_FIELDS:
-                    setattr(entry, field, value)
+                    # Handle boolean field conversion
+                    if field in ['on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse']:
+                        if isinstance(value, bool):
+                            updated_dict[field] = "true" if value else "false"
+                        elif isinstance(value, str):
+                            updated_dict[field] = value.lower()
+                        else:
+                            updated_dict[field] = "false"
+                    else:
+                        updated_dict[field] = value
 
-            # Always update timestamp
-            entry.updated_at = datetime.now(timezone.utc)
+            # Always update the timestamp
+            updated_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
 
-            await db.commit()
-            await db.refresh(entry)
-            return entry
+            # Save back to Redis
+            await self.redis.set(
+                redis_key,
+                json.dumps(updated_dict, default=str)
+            )
 
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error updating entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            return EntryInventoryOut(**updated_dict)
+
+        except HTTPException:
+            raise
+        except json.JSONDecodeError as je:
+            logger.error(f"JSON decode error: {str(je)}")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid inventory data format in Redis"
+            )
+        except Exception as e:
+            logger.error(f"Redis update failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update inventory: {str(e)}"
+            )
 
     # DELETE: Delete an inventory entry by  {Inventory ID}
     async def delete_entry(self, db: AsyncSession, inventory_id: str) -> bool:
