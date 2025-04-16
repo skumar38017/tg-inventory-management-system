@@ -1,39 +1,36 @@
 #  backend/app/schema/entry_inventory_schema.py
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, validator
 from datetime import datetime, date, timezone
 from typing import Optional
 import re
-from pydantic import validator
 import json
+from typing import Union
+from enum import Enum
  
 class EntryInventoryBase(BaseModel):
-    product_id: str  
-    inventory_id: str  
+    product_id: Optional[str] = None  
+    inventory_id: Optional[str] = None  
     sno: Optional[str] = None
-    name: str
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: str = "false"  # Changed to non-optional with default
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: str = "false"  # Changed to non-optional with default
     returned_date: Optional[date] = None  # Added this missing field
     on_event: str = "false"  # Changed to non-optional with default
     in_office: str = "false"  # Changed to non-optional with default
     in_warehouse: str = "false"  # Changed to non-optional with default
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-
-    # These should NOT be in the create schema
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
 
     # These fields shouldn't be in the create schema since they're auto-generated
 
@@ -62,15 +59,11 @@ class EntryInventoryBase(BaseModel):
             raise ValueError("Inventory ID must contain only numbers after prefix")
         return f"INV{clean_id}"
     
-    @field_validator('created_at', 'updated_at', mode='before')
-    def set_timestamps(cls, v):
-        return datetime.now(timezone.utc)  # Auto-set if not provided
-    
-# Schema for creating or updating EntryInventory (without UUID and timestamps)
+# Schema for creating or updating EntryInventory (without id and timestamps)
 class EntryInventoryCreate(EntryInventoryBase):
     # Remove fields that should be auto-generated
     class Config:
-        exclude = {'created_at', 'updated_at', 'uuid', 'bar_code'}
+        exclude = {'created_at', 'updated_at', 'id', 'bar_code'}
         
     @validator('on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse', pre=True)
     def validate_booleans(cls, v):
@@ -82,35 +75,36 @@ class EntryInventoryCreate(EntryInventoryBase):
 
 # Schema for reading EntryInventory (includes inventory_id and timestamp fields)
 class EntryInventoryOut(EntryInventoryBase):
-    uuid: str
-    product_id: str  
-    inventory_id: str  
+    id: Optional[str] = None
+    product_id: Optional[str] = None  
+    inventory_id: Optional[str] = None  
     sno: Optional[str] = None
-    name: str
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    bar_code: str
-    barcode_image_url: Optional[str] = None  # Add this new field
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
 
-    @validator('barcode_image_url', pre=True)
+    @validator('inventory_barcode_url', pre=True)
     def clean_barcode_url(cls, v):
         return v.replace('\"', '')
     
@@ -122,27 +116,27 @@ class EntryInventoryOut(EntryInventoryBase):
         } # For Pydantic v2 compatibility
    
 class EntryInventoryUpdate(BaseModel):
-    name: str
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    submitted_by: str
-    updated_at: datetime
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    submitted_by: Optional[str] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -158,33 +152,34 @@ class EntryInventoryUpdateOut(EntryInventoryBase):
     pass
     
 class EntryInventoryOut(EntryInventoryBase):
-    uuid: str
-    product_id: str  
-    inventory_id: str  
+    id: Optional[str] = None
+    product_id: Optional[str] = None  
+    inventory_id: Optional[str] = None  
     sno: Optional[str] = None
-    name: str
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: Optional[str] = "false"
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"
     on_event: Optional[str] = "false"
     in_office: Optional[str] = "false"
     in_warehouse: Optional[str] = "false"
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    bar_code: str
-    barcode_image_url: Optional[str] = None  # Add this new field
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -236,69 +231,73 @@ class SyncInventoryOut(EntryInventoryBase):
 # Schema for Store record in Redis after clicking {sync} button
 class StoreInventoryRedis(BaseModel):
     """Schema for storing inventory in Redis"""
-    uuid: str
+    id: Optional[str] = None
     sno: Optional[str] = None  # Changed to properly optional
-    inventory_id: str
-    product_id: str
-    name: str
+    inventory_id: Optional[str] = None
+    product_id: Optional[str] = None
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    bar_code: str
-    barcode_image_url: Optional[str] = None  # Add this new field
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
 
     class Config:
         json_encoders = {
-            datetime: lambda v: v.isoformat()
+            datetime: lambda v: v.isoformat(),
+            date: lambda v: v.isoformat()
         }
 
 # Schema to Show record from Redis after clicking {Show All} button
 class InventoryRedisOut(BaseModel):
     """Schema for retrieving inventory from Redis"""
 
-    uuid: str
+    id: Optional[str] = None
     sno: Optional[str] = None  # Changed to properly optional
-    inventory_id: str
-    product_id: str
-    name: str
+    inventory_id: Optional[str] = None
+    product_id: Optional[str] = None
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    barcode_image_url: Optional[str] = None  # Add this new field
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
 
     @classmethod
     def from_redis(cls, redis_data: str):

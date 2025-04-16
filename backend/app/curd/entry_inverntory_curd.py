@@ -16,11 +16,15 @@ from backend.app.schema.entry_inventory_schema import (
 from sqlalchemy.exc import SQLAlchemyError
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 import logging
+import uuid
 from fastapi import HTTPException
 from typing import List, Optional
 from backend.app.database.redisclient import redis_client
 from backend.app import config
-
+from backend.app.utils.barcode_generator import BarcodeGenerator
+from typing import Union
+import json
+import redis.asyncio as redis
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -30,46 +34,94 @@ logger.setLevel(logging.INFO)
 
 class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
-    def __init__(self, base_url: str = config.BASE_URL):
-        self.base_url = base_url  # Your server's base URL
+    def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
+        self.base_url = base_url
+        self.redis = redis_client
+        self.barcode_generator = BarcodeGenerator()
 
-    #  Create new entry
-    async def create_entry_inventory(self, db: AsyncSession, entry_data: dict) -> EntryInventory:
-        if db is None:
-            raise ValueError("Database session is None")
-
+# Create new entry of inventory for to_event which is directly stored in redis
+    async def create_entry_inventory(self,  db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
+        """
+        Create a new inventory entry stored permanently in Redis (no database storage).
+        
+        Args:
+            entry_data: Inventory data to be stored
+            
+        Returns:
+            EntryInventory: The created inventory object
+            
+        Raises:
+            HTTPException: If there's a validation or storage error
+        """
         try:
-            # Convert boolean fields to string "true"/"false"
-            for field in ['on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse']:
-                if field in entry_data:
-                    val = entry_data[field]
-                    if isinstance(val, bool):
-                        entry_data[field] = "true" if val else "false"
-                    elif isinstance(val, str):
-                        entry_data[field] = val.lower()
-                    else:
-                        entry_data[field] = "false"
+            # Convert input data to dictionary
+            if isinstance(entry_data, EntryInventoryCreate):
+                inventory_data = entry_data.model_dump(exclude_unset=True)
+            else:
+                inventory_data = entry_data
 
-            # Remove auto-generated fields if present
-            for field in ['bar_code', 'unique_code', 'created_at', 'updated_at', 'uuid']:
-                entry_data.pop(field, None)
+            # Generate ID if not provided
+            if not inventory_data.get('id'):
+                inventory_id = str(uuid.uuid4())
+                inventory_data['id'] = inventory_id
 
-            # Create new instance
-            new_entry = EntryInventory(**entry_data)
+            # Set timestamps
+            current_time = datetime.now(timezone.utc)
+            inventory_data['updated_at'] = current_time
+            inventory_data['created_at'] = current_time 
 
-            db.add(new_entry)
-            await db.commit()
-            await db.refresh(new_entry)
+            # Process and validate boolean fields
+            boolean_fields = {
+                'on_rent': False,
+                'rented_inventory_returned': False,
+                'on_event': False,
+                'in_office': False,
+                'in_warehouse': False
+            }
 
-            return new_entry
+            for field, default_value in boolean_fields.items():
+                val = inventory_data.get(field, default_value)
+                if isinstance(val, bool):
+                    inventory_data[field] = "true" if val else "false"
+                elif isinstance(val, str):
+                    inventory_data[field] = val.lower()
+                else:
+                    inventory_data[field] = "false"
 
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error: {str(e)}")
-            raise HTTPException(status_code=500, detail="Database operation failed")
+            # Generate barcode if not provided
+            if not inventory_data.get('inventory_barcode'):
+                barcode_data = {
+                    'inventory_name': inventory_data['inventory_name'],
+                    'inventory_id': inventory_data['inventory_id'],
+                    'id': inventory_id 
+                }
+                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
+                inventory_data.update({
+                    'inventory_barcode': barcode,
+                    'inventory_unique_code': unique_code,
+                    'inventory_barcode_url': inventory_data.get('inventory_barcode_url', "")
+                })
+
+            # Permanent Redis storage (no expiration)
+            redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"
+            await self.redis.set(
+                redis_key,
+                json.dumps(inventory_data, default=str)
+            )
+            return EntryInventory(**inventory_data)
+
+        except KeyError as ke:
+            logger.error(f"Missing required field: {str(ke)}")
+            raise HTTPException(status_code=400, detail=f"Missing required field: {str(ke)}")
+        except json.JSONEncodeError as je:
+            logger.error(f"JSON encoding error: {str(je)}")
+            raise HTTPException(status_code=400, detail="Invalid inventory data format")
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
-            raise HTTPException(status_code=400, detail=str(e))
+            logger.error(f"Redis storage failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create inventory assignment: {str(e)}"
+            )
 
     #  Filter inventory by date range without any `IDs`
     async def get_by_date_range(
@@ -224,7 +276,7 @@ class EntryInventoryService(EntryInventoryInterface):
                     sno=entry.sno,
                     inventory_id=entry.inventory_id,
                     product_id=entry.product_id,
-                    name=entry.name,
+                    inventory_name=entry.inventory_name,
                     material=entry.material,
                     total_quantity=entry.total_quantity,
                     manufacturer=entry.manufacturer,
