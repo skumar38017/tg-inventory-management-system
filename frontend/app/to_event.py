@@ -616,14 +616,43 @@ class ToEventWindow:
         self.client_name.delete(0, tk.END)
         self.client_name.insert(0, record['client_name'])
         
-        self.setup_date.delete(0, tk.END)
-        self.setup_date.insert(0, record['setup_date'])
+        # Handle setup_date - use set_date() for DateEntry widget
+        if record.get('setup_date'):
+            try:
+                # Parse the date string into datetime object
+                if isinstance(record['setup_date'], str):
+                    try:
+                        dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
+                    except ValueError:
+                        dt = datetime.strptime(record['setup_date'], '%d/%m/%Y')
+                    self.setup_date.set_date(dt)
+                else:
+                    self.setup_date.set_date(record['setup_date'])
+            except Exception as e:
+                logger.error(f"Error setting setup date: {str(e)}")
+                self.setup_date.set_date(datetime.now())
+        else:
+            self.setup_date.set_date(datetime.now())  # Set to current date if null
         
         self.project_name.delete(0, tk.END)
         self.project_name.insert(0, record['project_name'])
         
-        self.event_date.delete(0, tk.END)
-        self.event_date.insert(0, record['event_date'])
+        # Handle event_date - use set_date() for DateEntry widget
+        if record.get('event_date'):
+            try:
+                if isinstance(record['event_date'], str):
+                    try:
+                        dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
+                    except ValueError:
+                        dt = datetime.strptime(record['event_date'], '%d/%m/%Y')
+                    self.event_date.set_date(dt)
+                else:
+                    self.event_date.set_date(record['event_date'])
+            except Exception as e:
+                logger.error(f"Error setting event date: {str(e)}")
+                self.event_date.set_date(datetime.now())
+        else:
+            self.event_date.set_date(datetime.now())  # Set to current date if null
         
         # Clear existing table entries and add enough rows
         self.clear_table()
@@ -878,7 +907,7 @@ class ToEventWindow:
                 entry = tk.Entry(self.scrollable_frame, 
                             font=('Helvetica', 9), 
                             width=self.original_column_widths[col])
-                if col == 12:  # RecQty column (index 12) RecQty is readonly
+                if col == 12:  # RecQty column (index 12) - make it readonly
                     entry.config(state='readonly')
                 entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
                 row_entries.append(entry)
