@@ -135,9 +135,9 @@ class FromEventWindow:
         self.employee_name.config(state=state)
         self.location.config(state=state)
         self.client_name.config(state=state)
-        self.setup_date.config(state=state)
+        self.setup_date.config(state=state)  # This works for DateEntry
         self.project_name.config(state=state)
-        self.event_date.config(state=state)
+        self.event_date.config(state=state)  # This works for DateEntry
         self.work_id.config(state='readonly')  # Always readonly
         self.project_id.config(state='normal')  # Project ID is editable for fetching
         
@@ -611,14 +611,40 @@ class FromEventWindow:
         self.client_name.delete(0, tk.END)
         self.client_name.insert(0, record['client_name'])
         
-        self.setup_date.delete(0, tk.END)
-        self.setup_date.insert(0, record['setup_date'])
+        # Fix for DateEntry widgets - use set_date() instead of insert()
+        if record['setup_date']:
+            try:
+                # Parse the date string into datetime object
+                if isinstance(record['setup_date'], str):
+                    # Handle different date formats from API
+                    try:
+                        dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
+                    except ValueError:
+                        dt = datetime.strptime(record['setup_date'], '%d/%m/%Y')
+                    self.setup_date.set_date(dt)
+                else:
+                    self.setup_date.set_date(record['setup_date'])
+            except Exception as e:
+                logger.error(f"Error setting setup date: {str(e)}")
+                self.setup_date.set_date(datetime.now())
         
         self.project_name.delete(0, tk.END)
         self.project_name.insert(0, record['project_name'])
         
-        self.event_date.delete(0, tk.END)
-        self.event_date.insert(0, record['event_date'])
+        # Fix for event_date DateEntry widget
+        if record['event_date']:
+            try:
+                if isinstance(record['event_date'], str):
+                    try:
+                        dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
+                    except ValueError:
+                        dt = datetime.strptime(record['event_date'], '%d/%m/%Y')
+                    self.event_date.set_date(dt)
+                else:
+                    self.event_date.set_date(record['event_date'])
+            except Exception as e:
+                logger.error(f"Error setting event date: {str(e)}")
+                self.event_date.set_date(datetime.now())
         
         # Clear existing table entries and add enough rows
         self.clear_table()
@@ -640,14 +666,14 @@ class FromEventWindow:
                 'per_unit_power', 'total_power', 'status', 'poc', 'RecQty'
             ]
             
-        for col, field in enumerate(fields):
-            if col < len(row):  # Make sure we don't exceed row length
-                if col == 10:  # Status column (Combobox)
-                    row[col].set(item.get(field, self.status_options[0]))
-                else:  # Regular Entry
-                    row[col].delete(0, tk.END)
-                    value = str(item.get(field, ''))
-                    row[col].insert(0, value)
+            for col, field in enumerate(fields):
+                if col < len(row):  # Make sure we don't exceed row length
+                    if col == 10:  # Status column (Combobox)
+                        row[col].set(item.get(field, self.status_options[0]))
+                    else:  # Regular Entry
+                        row[col].delete(0, tk.END)
+                        value = str(item.get(field, ''))
+                        row[col].insert(0, value)
         
         # Switch back to form view
         self.tab_control.select(0)
