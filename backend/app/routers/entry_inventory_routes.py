@@ -4,7 +4,6 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, HTTPException, Depends
 from backend.app.database.database import get_async_db
 from datetime import datetime
 from backend.app.schema.entry_inventory_schema import (
@@ -145,9 +144,13 @@ async def sync_redis(
         500: {"description": "Internal server error during retrieval"}
     },
     tags=["Show all Inventory (Redis)"]
+
 )
 async def show_all_redis(
+    skip: int = 0,
+    db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
+
 ):
     """
     Retrieve all inventory data from Redis cache.
@@ -159,7 +162,7 @@ async def show_all_redis(
     """
     try:
         logger.info("Fetching all inventory data from Redis")
-        cached_data = await service.show_all_inventory_from_redis()
+        cached_data = await service.get_all_entries(db, skip=skip)
         
         if not cached_data:
             logger.warning("No inventory data found in Redis cache")
