@@ -130,24 +130,46 @@ class EntryInventoryService(EntryInventoryInterface):
     async def get_by_date_range(
         self,
         db: AsyncSession,
-        date_range_filter: DateRangeFilter
+        date_range_filter: DateRangeFilter,
+        skip: int = 0
     ) -> List[EntryInventory]:
         try:
-            # Convert dates to datetime at start/end of day
-            start_datetime = datetime.combine(date_range_filter.from_date, time.min)
-            end_datetime = datetime.combine(date_range_filter.to_date, time.max)
+            start_date = date_range_filter.from_date
+            end_date = date_range_filter.to_date
+            
+            # Get all inventory keys
+            keys = await self.redis.keys("inventory:*")
+            filtered_items = []
+            
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        item_data = json.loads(data)
+                        created_at = datetime.fromisoformat(item_data['created_at']).date()
+                        
+                        # Check if within date range
+                        if start_date <= created_at <= end_date:
+                            # Convert timestamps
+                            item_data['created_at'] = datetime.fromisoformat(item_data['created_at'])
+                            item_data['updated_at'] = datetime.fromisoformat(item_data['updated_at'])
+                            filtered_items.append(EntryInventoryOut(**item_data))
+                    except (KeyError, ValueError) as e:
+                        logger.warning(f"Skipping invalid inventory item {key}: {str(e)}")
+                        continue
+            
+            # Sort by created_at (newest first)
+            filtered_items.sort(key=lambda x: x.created_at, reverse=True)
+            
+            # Apply pagination
+            return filtered_items[skip : skip + 1000]  # Adjust page size as needed
 
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.updated_at.between(start_datetime, end_datetime))
-                .order_by(EntryInventory.updated_at)
+        except Exception as e:
+            logger.error(f"Redis error fetching entries: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Error fetching inventory by date range"
             )
-            entries = result.scalars().all()
-              # Convert to Pydantic models with proper null handling
-            return [EntryInventoryOut.from_orm(entry) for entry in entries]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error filtering by date: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
 
     # READ ALL: Get all inventory entries directly from redis
     async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[InventoryRedisOut]:
@@ -180,6 +202,7 @@ class EntryInventoryService(EntryInventoryInterface):
             return paginated_projects
         except Exception as e:
             logger.error(f"Redis error fetching entries: {e}")
+
     # READ: Get an inventory entry by its inventry_id
     async def get_by_inventory_id(self, db: AsyncSession, inventory_id: str) -> Optional[EntryInventoryOut]:
         try:
