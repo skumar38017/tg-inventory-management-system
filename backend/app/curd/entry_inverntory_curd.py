@@ -323,24 +323,41 @@ class EntryInventoryService(EntryInventoryInterface):
     # DELETE: Delete an inventory entry by  {Inventory ID}
     async def delete_entry(self, db: AsyncSession, inventory_id: str) -> bool:
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.inventory_id == inventory_id)
-            )
-            entry = result.scalar_one_or_none()
+            # Format inventory_id if needed
+            if not inventory_id.startswith('INV'):
+                inventory_id = f"INV{inventory_id}"
+
+            # Search all inventory keys to find matching inventory_id
+            keys = await self.redis.keys("inventory:*")
+            redis_key = None
             
-            if not entry:
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    item_data = json.loads(data)
+                    if item_data.get('inventory_id') == inventory_id:
+                        redis_key = key
+                        break
+
+            if not redis_key:
                 return False
-                
-            await db.delete(entry)
-            await db.commit()
+
+            # Delete the key from Redis
+            await self.redis.delete(redis_key)
+            
+            # Also delete from secondary index if you have one
+            await self.redis.delete(f"inventory_index:{inventory_id}")
+            
             return True
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error deleting entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
-        
-    # Search inventory items by various criteria {Product ID, Inventory ID, Project ID}
+
+        except Exception as e:
+            logger.error(f"Redis delete failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete inventory: {str(e)}"
+            )
+            
+    # Search inventory items by various criteria {Product ID, Inventory ID, Project ID} from redis
     async def search_entries(
         self, 
         db: AsyncSession, 
@@ -353,27 +370,46 @@ class EntryInventoryService(EntryInventoryInterface):
         - project_id
         """
         try:
-            query = select(EntryInventory)
+            # Get all inventory keys from Redis
+            keys = await self.redis.keys("inventory:*")
+            matching_items = []
+            
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        item_data = json.loads(data)
+                        
+                        # Check search criteria
+                        match = False
+                        if search_filter.inventory_id and item_data.get('inventory_id') == search_filter.inventory_id:
+                            match = True
+                        elif search_filter.product_id and item_data.get('product_id') == search_filter.product_id:
+                            match = True
+                        elif search_filter.project_id and item_data.get('project_id') == search_filter.project_id:
+                            match = True
+                        
+                        if match:
+                            # Convert timestamps if they exist
+                            if 'created_at' in item_data:
+                                item_data['created_at'] = datetime.fromisoformat(item_data['created_at'])
+                            if 'updated_at' in item_data:
+                                item_data['updated_at'] = datetime.fromisoformat(item_data['updated_at'])
+                            matching_items.append(EntryInventoryOut(**item_data))
+                            
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
+                        continue
+            
+            return matching_items
 
-            if search_filter.inventory_id:
-                query = query.where(EntryInventory.inventory_id == search_filter.inventory_id)
-            elif search_filter.product_id:
-                query = query.where(EntryInventory.product_id == search_filter.product_id)
-            else:  # project_id
-                query = query.where(EntryInventory.project_id == search_filter.project_id)
-
-            result = await db.execute(query)
-            entries = result.scalars().all()
-
-            return [EntryInventoryOut.from_orm(entry) for entry in entries]
-
-        except SQLAlchemyError as e:
-            logger.error(f"Database error searching entries: {str(e)}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Redis search failed: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail="Database error while searching inventory items"
+                detail="Error searching inventory items"
             )
-        
+            
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 #  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
 # ------------------------------------------------------------------------------------------------------------------------------------------------

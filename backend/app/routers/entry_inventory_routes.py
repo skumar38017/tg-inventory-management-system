@@ -351,10 +351,10 @@ async def update_inventory_item(
     return updated_entry
 
 # DELETE: Delete an inventory entry
-@router.delete("/{inventory_id}", 
-               status_code=200,
-               summary="Delete an entry from the inventory",
-               description="This endpoint is used to delete an entry from the inventory. It takes a UUID as a parameter and deletes the entry with the specified UUID.",
+@router.delete("/delete/{inventory_id}",
+               status_code=204,
+               summary="Delete an inventory entry",
+               description="Delete an inventory entry by ID",
                tags=["Delete Inventory (Redis)"]
                )
 async def delete_inventory_item(
