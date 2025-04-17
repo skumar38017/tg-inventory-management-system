@@ -116,12 +116,15 @@ def display_inventory_items(items):
             ("BacodeUrl", 20)
         ]
 
+        # Calculate total width needed
+        total_width = sum(h[1] for h in headers)
+        
         # Create header row
         header_row = "".join(f"{h[0]:<{h[1]}}" for h in headers)
         inventory_listbox.insert(tk.END, header_row)
         
         # Add separator line
-        separator = "-" * sum(h[1] for h in headers)
+        separator = "-" * total_width
         inventory_listbox.insert(tk.END, separator)
         
         # Add each item's values in a row
@@ -135,7 +138,11 @@ def display_inventory_items(items):
                 display_value = str(value)[:h[1]-2] + ".." if len(str(value)) > h[1] else str(value)
                 row_values.append(f"{display_value:<{h[1]}}")
             
+            # Join all values with no extra spaces between columns
             inventory_listbox.insert(tk.END, "".join(row_values))
+        
+        # Configure horizontal scrolling
+        inventory_listbox.config(width=total_width)
             
 #  Filter inventory by date range by `filter` button
 def filter_by_date_range():
@@ -564,19 +571,36 @@ def create_list_frames(root):
     list_container = tk.Frame(inventory_frame)
     list_container.pack(fill="both", expand=True)
     
+    # Create horizontal scrollbar first (placed at bottom)
+    h_scrollbar = tk.Scrollbar(
+        list_container,
+        orient="horizontal",
+        command=lambda *args: inventory_listbox.xview(*args)
+    )
+    h_scrollbar.pack(side="bottom", fill="x")
+    
+    # Then create vertical scrollbar (right side)
+    v_scrollbar = tk.Scrollbar(
+        list_container,
+        orient="vertical",
+        command=lambda *args: inventory_listbox.yview(*args)
+    )
+    v_scrollbar.pack(side="right", fill="y")
+    
+    # Create the listbox with both scrollbars
     global inventory_listbox
-    # In create_list_frames function, replace inventory_listbox creation with:
     inventory_listbox = tk.Listbox(
         list_container,
         height=listbox_height,
-        font=('Courier New', 9),  # Monospace font for proper alignment
+        font=('Courier New', 9),
         activestyle='none',
         selectbackground='#4a6984',
         selectforeground='white',
         bg='white',
-        fg='black'
+        fg='black',
+        xscrollcommand=h_scrollbar.set,
+        yscrollcommand=v_scrollbar.set
     )
-
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
     scrollbar = tk.Scrollbar(
