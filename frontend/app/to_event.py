@@ -182,7 +182,6 @@ class ToEventWindow:
         self.clock_label = tk.Label(clock_frame, font=('Helvetica', 8))
         self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
         self.update_clock()
-        self.add_table_row() 
 
         # Company info
         company_frame = tk.Frame(self.window)
@@ -427,6 +426,7 @@ class ToEventWindow:
         self.window.grid_rowconfigure(7, weight=0)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
+        self.add_table_row() 
 
     def _update_inventory_fields(self, row_entries, event):
         """Update related fields when an inventory item is selected"""
