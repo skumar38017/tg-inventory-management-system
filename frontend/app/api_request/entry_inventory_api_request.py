@@ -90,12 +90,12 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
                 'Name': item.get('inventory_name', 'N/A'),
                 'Material': item.get('material', 'N/A'),
                 'Total Quantity': item.get('total_quantity', 'N/A'),
-                'Manufacturer': item.get('manufacturer', 'N/A'),
+                'Manufacturer': item.get('manufacturer', 'N/A'),                
                 'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
                 'Purchase Date': item.get('purchase_date', 'N/A'),
                 'Purchase Amount': item.get('purchase_amount', 'N/A'),
                 'Repair Quantity': item.get('repair_quantity', 'N/A'),
-                'Repair Cost': item.get('repair_cost', 'N/A'),                
+                'Repair Cost': item.get('repair_cost', 'N/A'),
                 'On Rent': item.get('on_rent', 'N/A'),
                 'Vendor Name': item.get('vendor_name', 'N/A'),
                 'Total Rent': item.get('total_rent', 'N/A'),
@@ -109,16 +109,16 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
                 'Submitted By': item.get('submitted_by', 'N/A'),
                 'Created At': item.get('created_at', 'N/A'),
                 'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
+                'BarCode': item.get('inventory_barcode', 'N/A'),
+                'BacodeUrl': item.get('inventory_barcode_url', 'N/A'),
             }
             formatted_data.append(formatted_item)
         
         return formatted_data
-    
+        
     except requests.RequestException as e:
-        logger.error(f"Failed to fetch inventory by date range: {e}")
-        messagebox.showerror("Error", "Could not fetch inventory data by date range")
+        logger.error(f"Failed to fetch inventory by ID: {e}")
+        messagebox.showerror("Error", "Could not fetch inventory data by ID")
         return []
     
 #  Show all inventory from local database by clicking the `Show All` button
@@ -312,34 +312,46 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> 
         # Map backend fields to frontend display names
         formatted_data = []
         for item in response.json():
+            # Helper function to handle null/empty values and format them properly
+            def get_value(key, default=''):
+                value = item.get(key)
+                if value is None or value == 'null' or value == '' or value == 'None':
+                    return default
+                if isinstance(value, bool):
+                    return 'Yes' if value else 'No'
+                if isinstance(value, str) and value.lower() in ['true', 'false']:
+                    return 'Yes' if value.lower() == 'true' else 'No'
+                return str(value)
+            
             formatted_item = {
-                'Sno': item.get('sno', 'N/A'),
-                'InventoryID': item.get('inventory_id', 'N/A'),
-                'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('inventory_name', 'N/A'),
-                'Material': item.get('material', 'N/A'),
-                'Qty': item.get('total_quantity', 'N/A'),
-                'Manufacturer': item.get('manufacturer', 'N/A'),
-                'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
-                'Purchase Date': item.get('purchase_date', 'N/A'),
-                'Purchase Amount': item.get('purchase_amount', 'N/A'),
-                'Repair Quantity': item.get('repair_quantity', 'N/A'),
-                'Repair Cost': item.get('repair_cost', 'N/A'),
-                'On Rent': 'Yes' if item.get('on_rent') else 'No',
-                'Vendor Name': item.get('vendor_name', 'N/A'),
-                'Total Rent': item.get('total_rent', 'N/A'),
-                'Rented Inventory Returned': 'Yes' if item.get('rented_inventory_returned') else 'No',
-                'Returned Date': item.get('returned_date', 'N/A'),
-                'On Event': 'Yes' if item.get('on_event') else 'No',
-                'In Office': 'Yes' if item.get('in_office') else 'No',
-                'In Warehouse': 'Yes' if item.get('in_warehouse') else 'No',
-                'Issued Qty': item.get('issued_qty', 'N/A'),
-                'Balance Qty': item.get('balance_qty', 'N/A'),
-                'Submitted By': item.get('submitted_by', 'N/A'),
-                'Created At': item.get('created_at', 'N/A'),
-                'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
+                'ID': get_value('id'),
+                'Serial No.': get_value('sno'),
+                'InventoryID': get_value('inventory_id'),
+                'Product ID': get_value('product_id'),
+                'Name': get_value('inventory_name'),
+                'Material': get_value('material'),
+                'Total Quantity': get_value('total_quantity', '0'),
+                'Manufacturer': get_value('manufacturer'),
+                'Purchase Dealer': get_value('purchase_dealer'),
+                'Purchase Date': get_value('purchase_date'),
+                'Purchase Amount': get_value('purchase_amount', '0.00'),
+                'Repair Quantity': get_value('repair_quantity', '0'),
+                'Repair Cost': get_value('repair_cost', '0.00'),
+                'On Rent': get_value('on_rent'),
+                'Vendor Name': get_value('vendor_name'),
+                'Total Rent': get_value('total_rent', '0.00'),
+                'Rented Inventory Returned': get_value('rented_inventory_returned'),
+                'Returned Date': get_value('returned_date'),
+                'On Event': get_value('on_event'),
+                'In Office': get_value('in_office'),
+                'In Warehouse': get_value('in_warehouse'),
+                'Issued Qty': get_value('issued_qty', '0'),
+                'Balance Qty': get_value('balance_qty', '0'),
+                'Submitted By': get_value('submitted_by'),
+                'Created At': get_value('created_at'),
+                'Updated At': get_value('updated_at'),
+                'BarCode': get_value('inventory_barcode'),
+                'BacodeUrl': get_value('inventory_barcode_url'),
             }
             formatted_data.append(formatted_item)
         
@@ -353,7 +365,7 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> 
         logger.error(f"Search validation error: {e}")
         messagebox.showwarning("Search Error", str(e))
         return []
-    
+        
 async def upload_to_event_data():
     """Trigger upload of Redis data to main database"""
     try:
