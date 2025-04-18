@@ -21,6 +21,7 @@ from .assign_inventory import AssignInventoryWindow
 from .damage_inventory import DamageWindow
 import requests
 from typing import List, Dict
+import random
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
@@ -47,11 +48,33 @@ search_product_id_entry = None
 entries = {}
 checkbox_vars = {}
 
+def generate_inventory_id():
+    """Generate inventory ID starting with INV followed by 6 random digits"""
+    random_number = random.randint(100000, 999999)
+    return f"INV{random_number}"
+
+def generate_product_id():
+    """Generate product ID starting with PRD followed by 6 random digits"""
+    random_number = random.randint(100000, 999999)
+    return f"PRD{random_number}"
+
 def clear_fields():
     """Clear all input fields and reset checkboxes"""
-    for entry in entries.values():
+    for field_name, entry in entries.items():
         if isinstance(entry, tk.Entry):
+            # Temporarily make writable to clear, then restore state
+            current_state = entry['state']
+            entry.config(state='normal')
             entry.delete(0, tk.END)
+            
+            # Re-insert generated IDs if these are ID fields
+            if field_name.startswith('InventoryID'):
+                entry.insert(0, generate_inventory_id())
+            elif field_name.startswith('ProductID'):
+                entry.insert(0, generate_product_id())
+                
+            entry.config(state=current_state)
+    
     for var in checkbox_vars.values():
         var.set(False)
 
@@ -374,6 +397,14 @@ def create_inventory_item(scrollable_frame, header_labels):
             if value is not None:
                 item_data[field] = value
         
+        # Auto-generate InventoryID if not provided
+        if 'InventoryID' not in item_data or not item_data['InventoryID']:
+            item_data['InventoryID'] = generate_inventory_id()
+        
+        # Auto-generate ProductID if not provided
+        if 'ProductID' not in item_data or not item_data['ProductID']:
+            item_data['ProductID'] = generate_product_id()
+        
         # Handle checkboxes
         for field in checkbox_fields:
             field_name = f"{field}_{row}" if row > 0 else field
@@ -457,6 +488,14 @@ def add_new_row(scrollable_frame, header_labels):
                 relief='solid'
             )
             entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
+            
+            # Pre-fill InventoryID and ProductID for new rows
+            if field == 'InventoryID':
+                entries[var_name].insert(0, generate_inventory_id())
+                entries[var_name].config(state='readonly')
+            elif field == 'ProductID':
+                entries[var_name].insert(0, generate_product_id())
+                entries[var_name].config(state='readonly')
 
 #  Remove the last row of input fields
 def remove_last_row(scrollable_frame):
@@ -774,7 +813,7 @@ def create_list_frames(root):
                          font=('Helvetica', 9, 'bold'), borderwidth=1, relief='solid')
         header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
     
-    # Input fields row (ii)
+    # In the create_list_frames function, where you create the first row of input fields:
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
         if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
@@ -809,11 +848,19 @@ def create_list_frames(root):
                 borderwidth=1,
                 relief='solid'
             )
-        entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
-    
-    # Configure column weights
-    for col in range(len(header_labels)):
-        scrollable_frame.grid_columnconfigure(col, weight=1)
+            entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
+            
+            # Auto-fill InventoryID and ProductID for the first row
+            if field == 'InventoryID':
+                entries[var_name].insert(0, generate_inventory_id())
+                entries[var_name].config(state='readonly')
+            elif field == 'ProductID':
+                entries[var_name].insert(0, generate_product_id())
+                entries[var_name].config(state='readonly')
+                    
+        # Configure column weights
+        for col in range(len(header_labels)):
+            scrollable_frame.grid_columnconfigure(col, weight=1)
     
     # Button container
     button_frame = tk.Frame(form_container)
