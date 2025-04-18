@@ -375,7 +375,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail=f"Failed to delete inventory: {str(e)}"
             )
             
-    # Search inventory items by various criteria {Product ID, Inventory ID, Project ID} from redis
+    # Search inventory items by various criteria {Product ID, Inventory ID} from redis
     async def search_entries(
         self, 
         db: AsyncSession, 
@@ -385,7 +385,6 @@ class EntryInventoryService(EntryInventoryInterface):
         Search inventory entries by exactly one of:
         - inventory_id
         - product_id
-        - project_id
         """
         try:
             # Get all inventory keys from Redis
@@ -403,8 +402,6 @@ class EntryInventoryService(EntryInventoryInterface):
                         if search_filter.inventory_id and item_data.get('inventory_id') == search_filter.inventory_id:
                             match = True
                         elif search_filter.product_id and item_data.get('product_id') == search_filter.product_id:
-                            match = True
-                        elif search_filter.project_id and item_data.get('project_id') == search_filter.project_id:
                             match = True
                         
                         if match:

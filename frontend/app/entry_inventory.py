@@ -13,6 +13,7 @@ from .api_request.entry_inventory_api_request import (
                             add_new_inventory_item,
                             search_inventory_by_id
                             )
+from .api_request.to_event_inventory_request import search_project_details_by_id
 from tkcalendar import Calendar, DateEntry
 from .to_event import ToEventWindow
 from .from_event import FromEventWindow
@@ -20,7 +21,7 @@ from .assign_inventory import AssignInventoryWindow
 from .damage_inventory import DamageWindow
 import requests
 from typing import List, Dict
-from .api_request.entry_inventory_api_request import search_project_details_by_project_id
+# from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
 logging.basicConfig(
@@ -173,7 +174,7 @@ def filter_by_date_range():
         logger.error(f"Failed to filter by date range: {e}")
         messagebox.showerror("Error", "Could not filter inventory by date range")
 
-#  Perform inventory search based on search criteria [InventoryID, ProjectID, ProductID]
+# Perform inventory search based on search criteria [InventoryID, 'ProjectID', ProductID]
 def perform_search():
     """Perform inventory search based on search criteria and display results in table format"""
     inventory_id = search_inventory_id_entry.get().strip()
@@ -185,43 +186,92 @@ def perform_search():
     try:
         if project_id:
             # Project search remains the same but with empty string instead of N/A
-            results = search_project_details_by_project_id(project_id)
+            results = search_project_details_by_id(project_id)
             if not results:
                 messagebox.showinfo("Search Results", "No matching project found")
                 return
                 
             project = results[0]
+            # Enhanced header with more project details
             header = (
                 f"Project: {project.get('project_name', '')} | "
-                f"ID: {project.get('work_id', '')}\n"
+                f"Project_ID: {project.get('work_id', '')} | "
                 f"Employee: {project.get('employee_name', '')} | "
-                f"Client: {project.get('client_name', '')}\n"
-                f"Location: {project.get('location', '')} | "
+                f"Client: {project.get('client_name', '')} | "
+                f"Location: {project.get('location', '')}\n"
                 f"Setup Date: {project.get('setup_date', '')} | "
                 f"Event Date: {project.get('event_date', '')}\n"
-                f"Submitted: {project.get('submitted_by', '')} | "
-                f"Updated: {project.get('updated_at', '')}"
+                f"Submitted By: {project.get('submitted_by', '')} | "
+                f"Created At: {project.get('created_at', '')} | "
+                f"Updated At: {project.get('updated_at', '')}"
+                f"Barcode: {project.get('barcode', '')}\n"
             )
             search_results_listbox.insert(tk.END, header)
-            search_results_listbox.insert(tk.END, "-"*80)
+            search_results_listbox.insert(tk.END, "-"*120)
             search_results_listbox.insert(tk.END, "Inventory Items:")
             
+            # Define inventory item headers
+            item_headers = [
+                ("S.No", 8),
+                ("Name", 20),
+                ("Description", 25),
+                ("Qty", 6),
+                ("Zone", 12),
+                ("Material", 15),
+                ("Comments", 20),
+                ("Total", 8),
+                ("Unit", 8),
+                ("Per Unit Power", 15),
+                ("Total Power", 12),
+                ("Status", 12),
+                ("POC", 15),
+                ("Item ID", 38)
+            ]
+            
+            # Create header row for inventory items
+            header_row = "".join(f"{h[0]:<{h[1]}}" for h in item_headers)
+            search_results_listbox.insert(tk.END, header_row)
+            
+            # Add separator line
+            separator = "-" * sum(h[1] for h in item_headers)
+            search_results_listbox.insert(tk.END, separator)
+            
+            # Display each inventory item with proper None handling
             for item in project.get('inventory_items', []):
-                display_text = (
-                    f"{item.get('sno', '')} | "
-                    f"{item.get('inventory_name', '')} | "
-                    f"Qty: {str(item.get('quantity', 0))} | "
-                    f"Zone: {item.get('zone_active', '')} | "
-                    f"comments: {item.get('comments', '')} | "
-                    f"Status: {item.get('status', '')}  |"
-                    f"Total: {str(item.get('total', 0))} | "
-                    f"Unit: {item.get('unit', '')} | "
-                    f"poc: {str(item.get('poc', 0))}"
-                )
-                search_results_listbox.insert(tk.END, display_text)
+                # Safe getter function that handles None values
+                def safe_get(key, default=''):
+                    val = item.get(key, default)
+                    return str(val) if val is not None else default
+                
+                row_values = [
+                    safe_get('sno')[:7],
+                    safe_get('name')[:18],
+                    safe_get('description')[:23],
+                    safe_get('quantity')[:4],
+                    safe_get('zone_active')[:10],
+                    safe_get('material')[:13],
+                    safe_get('comments')[:18],
+                    safe_get('total')[:6],
+                    safe_get('unit')[:6],
+                    safe_get('per_unit_power')[:13],
+                    safe_get('total_power')[:10],
+                    safe_get('status')[:10],
+                    safe_get('poc')[:13],
+                    safe_get('id')[:36]
+                ]
+                
+                # Format the row
+                row = ""
+                for i, value in enumerate(row_values):
+                    row += f"{value:<{item_headers[i][1]}}"
+                
+                search_results_listbox.insert(tk.END, row)
+                
+            # Configure horizontal scrolling based on inventory items width
+            search_results_listbox.config(width=sum(h[1] for h in item_headers))
                 
         elif inventory_id or product_id:
-            # Handle inventory/product search with table format
+            # Handle inventory/product search with table format (existing code)
             results = search_inventory_by_id(
                 inventory_id=inventory_id,
                 product_id=product_id

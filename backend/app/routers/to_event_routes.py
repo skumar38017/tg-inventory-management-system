@@ -172,7 +172,8 @@ async def search_by_project_id(
                 status_code=404,
                 detail=f"No project found for project_id: {project_id}"
             )
-            
+        
+        logger.debug(f"Returning project data: {project_data.json()}")
         return project_data
         
     except HTTPException:
