@@ -11,12 +11,14 @@ from enum import Enum
 from pydantic import ValidationError
 from backend.app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
 from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
+from backend.app.utils.field_validators import (
+    StatusEnum,
+    AssignmentInventoryValidations
+)
+from backend.app.utils.date_utils import (
+IndianDateUtils
+)
 
-
-
-class StatusEnum(str, Enum):
-    ASSIGNED = "assigned"
-    RETURN = "returned"
 
 class AssignmentInventoryBase(BaseModel):
     assign_to: Optional[str] = None
@@ -85,23 +87,17 @@ class AssignmentInventoryBase(BaseModel):
 
     @field_validator('assigned_date', 'assignment_return_date', mode='before')
     def validate_dates(cls, v):
-        if isinstance(v, str):
-            try:
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError("Date must be in YYYY-MM-DD format")
-        return v
+        return IndianDateUtils.validate_date_field(v)
     
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat(),
+            datetime: lambda v: IndianDateUtils.format_datetime(v),
+            date: lambda v: IndianDateUtils.format_date(v),
             StatusEnum: lambda v: v.value
         },
         extra='forbid'
     )
-
 
 class AssignmentInventoryCreate(AssignmentInventoryBase):
     pass
@@ -136,12 +132,12 @@ class AssignmentInventoryOut(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            date: lambda v: v.isoformat(),
+            date: lambda v: IndianDateUtils.format_date(v),
+            datetime: lambda v: IndianDateUtils.format_datetime(v),
             StatusEnum: lambda v: v.value
         },
         extra='forbid'
     )
-
 
 class AssignmentInventoryRedisIn(BaseModel):
     id: Optional[str] = None
@@ -170,34 +166,17 @@ class AssignmentInventoryRedisIn(BaseModel):
 
     @field_validator('submission_date', 'created_at', 'updated_at', mode='before')
     def parse_datetime(cls, value):
-        if value is None:
-            return None
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value).replace(tzinfo=None)
-            except ValueError:
-                return None
-        elif isinstance(value, datetime):
-            return value.replace(tzinfo=None)
-        return value
+        return IndianDateUtils.validate_datetime_field(value)
     
     @field_validator('assigned_date', 'assignment_return_date', mode='before')
     def parse_date(cls, value):
-        if value is None:
-            return None
-        if isinstance(value, str):
-            try:
-                return datetime.strptime(value, "%Y-%m-%d").date()
-            except ValueError:
-                return None
-        elif isinstance(value, datetime):
-            return value.date()
-        return value
+        return IndianDateUtils.validate_date_field(value)
 
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            date: lambda v: v.isoformat(),
+            date: lambda v: IndianDateUtils.format_date(v),
+            datetime: lambda v: IndianDateUtils.format_datetime(v),
             StatusEnum: lambda v: v.value
         },
         extra='forbid'
