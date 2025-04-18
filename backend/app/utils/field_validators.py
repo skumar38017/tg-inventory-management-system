@@ -43,17 +43,31 @@ class BaseValidators:
 
     @staticmethod
     def format_id_field(v: Optional[str], prefix: str) -> Optional[str]:
-        """Generic ID formatter that adds prefix if missing and validates format"""
+        """Generic ID formatter that adds prefix if missing and validates format
+        
+        Rules:
+        1. If input is None or empty string, return None
+        2. Remove any existing prefix (case insensitive)
+        3. Extract all digits from the remaining string
+        4. If no digits found, raise ValueError
+        5. Combine prefix with extracted digits
+        """
         if v is None:
             return None
-        v = str(v).strip()
+        
+        v = str(v).strip().upper()  # Convert to string and normalize case
         if not v:
             return None
         
-        clean_id = re.sub(f'^{prefix}', '', v)
-        if not clean_id.isdigit():
-            raise ValueError(f"{prefix} ID must contain only numbers after prefix")
-        return f"{prefix}{clean_id}"
+        # Remove any existing prefix (case insensitive)
+        clean_id = re.sub(f'^{prefix}', '', v, flags=re.IGNORECASE)
+        
+        # Extract all digits from the remaining string
+        digits = re.sub(r'[^\d]', '', clean_id)
+        if not digits:
+            raise ValueError(f"ID must contain numbers after prefix (input: {v})")
+        
+        return f"{prefix}{digits}"
 
     @staticmethod
     def validate_quantity(v) -> Optional[Union[float, int]]:
@@ -93,18 +107,33 @@ class BaseValidators:
 
     @field_validator('product_id', mode='before', check_fields=False)
     def validate_product_id(cls, v):
-        """Standard product ID validator"""
-        return cls.format_id_field(v, 'PRD')
+        """Standard product ID validator that ensures format PRD12345"""
+        result = cls.format_id_field(v, 'PRD')
+        if result is None:
+            return None
+        if len(result) > 20:  # Example length check
+            raise ValueError("Product ID too long (max 20 chars)")
+        return result
 
     @field_validator('inventory_id', mode='before', check_fields=False)
     def validate_inventory_id(cls, v):
-        """Standard inventory ID validator"""
-        return cls.format_id_field(v, 'INV')
+        """Standard inventory ID validator that ensures format INV12345"""
+        result = cls.format_id_field(v, 'INV')
+        if result is None:
+            return None
+        if len(result) > 20:  # Example length check
+            raise ValueError("Inventory ID too long (max 20 chars)")
+        return result
 
     @field_validator('project_id', mode='before', check_fields=False)
     def validate_project_id(cls, v):
-        """Standard project ID validator"""
-        return cls.format_id_field(v, 'PRJ')
+        """Standard project ID validator that ensures format PRJ12345"""
+        result = cls.format_id_field(v, 'PRJ')
+        if result is None:
+            return None
+        if len(result) > 20:  # Example length check
+            raise ValueError("Project ID too long (max 20 chars)")
+        return result
 
     @field_validator(
         'on_rent', 'rented_inventory_returned', 'on_event', 
