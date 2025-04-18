@@ -861,17 +861,27 @@ def create_list_frames(root):
     )
     list_label.pack()
     
-    # Create container for the listbox with vertical scroll only
+    # Create container for the listbox with both scrollbars
     list_container = tk.Frame(list_frame)
     list_container.pack(fill='both', expand=True)
+
+    # Create horizontal scrollbar first (placed at bottom)
+    h_scrollbar = tk.Scrollbar(
+        list_container,
+        orient="horizontal",
+        command=lambda *args: added_items_listbox.xview(*args)
+    )
+    h_scrollbar.pack(side="bottom", fill="x")
     
     global added_items_listbox
     added_items_listbox = tk.Listbox(
         list_container,
         height=10,
-        font=('Helvetica', 9),
+        font=('Courier New', 9),  # Changed to fixed-width font for better alignment
         selectbackground='#4a6984',
-        selectforeground='white'
+        selectforeground='white',
+        xscrollcommand=h_scrollbar.set,
+        yscrollcommand=v_scrollbar.set
     )
     added_items_listbox.pack(side="left", fill="both", expand=True)
 
