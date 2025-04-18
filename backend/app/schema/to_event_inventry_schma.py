@@ -8,39 +8,13 @@ import re
 from typing import Union
 from enum import Enum
 from pydantic import ValidationError
+from backend.app.utils.date_utils import (
+IndianDateUtils
+)
 
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-class StatusEnum(str, Enum):
-    SCHEDULED = "Scheduled"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
-    CANCELLED = "Cancelled"
-    INHOUSE = "In House"
-    OUTSIDE = "Outside"
-    PURCHASED = "Purchased"
-    RETURNED = "Returned"
-    REJECTED = "Rejected"
-    PENDING = "Pending"
-    FAILED = "Failed"
-    APPROVED = "Approved"
-    UNDER_REVIEW = "Under Review"
-    ON_HOLD = "On Hold"
-    DELIVERED = "Delivered"
-    SHIPPED = "Shipped"
-    IN_TRANSIT = "In Transit"
-    DELAYED = "Delayed"
-    CLOSED = "Closed"
-    OPEN = "Open"
-    EXPIRED = "Expired"
-    WITHDRAWN = "Withdrawn"
-    ACTIVE = "Active"
-    INACTIVE = "Inactive"
-    RESERVED = "Reserved"
-    WAITLISTED = "Waitlisted"
-    IN_HOUSE = "In House"
 
 class InventoryItemBase(BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")

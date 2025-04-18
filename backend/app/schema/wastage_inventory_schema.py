@@ -13,6 +13,9 @@ from backend.app.schema.entry_inventory_schema import EntryInventoryOut, Invento
 from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
 from backend.app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
 from backend.app.models.wastege_inventory_model import WastageInventory
+from backend.app.utils.date_utils import (
+IndianDateUtils
+)
 
 class WastageInventoryBase(BaseModel):
     assign_to: Optional[str] = None
