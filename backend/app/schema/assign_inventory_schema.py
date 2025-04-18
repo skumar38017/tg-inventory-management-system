@@ -13,7 +13,6 @@ from backend.app.schema.entry_inventory_schema import EntryInventoryOut, Invento
 from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
 from backend.app.utils.field_validators import (
     StatusEnum,
-    AssignmentInventoryValidations
 )
 from backend.app.utils.date_utils import (
 IndianDateUtils

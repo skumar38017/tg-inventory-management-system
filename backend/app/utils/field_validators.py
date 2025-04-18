@@ -1,15 +1,28 @@
 # backend/app/utils/field_validators.py
 import re
-from datetime import datetime, date, timezone
-from typing import Optional, Union, Dict, Any, Tuple
+import json
+from datetime import datetime, date, timezone, timedelta
+from typing import Optional, Union, Dict, Any
+from pydantic import field_validator, model_validator, ValidationInfo, ConfigDict
 from enum import Enum
-from pydantic import field_validator, model_validator, validator, ValidationInfo
 from backend.app.utils.date_utils import IndianDateUtils
 
-# ---------------------------- Shared Validators ----------------------------
+INDIAN_TIMEZONE = timezone(timedelta(hours=5, minutes=30))
+
 class BaseValidators:
-    """Contains validators that can be reused across different schemas"""
+    """Contains reusable validators that can be inherited by different schemas"""
     
+    model_config = ConfigDict(
+        extra="forbid",
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda v: IndianDateUtils.format_datetime(v),
+            date: lambda v: IndianDateUtils.format_date(v),
+            Enum: lambda v: v.value
+        }
+    )
+
+    # ---------------------------- Generic Field Validators ----------------------------
     @staticmethod
     def empty_string_to_none(v: Optional[str]) -> Optional[str]:
         """Convert empty strings to None"""
@@ -18,28 +31,29 @@ class BaseValidators:
         if isinstance(v, str):
             v = v.strip()
         return None if v == "" else v
+    
+    @staticmethod
+    def validate_boolean_fields(v) -> str:
+        """Convert boolean values to consistent string representation"""
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, str):
+            return v.lower()
+        return "false"
 
     @staticmethod
     def format_id_field(v: Optional[str], prefix: str) -> Optional[str]:
-        """Generic ID formatter that adds prefix if missing"""
+        """Generic ID formatter that adds prefix if missing and validates format"""
         if v is None:
             return None
         v = str(v).strip()
         if not v:
             return None
-        if not v.startswith(prefix):
-            return f"{prefix}{v}"
-        return v
-
-    @staticmethod
-    def validate_date_field(v) -> Optional[date]:
-        """Use IndianDateUtils for consistent date handling"""
-        return IndianDateUtils.validate_date_field(v)
-
-    @staticmethod
-    def validate_datetime_field(v) -> Optional[datetime]:
-        """Use IndianDateUtils for consistent datetime handling"""
-        return IndianDateUtils.validate_datetime_field(v)
+        
+        clean_id = re.sub(f'^{prefix}', '', v)
+        if not clean_id.isdigit():
+            raise ValueError(f"{prefix} ID must contain only numbers after prefix")
+        return f"{prefix}{clean_id}"
 
     @staticmethod
     def validate_quantity(v) -> Optional[Union[float, int]]:
@@ -55,107 +69,9 @@ class BaseValidators:
                 raise ValueError("Quantity must be a number")
         return v
 
-# ---------------------------- Schema-Specific Validators ----------------------------
-class AssignmentInventoryValidations(BaseValidators):
-    """Validators specific to assignment inventory"""
-    
-    @field_validator('inventory_id', mode='before')
-    def validate_inventory_id(cls, v):
-        return cls.format_id_field(v, 'INV')
-
-    @field_validator('project_id', mode='before')
-    def validate_project_id(cls, v):
-        return cls.format_id_field(v, 'PRJ')
-
-    @field_validator('product_id', mode='before')
-    def validate_product_id(cls, v):
-        return cls.format_id_field(v, 'PRD')
-
-    @field_validator('assigned_date', 'assignment_return_date', mode='before')
-    def validate_assignment_dates(cls, v):
-        return cls.validate_date_field(v)
-
-    @field_validator('submission_date', 'created_at', 'updated_at', mode='before')
-    def validate_datetime_fields(cls, v):
-        return cls.validate_datetime_field(v)
-
-class EntryInventoryValidations(BaseValidators):
-    """Validators specific to entry inventory"""
-    
-    @field_validator('product_id', mode='before')
-    def validate_product_id(cls, v):
-        if v is None:
-            raise ValueError("Product ID cannot be empty")
-        clean_id = re.sub(r'^PRD', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Product ID must contain only numbers after prefix")
-        return f"PRD{clean_id}"
-
-    @field_validator('inventory_id', mode='before')
-    def validate_inventory_id(cls, v):
-        if v is None:
-            raise ValueError("Inventory ID cannot be empty")
-        clean_id = re.sub(r'^INV', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Inventory ID must contain only numbers after prefix")
-        return f"INV{clean_id}"
-    
-    @validator('on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse', pre=True)
-    def validate_boolean_fields(cls, v):
-        if isinstance(v, bool):
-            return "true" if v else "false"
-        if isinstance(v, str):
-            return v.lower()
-        return "false"
-
-    @field_validator('barcode_image_url', mode='before')
-    def clean_barcode_url(cls, v):
-        return cls.empty_string_to_none(v.replace('\"', ''))
-
-class ToEventInventoryValidations(BaseValidators):
-    """Validators specific to event inventory"""
-    
-    @field_validator('project_id', mode='before')
-    def validate_project_id(cls, v):
-        if v is None:
-            raise ValueError("Project_id cannot be empty")
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
-
-    @model_validator(mode='before')
-    def handle_event_timestamps(cls, values: Dict) -> Dict:
-        """Special handling for event timestamps including typo correction"""
-        if not isinstance(values, dict):
-            return values
-            
-        values['created_at'] = cls.handle_created_at_typo(
-            values.get('created_at'), 
-            values
-        )
-        values['updated_at'] = datetime.now(timezone.utc)
-            
-        return values
-
-class WastageInventoryValidations(BaseValidators):
-    """Validators specific to wastage inventory"""
-    
-    @field_validator('inventory_id', mode='before')
-    def validate_inventory_id(cls, v):
-        return cls.format_id_field(v, 'INV')
-
-    @field_validator('project_id', mode='before')
-    def validate_project_id(cls, v):
-        return cls.format_id_field(v, 'PRJ')
-
-    @field_validator('product_id', mode='before')
-    def validate_product_id(cls, v):
-        return cls.format_id_field(v, 'PRD')
-
-    @field_validator('quantity', mode='before')
-    def validate_wastage_quantity(cls, v):
-        """Special quantity validator for wastage that requires whole numbers"""
+    @staticmethod
+    def validate_whole_number(v) -> Optional[int]:
+        """Validate that quantity is a whole number"""
         if v is None:
             return None
         if isinstance(v, str):
@@ -169,11 +85,144 @@ class WastageInventoryValidations(BaseValidators):
             return int(v)
         return v
 
-    @field_validator('receive_date', 'event_date', 'wastage_date', mode='before')
-    def validate_wastage_dates(cls, v):
-        return cls.validate_date_field(v)
-    
-# ---------------------------- Common Enums ----------------------------
+    # ---------------------------- Field Validators ----------------------------
+    @field_validator('*', mode='before', check_fields=False)
+    def check_empty_strings(cls, v):
+        """Generic validator to convert empty strings to None for all fields"""
+        return cls.empty_string_to_none(v)
+
+    @field_validator('product_id', mode='before', check_fields=False)
+    def validate_product_id(cls, v):
+        """Standard product ID validator"""
+        return cls.format_id_field(v, 'PRD')
+
+    @field_validator('inventory_id', mode='before', check_fields=False)
+    def validate_inventory_id(cls, v):
+        """Standard inventory ID validator"""
+        return cls.format_id_field(v, 'INV')
+
+    @field_validator('project_id', mode='before', check_fields=False)
+    def validate_project_id(cls, v):
+        """Standard project ID validator"""
+        return cls.format_id_field(v, 'PRJ')
+
+    @field_validator(
+        'on_rent', 'rented_inventory_returned', 'on_event', 
+        'in_office', 'in_warehouse', 
+        mode='before', check_fields=False
+    )
+    def validate_booleans(cls, v):
+        """Standard boolean fields validator"""
+        return cls.validate_boolean_fields(v)
+
+    @field_validator(
+        'purchase_date', 'returned_date', 'assigned_date', 
+        'assignment_return_date', 'receive_date', 'event_date', 
+        'wastage_date', 'setup_date', 'to_date', 'from_date',
+        mode='before', check_fields=False
+    )
+    def validate_dates(cls, v):
+        """Standard date fields validator"""
+        return IndianDateUtils.validate_date_field(v)
+
+    @field_validator(
+        'created_at', 'updated_at', 'submission_date',
+        mode='before', check_fields=False
+    )
+    def validate_timestamps(cls, v):
+        """Standard datetime fields validator with timezone handling"""
+        return IndianDateUtils.validate_datetime_field(v)
+
+    @field_validator(
+        'inventory_barcode_url', 'barcode_image_url', 
+        'project_barcode_image_url', mode='before', check_fields=False
+    )
+    def clean_barcode_url(cls, v):
+        """Clean barcode URL fields"""
+        if v is None:
+            return None
+        return cls.empty_string_to_none(str(v).replace('\"', ''))
+
+    @field_validator(
+        'quantity', 'RecQty', 'per_unit_power', 'total_power',
+        mode='before', check_fields=False
+    )
+    def validate_numeric_fields(cls, v):
+        """Standard numeric fields validator"""
+        return cls.validate_quantity(v)
+
+    @field_validator('unit', mode='before', check_fields=False)
+    def convert_unit_to_string(cls, v):
+        """Ensure unit fields are strings"""
+        if v is None:
+            return None
+        return str(v) if not isinstance(v, str) else v
+
+    @field_validator('id', mode='before', check_fields=False)
+    def set_id_from_uuid(cls, v, info: ValidationInfo):
+        """Set ID from UUID if not provided"""
+        if v is None:
+            if hasattr(info, 'data') and info.data and 'uuid' in info.data:
+                return info.data['uuid']
+        return v
+
+    # ---------------------------- Model Validators ----------------------------
+    @model_validator(mode='before')
+    def handle_timestamps(cls, values: Dict) -> Dict:
+        """Special handling for timestamps including typo correction"""
+        if not isinstance(values, dict):
+            return values
+            
+        # Skip timestamp handling for create models
+        if cls.__name__ in ('EntryInventoryCreate', 'EntryInventoryBase'):
+            return values
+            
+        # Handle created_at typo
+        if 'created_at' not in values or values['created_at'] is None:
+            if 'cretaed_at' in values and values['cretaed_at'] is not None:
+                values['created_at'] = values['cretaed_at']
+            else:
+                values['created_at'] = IndianDateUtils.get_current_datetime()
+        
+        # Always set updated_at to now
+        values['updated_at'] = IndianDateUtils.get_current_datetime()
+            
+        return values
+
+    @model_validator(mode='before')
+    def validate_date_range(cls, values: Dict) -> Dict:
+        """Validate that to_date is after from_date if both exist"""
+        if not isinstance(values, dict):
+            return values
+            
+        if 'from_date' in values and 'to_date' in values:
+            from_date = values['from_date']
+            to_date = values['to_date']
+            
+            if from_date and to_date:
+                if isinstance(from_date, str):
+                    from_date = IndianDateUtils.parse_date(from_date)
+                if isinstance(to_date, str):
+                    to_date = IndianDateUtils.parse_date(to_date)
+                
+                if from_date and to_date and to_date < from_date:
+                    raise ValueError("To date must be after From date")
+        return values
+
+    # ---------------------------- Special Methods ----------------------------
+    @classmethod
+    def from_redis(cls, redis_data: str):
+        """Create instance from Redis JSON data"""
+        data = json.loads(redis_data)
+        return cls(**data)
+
+    def to_orm_dict(self):
+        """Convert to dictionary suitable for SQLAlchemy model"""
+        data = self.model_dump(exclude={'inventory_items', 'created_at', 'updated_at'})
+        if hasattr(self, 'inventory_items'):
+            data['items'] = [item.model_dump(exclude={'project_id'}) for item in self.inventory_items]
+        return data
+    # ---------------------------- Common Enums ----------------------------
 class StatusEnum(str, Enum):
     SCHEDULED = "Scheduled"
     IN_PROGRESS = "In Progress"

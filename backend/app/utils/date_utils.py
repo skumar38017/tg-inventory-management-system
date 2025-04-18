@@ -31,11 +31,15 @@ class IndianDateUtils:
     
     @staticmethod
     def format_datetime(dt: Union[datetime, None]) -> Optional[str]:
-        """Format datetime to ISO string with timezone"""
+        """Format datetime to ISO string with Indian timezone"""
         if dt is None:
             return None
         if dt.tzinfo is None:
+            # If no timezone info, assume it's in Indian timezone
             dt = dt.replace(tzinfo=INDIAN_TIMEZONE)
+        else:
+            # Convert to Indian timezone if it's in another timezone
+            dt = dt.astimezone(INDIAN_TIMEZONE)
         return dt.isoformat()
     
     @staticmethod
