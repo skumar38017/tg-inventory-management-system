@@ -96,60 +96,6 @@ async def sync_from_sheets(
     tags=["Show all Inventory (Redis)"]
 
 )
-
-# -------------------------------------------------------------------------------------------------
-
-#  Filter inventory from database by date range without passing any `IDs`
-@router.get(
-    "/date-range/",
-    response_model=List[EntryInventoryOut],
-    status_code=200,
-    summary="Filter inventory by date range",
-    description="Get inventory items within a specific date range",
-    response_model_exclude_unset=True,
-    tags=["Filter Inventory (Redis)"]
-)
-async def get_inventory_by_date_range(
-    from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
-    to_date: date = Query(..., description="End date (YYYY-MM-DD)"),
-    db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
-):
-    """Get inventory items within a date range"""
-    try:
-        # FastAPI automatically converts query params to date objects
-        if from_date > to_date:
-            raise HTTPException(
-                status_code=400,
-                detail="From date cannot be after To date"
-            )
-            
-        results = await service.get_by_date_range(db, DateRangeFilter(
-            from_date=from_date,
-            to_date=to_date
-        ))
-        
-        if not results:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No items found between {from_date} and {to_date}"
-            )
-            
-        return results
-        
-    except ValueError as e:
-        logger.error(f"Invalid date format: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.error(f"Date range filter failed: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)  # Return the actual error message
-        )
-
 async def show_all_redis(
     skip: int = 0,
     db: AsyncSession = Depends(get_async_db),
@@ -203,6 +149,59 @@ async def show_all_redis(
                 "error": str(e)
             }
         )
+# -------------------------------------------------------------------------------------------------
+
+#  Filter inventory from database by date range without passing any `IDs`
+@router.get(
+    "/date-range/",
+    response_model=List[EntryInventoryOut],
+    status_code=200,
+    summary="Filter inventory by date range",
+    description="Get inventory items within a specific date range",
+    response_model_exclude_unset=True,
+    tags=["Filter Inventory (Redis)"]
+)
+async def get_inventory_by_date_range(
+    from_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    to_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    """Get inventory items within a date range"""
+    try:
+        # FastAPI automatically converts query params to date objects
+        if from_date > to_date:
+            raise HTTPException(
+                status_code=400,
+                detail="From date cannot be after To date"
+            )
+            
+        results = await service.get_by_date_range(db, DateRangeFilter(
+            from_date=from_date,
+            to_date=to_date
+        ))
+        
+        if not results:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No items found between {from_date} and {to_date}"
+            )
+            
+        return results
+        
+    except ValueError as e:
+        logger.error(f"Invalid date format: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Date range filter failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)  # Return the actual error message
+        )
+
 
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
