@@ -267,7 +267,7 @@ async def get_all_entire_inventory(
         logger.error(f"Error fetching inventory items: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-#  Search inventory items by various criteria {Product ID, Inventory ID, Project ID}
+#  Search inventory items by various criteria {Product ID, Inventory ID}
 @router.get(
     "/search/",
     response_model=List[EntryInventoryOut],
@@ -280,7 +280,6 @@ async def get_all_entire_inventory(
 async def search_inventory(
     inventory_id: Optional[str] = Query(None, description="Inventory ID to search for"),
     product_id: Optional[str] = Query(None, description="Product ID to search for"),
-    project_id: Optional[str] = Query(None, description="Project ID to search for"),
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
 ):
@@ -294,10 +293,9 @@ async def search_inventory(
         # Convert empty strings to None
         inventory_id = inventory_id if inventory_id else None
         product_id = product_id if product_id else None
-        project_id = project_id if project_id else None
 
         # Validate exactly one search parameter is provided
-        provided_params = [p for p in [inventory_id, product_id, project_id] if p is not None]
+        provided_params = [p for p in [inventory_id, product_id] if p is not None]
         if len(provided_params) != 1:
             raise HTTPException(
                 status_code=400,
@@ -307,7 +305,6 @@ async def search_inventory(
         search_params = EntryInventorySearch(
             inventory_id=inventory_id,
             product_id=product_id,
-            project_id=project_id
         )
         
         results = await service.search_entries(db, search_params)

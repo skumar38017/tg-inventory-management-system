@@ -386,12 +386,17 @@ class ToEventInventoryService(ToEventInventoryInterface):
 
             # Parse the JSON data from Redis
             project_dict = json.loads(existing_data)
-
-            # Convert to your model (assuming ToEventRedisOut is your output model)
+            
+            # Ensure inventory_items is properly formatted
+            if 'inventory_items' in project_dict and isinstance(project_dict['inventory_items'], str):
+                try:
+                    project_dict['inventory_items'] = json.loads(project_dict['inventory_items'])
+                except json.JSONDecodeError:
+                    project_dict['inventory_items'] = []
             return ToEventRedisOut(**project_dict)
         
         except Exception as e:
-            logger.error(f"Error fetching project {project_id} from Redis: {str(e)}")
+            logger.error(f"Error fetching project {project_id} from Redis: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
 
     async def update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
