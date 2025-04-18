@@ -58,23 +58,45 @@ def generate_product_id():
     random_number = random.randint(100000, 999999)
     return f"PRD{random_number}"
 
+def refresh_form(scrollable_frame, header_labels):
+    """Refresh the form by clearing fields and regenerating IDs"""
+    clear_fields()
+    # Re-generate IDs for the first row
+    entries['InventoryID'].config(state='normal')
+    entries['InventoryID'].delete(0, tk.END)
+    entries['InventoryID'].insert(0, generate_inventory_id())
+    entries['InventoryID'].config(state='readonly')
+    
+    entries['ProductID'].config(state='normal')
+    entries['ProductID'].delete(0, tk.END)
+    entries['ProductID'].insert(0, generate_product_id())
+    entries['ProductID'].config(state='readonly')
+    
+    # Clear the added items list
+    if added_items_listbox:
+        added_items_listbox.delete(0, tk.END)
+    
+    messagebox.showinfo("Refreshed", "Form has been refreshed with new IDs")
+
 def clear_fields():
-    """Clear all input fields and reset checkboxes"""
+    """Clear all input fields except InventoryID and ProductID, and reset checkboxes"""
     for field_name, entry in entries.items():
         if isinstance(entry, tk.Entry):
-            # Temporarily make writable to clear, then restore state
+            # Skip InventoryID and ProductID fields
+            if field_name.startswith('InventoryID') or field_name.startswith('ProductID'):
+                continue
+                
+            # Temporarily make writable to clear, then restore state if needed
             current_state = entry['state']
-            entry.config(state='normal')
+            if current_state == 'readonly':
+                entry.config(state='normal')
+            
             entry.delete(0, tk.END)
             
-            # Re-insert generated IDs if these are ID fields
-            if field_name.startswith('InventoryID'):
-                entry.insert(0, generate_inventory_id())
-            elif field_name.startswith('ProductID'):
-                entry.insert(0, generate_product_id())
-                
-            entry.config(state=current_state)
+            if current_state == 'readonly':
+                entry.config(state='readonly')
     
+    # Reset all checkboxes
     for var in checkbox_vars.values():
         var.set(False)
 
@@ -866,6 +888,26 @@ def create_list_frames(root):
     button_frame = tk.Frame(form_container)
     button_frame.pack(fill='x', pady=5)
     
+    # Clear button
+    clear_button = tk.Button(
+        button_frame, 
+        text="Clear", 
+        command=clear_fields,
+        font=('Helvetica', 10),
+        width=10
+    )
+    clear_button.pack(side='left', padx=2)
+    
+    # Refresh button
+    refresh_button = tk.Button(
+        button_frame, 
+        text="Refresh", 
+        command=lambda: refresh_form(scrollable_frame, header_labels),
+        font=('Helvetica', 10),
+        width=10
+    )
+    refresh_button.pack(side='left', padx=2)
+    
     # Remove Row button
     remove_row_button = tk.Button(
         button_frame, 
@@ -874,7 +916,7 @@ def create_list_frames(root):
         font=('Helvetica', 10, 'bold'),
         width=15
     )
-    remove_row_button.pack(side='left', padx=0)
+    remove_row_button.pack(side='left', padx=5)
     
     # Add Item button
     add_button = tk.Button(
@@ -894,7 +936,7 @@ def create_list_frames(root):
         font=('Helvetica', 10, 'bold'),
         width=15
     )
-    add_row_button.pack(side='left', padx=0)
+    add_row_button.pack(side='left', padx=2)
     
     # Added Items List section
     list_frame = tk.Frame(new_entry_frame)
