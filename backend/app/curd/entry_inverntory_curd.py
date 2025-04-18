@@ -51,6 +51,8 @@ logger.setLevel(logging.INFO)
 # Google API Scopes
 SCOPES = os.getenv('GOOGLE_API_SCOPES').split(',')
 
+from backend.app.utils.date_utils import INDIAN_TIMEZONE, IndianDateUtils
+from backend.app.utils.field_validators import BaseValidators
 class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
     def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
@@ -61,18 +63,9 @@ class EntryInventoryService(EntryInventoryInterface):
         self.admin_email = os.getenv('ADMIN_EMAIL')
 
 # Create new entry of inventory for to_event which is directly stored in redis
-    async def create_entry_inventory(self,  db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new inventory entry stored permanently in Redis (no database storage).
-        
-        Args:
-            entry_data: Inventory data to be stored
-            
-        Returns:
-            EntryInventory: The created inventory object
-            
-        Raises:
-            HTTPException: If there's a validation or storage error
         """
         try:
             # Convert input data to dictionary
@@ -86,8 +79,8 @@ class EntryInventoryService(EntryInventoryInterface):
                 inventory_id = str(uuid.uuid4())
                 inventory_data['id'] = inventory_id
 
-            # Set timestamps
-            current_time = datetime.now(timezone.utc)
+            # Set timestamps (server-side only)
+            current_time = IndianDateUtils.get_current_datetime()
             inventory_data['updated_at'] = current_time
             inventory_data['created_at'] = current_time 
 
@@ -102,12 +95,7 @@ class EntryInventoryService(EntryInventoryInterface):
 
             for field, default_value in boolean_fields.items():
                 val = inventory_data.get(field, default_value)
-                if isinstance(val, bool):
-                    inventory_data[field] = "true" if val else "false"
-                elif isinstance(val, str):
-                    inventory_data[field] = val.lower()
-                else:
-                    inventory_data[field] = "false"
+                inventory_data[field] = BaseValidators.validate_boolean_fields(val)
 
             # Generate barcode if not provided
             if not inventory_data.get('inventory_barcode'):
@@ -144,7 +132,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail=f"Failed to create inventory assignment: {str(e)}"
             )
 
-    #  Filter inventory by date range without any `IDs`
+#  Filter inventory by date range without any `IDs`
     async def get_by_date_range(
         self,
         db: AsyncSession,
@@ -152,8 +140,20 @@ class EntryInventoryService(EntryInventoryInterface):
         skip: int = 0
     ) -> List[EntryInventory]:
         try:
-            start_date = date_range_filter.from_date
-            end_date = date_range_filter.to_date
+            # Handle both string and date inputs
+            start_date = (
+                IndianDateUtils.parse_date(date_range_filter.from_date)
+                if isinstance(date_range_filter.from_date, str)
+                else date_range_filter.from_date
+            )
+            end_date = (
+                IndianDateUtils.parse_date(date_range_filter.to_date)
+                if isinstance(date_range_filter.to_date, str)
+                else date_range_filter.to_date
+            )
+            
+            if not start_date or not end_date:
+                raise ValueError("Invalid date range provided")
             
             # Get all inventory keys
             keys = await self.redis.keys("inventory:*")
@@ -164,13 +164,19 @@ class EntryInventoryService(EntryInventoryInterface):
                 if data:
                     try:
                         item_data = json.loads(data)
-                        created_at = datetime.fromisoformat(item_data['created_at']).date()
-                        
+                        created_at_str = item_data.get('created_at')
+                        if not created_at_str:
+                            continue
+                            
+                        created_at = IndianDateUtils.parse_datetime(created_at_str)
+                        if not created_at:
+                            continue
+                            
                         # Check if within date range
-                        if start_date <= created_at <= end_date:
-                            # Convert timestamps
-                            item_data['created_at'] = datetime.fromisoformat(item_data['created_at'])
-                            item_data['updated_at'] = datetime.fromisoformat(item_data['updated_at'])
+                        if start_date <= created_at.date() <= end_date:
+                            # Convert timestamps using IndianDateUtils
+                            item_data['created_at'] = IndianDateUtils.validate_datetime_field(item_data.get('created_at'))
+                            item_data['updated_at'] = IndianDateUtils.validate_datetime_field(item_data.get('updated_at'))
                             filtered_items.append(EntryInventoryOut(**item_data))
                     except (KeyError, ValueError) as e:
                         logger.warning(f"Skipping invalid inventory item {key}: {str(e)}")
@@ -183,10 +189,10 @@ class EntryInventoryService(EntryInventoryInterface):
             return filtered_items[skip : skip + 1000]
 
         except Exception as e:
-            logger.error(f"Redis error fetching entries: {str(e)}", exc_info=True)
+            logger.error(f"Date range filter failed: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail="Error fetching inventory by date range"
+                detail=f"Error fetching inventory by date range: {str(e)}"
             )
 
     # READ ALL: Get all inventory entries directly from redis
@@ -254,7 +260,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail="Error fetching inventory from Redis"
             )
 
-    # UPDATE: Update an existing inventory entry {} {Inventory ID}
+# UPDATE: Update an existing inventory entry {} {Inventory ID}
     async def update_entry(self, db: AsyncSession, inventory_id: str, update_data: EntryInventoryUpdate):
         try:
             # Format inventory_id if needed
@@ -288,6 +294,8 @@ class EntryInventoryService(EntryInventoryInterface):
                 )
 
             existing_dict = json.loads(existing_data)
+            
+            # Convert update_data to dict and exclude unset fields
             update_dict = update_data.model_dump(exclude_unset=True)
             
             # Define immutable fields that shouldn't be updated
@@ -301,19 +309,10 @@ class EntryInventoryService(EntryInventoryInterface):
             updated_dict = existing_dict.copy()
             for field, value in update_dict.items():
                 if field not in IMMUTABLE_FIELDS:
-                    # Handle boolean field conversion
-                    if field in ['on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse']:
-                        if isinstance(value, bool):
-                            updated_dict[field] = "true" if value else "false"
-                        elif isinstance(value, str):
-                            updated_dict[field] = value.lower()
-                        else:
-                            updated_dict[field] = "false"
-                    else:
-                        updated_dict[field] = value
+                    updated_dict[field] = value
 
-            # Always update the timestamp
-            updated_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+            # Always update the timestamp with Indian timezone
+            updated_dict['updated_at'] = IndianDateUtils.get_current_datetime().isoformat()
 
             # Save back to Redis
             await self.redis.set(
@@ -375,16 +374,19 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail=f"Failed to delete inventory: {str(e)}"
             )
             
-    # Search inventory items by various criteria {Product ID, Inventory ID} from redis
+# Search inventory items by various criteria {Product ID, Inventory ID} from redis
     async def search_entries(
         self, 
-        db: AsyncSession, 
-        search_filter: EntryInventorySearch
+        db: AsyncSession,
+        inventory_id: Optional[str] = None,
+        product_id: Optional[str] = None,
+        project_id: Optional[str] = None
     ) -> List[EntryInventoryOut]:
         """
         Search inventory entries by exactly one of:
         - inventory_id
         - product_id
+        - project_id
         """
         try:
             # Get all inventory keys from Redis
@@ -399,18 +401,20 @@ class EntryInventoryService(EntryInventoryInterface):
                         
                         # Check search criteria
                         match = False
-                        if search_filter.inventory_id and item_data.get('inventory_id') == search_filter.inventory_id:
+                        if inventory_id and item_data.get('inventory_id') == inventory_id:
                             match = True
-                        elif search_filter.product_id and item_data.get('product_id') == search_filter.product_id:
+                        elif product_id and item_data.get('product_id') == product_id:
+                            match = True
+                        elif project_id and item_data.get('project_id') == project_id:
                             match = True
                         
                         if match:
-                            # Convert timestamps if they exist
-                            if 'created_at' in item_data:
-                                item_data['created_at'] = datetime.fromisoformat(item_data['created_at'])
-                            if 'updated_at' in item_data:
-                                item_data['updated_at'] = datetime.fromisoformat(item_data['updated_at'])
-                            matching_items.append(EntryInventoryOut(**item_data))
+                            # Clean the item data before creating the model
+                            clean_item_data = {
+                                k: v for k, v in item_data.items()
+                                if k in EntryInventoryOut.model_fields
+                            }
+                            matching_items.append(EntryInventoryOut(**clean_item_data))
                             
                     except (json.JSONDecodeError, ValidationError) as e:
                         logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
@@ -422,7 +426,7 @@ class EntryInventoryService(EntryInventoryInterface):
             logger.error(f"Redis search failed: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail="Error searching inventory items"
+                detail=f"Error searching inventory items: {str(e)}"
             )
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------

@@ -15,7 +15,6 @@ from backend.app.models.wastege_inventory_model import WastageInventory
 from backend.app.utils.date_utils import IndianDateUtils
 from backend.app.utils.field_validators import (
     BaseValidators,
-    EntryInventoryValidations
 )
 
 class InventoryComboBoxItem(BaseModel):
