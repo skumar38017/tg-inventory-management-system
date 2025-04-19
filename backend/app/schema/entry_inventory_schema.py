@@ -41,6 +41,16 @@ class EntryInventoryBase(BaseValidators,BaseModel):
             date: lambda v: UTCDateUtils.format_date(v)
         }
     )
+    @field_validator('purchase_date', 'returned_date', mode='before')
+    def parse_date_fields(cls, value):
+        if value in [None, "", "null", "n/a", "N/A"]:
+            return None
+        if isinstance(value, date):
+            return value
+        try:
+            return UTCDateUtils.parse_date(value)
+        except ValueError:
+            raise ValueError("Date must be in YYYY-MM-DD format or null/n/a")
         
 # Schema for creating or updating EntryInventory (without id and timestamps)
 class EntryInventoryCreate(EntryInventoryBase):
@@ -96,6 +106,17 @@ class EntryInventoryUpdate(BaseValidators, BaseModel):
             date: lambda v: UTCDateUtils.format_date(v)
         }
     )
+    
+    @field_validator('purchase_date', 'returned_date', mode='before')
+    def parse_date_fields(cls, value):
+        if value in [None, "", "null", "n/a", "N/A"]:
+            return None
+        if isinstance(value, date):
+            return value
+        try:
+            return UTCDateUtils.parse_date(value)
+        except ValueError:
+            raise ValueError("Date must be in YYYY-MM-DD format or null/n/a")
         
 class EntryInventoryUpdateOut(EntryInventoryOut):
     pass

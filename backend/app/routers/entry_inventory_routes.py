@@ -1,4 +1,7 @@
 # backend/app/routers/entry_inventory_routes.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -16,6 +19,7 @@ from backend.app.schema.entry_inventory_schema import (
     InventoryRedisOut
 )
 import requests
+from fastapi import Depends, Request
 from fastapi import Request
 from backend.app.curd.entry_inverntory_curd import EntryInventoryService
 from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSync
@@ -24,8 +28,10 @@ from backend.app.interface.entry_inverntory_interface import (
 )
 
 # Dependency to get the entry inventory service
-def get_entry_inventory_service() -> EntryInventoryService:
-    return EntryInventoryService()
+def get_entry_inventory_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> EntryInventoryService:
+    return EntryInventoryService(redis)
 
 # Set up the router
 router = APIRouter()
@@ -91,32 +97,35 @@ async def sync_from_sheets(
     response_model=List[InventoryRedisOut],
     status_code=200,
     summary="Show all Redis-cached inventory",
-    description="Retrieves all inventory entries from Redis cache",
+    description="Retrieves all inventory entries from Redis cache sorted alphabetically by inventory_name",
     responses={
         200: {"description": "Successfully retrieved cached data"},
         404: {"description": "No cached data found"},
         500: {"description": "Internal server error during retrieval"}
     },
     tags=["Show all Inventory (Redis)"]
-
 )
 async def show_all_redis(
     skip: int = 0,
+    limit: int = 1000,  # Add pagination limit
     db: AsyncSession = Depends(get_async_db),
     service: EntryInventoryService = Depends(get_entry_inventory_service)
-
 ):
     """
-    Retrieve all inventory data from Redis cache.
+    Retrieve all inventory data from Redis cache sorted alphabetically.
     
     This endpoint will:
     1. Fetch all cached inventory entries from Redis
     2. Validate and deserialize the data
-    3. Return the sorted list of inventory items
+    3. Sort alphabetically by inventory_name
+    4. Apply pagination (skip and limit)
+    5. Return the sorted list of inventory items
     """
     try:
         logger.info("Fetching all inventory data from Redis")
-        cached_data = await service.get_all_entries(db, skip=skip)
+        
+        # Get all entries from Redis
+        cached_data = await service.show_all_inventory_from_redis()
         
         if not cached_data:
             logger.warning("No inventory data found in Redis cache")
@@ -127,9 +136,15 @@ async def show_all_redis(
                     "message": "No inventory data available in cache"
                 }
             )
-            
-        logger.info(f"Successfully retrieved {len(cached_data)} cached entries")
-        return cached_data
+        
+        # Sort alphabetically by inventory_name (case insensitive)
+        cached_data.sort(key=lambda x: x.inventory_name.lower())
+        
+        # Apply pagination
+        paginated_data = cached_data[skip : skip + limit]
+        
+        logger.info(f"Successfully retrieved {len(paginated_data)} cached entries (showing {skip} to {skip + limit})")
+        return paginated_data
         
     except HTTPException:
         raise

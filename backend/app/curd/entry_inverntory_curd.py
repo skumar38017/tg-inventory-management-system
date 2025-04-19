@@ -1,5 +1,10 @@
 # backend/app/routers/entry_inventory_curd.py
 
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
+from redis import asyncio as aioredis
+import redis.asyncio as redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, time, timedelta, timezone
@@ -31,10 +36,8 @@ import logging
 import uuid
 from fastapi import HTTPException
 from typing import List, Optional
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
-from fastapi import APIRouter, HTTPException, Depends
 from pydantic import ValidationError
 import random
 from google.oauth2.credentials import Credentials
@@ -42,9 +45,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 from typing import Union
 import json
-import redis.asyncio as redis
 from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -54,10 +57,12 @@ logger.setLevel(logging.INFO)
 
 class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
-    def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
+
+    # Remove the get_redis_client() method since we're injecting the client directly
 
 
 # Create new entry of inventory for to_event which is directly stored in redis
@@ -71,6 +76,11 @@ class EntryInventoryService(EntryInventoryInterface):
                 inventory_data = entry_data.model_dump(exclude_unset=True)
             else:
                 inventory_data = entry_data
+
+            # Handle null/empty date fields
+            for date_field in ['purchase_date', 'returned_date']:
+                if date_field in inventory_data and inventory_data[date_field] in [None, "", "null", "n/a"]:
+                    inventory_data[date_field] = None
 
             # Generate ID if not provided
             if not inventory_data.get('id'):
@@ -120,7 +130,7 @@ class EntryInventoryService(EntryInventoryInterface):
         except KeyError as ke:
             logger.error(f"Missing required field: {str(ke)}")
             raise HTTPException(status_code=400, detail=f"Missing required field: {str(ke)}")
-        except (TypeError, ValueError) as e:  # Changed from JSONEncodeError
+        except (TypeError, ValueError) as e:
             logger.error(f"JSON encoding error: {str(e)}")
             raise HTTPException(status_code=400, detail="Invalid inventory data format")
         except Exception as e:
@@ -385,7 +395,8 @@ class EntryInventoryService(EntryInventoryInterface):
         - inventory_id
         - product_id
         - project_id
-        """
+        """,
+        keys = await self.redis.keys("inventory:*")
         try:
             # Get all inventory keys from Redis
             keys = await self.redis.keys("inventory:*")
@@ -436,24 +447,29 @@ class EntryInventoryService(EntryInventoryInterface):
         """Retrieve all inventory entries from Redis"""
         try:
             # Get all inventory keys from Redis
-            keys = await redis_client.keys("inventory:*")
+            keys = await self.redis.keys("inventory:*")
 
             # Retrieve and parse all entries
             entries = []
             for key in keys:
-                data = await redis_client.get(key)
+                data = await self.redis.get(key)
                 if data:
-                    entries.append(InventoryRedisOut.from_redis(data))
+                    try:
+                        entry_data = json.loads(data)
+                        entries.append(InventoryRedisOut(**entry_data))
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
+                        continue
 
-            # Sort by name (alphabetical)
-            entries.sort(key=lambda x: x.name)
+            # Sort by inventory_name (alphabetical)
+            entries.sort(key=lambda x: x.inventory_name.lower())
             return entries
 
         except Exception as e:
-            logger.error(f"Redis retrieval error: {e}")
+            logger.error(f"Redis retrieval error: {e}", exc_info=True)
             raise HTTPException(
                 status_code=500, 
-                detail="Failed to load from Redis"
+                detail="Failed to load inventory from Redis"
             )
 
     # List all inventory entries function
