@@ -99,6 +99,7 @@ class BaseValidators:
     def check_empty_strings(cls, v):
         """Generic validator to convert empty strings to None for all fields"""
         return cls.empty_string_to_none(v)
+     
 
     @field_validator('product_id', mode='before', check_fields=False)
     def validate_product_id(cls, v):
