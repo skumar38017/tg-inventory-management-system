@@ -26,7 +26,7 @@ from google.oauth2 import service_account
 
 
 from sqlalchemy.exc import SQLAlchemyError
-from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
+from backend.app.interface.entry_inverntory_interface import GoogleSheetsToRedisSyncInterface
 import logging
 import uuid
 from fastapi import HTTPException
@@ -37,10 +37,14 @@ from backend.app.utils.barcode_generator import BarcodeGenerator
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import ValidationError
 import random
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 from typing import Union
 import json
 import redis.asyncio as redis
+from backend.app.utils.date_utils import UTCDateUtils
+from backend.app.utils.field_validators import BaseValidators
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -48,19 +52,14 @@ logger.setLevel(logging.INFO)
 # CRUD OPERATIONS
 # ------------------------ 
 
-# Google API Scopes
-SCOPES = os.getenv('GOOGLE_API_SCOPES').split(',')
-
-from backend.app.utils.date_utils import UTCDateUtils
-from backend.app.utils.field_validators import BaseValidators
-class EntryInventoryService(EntryInventoryInterface):
+class GoogleSheetsToRedisSync(GoogleSheetsToRedisSyncInterface):
     """Implementation of EntryInventoryInterface with async operations"""
+
     def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
         self.base_url = base_url
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
-        self.spreadsheet_id = os.getenv('GOOGLE_SHEET_ID')
-        self.admin_email = os.getenv('ADMIN_EMAIL')
+
 
 # Create new entry of inventory for to_event which is directly stored in redis
     async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
@@ -492,95 +491,4 @@ class EntryInventoryService(EntryInventoryInterface):
             raise HTTPException(
                 status_code=500,
                 detail="Error listing inventory items"
-            )
-
-    #  Store all recored in Redis after clicking {sync} button
-    async def sync_inventory_from_google_sheets(self) -> List[InventoryRedisOut]:
-        """
-        Sync inventory data from Google Sheets to Redis using direct email access
-        
-        Returns:
-            List[InventoryRedisOut]: List of synced inventory items
-        """
-        try:
-            # Directly authenticate with gspread using the email
-            gc = gspread.oauth(
-                credentials_filename='credentials.json',
-                authorized_user_filename='authorized_user.json'
-            )
-            
-            # Open the spreadsheet
-            sheet = gc.open_by_key(self.spreadsheet_id).sheet1
-            records = sheet.get_all_records()
-            
-            synced_items = []
-            
-            for idx, record in enumerate(records, start=1):
-                try:
-                    # Generate IDs if not present
-                    inventory_id = f"INV{random.randint(100000, 999999)}"
-                    product_id = f"PRD{random.randint(100000, 999999)}"
-                    
-                    # Create inventory data dictionary
-                    inventory_data = {
-                        'id': str(uuid.uuid4()),
-                        'sno': f"SN{idx:04d}",
-                        'inventory_id': inventory_id,
-                        'product_id': product_id,
-                        'inventory_name': record['Material'],
-                        'material': record.get('Material', ''),
-                        'total_quantity': str(record['Total Quantity']),
-                        'manufacturer': record.get('Manufacturer', ''),
-                        'purchase_dealer': '',
-                        'purchase_date': '',
-                        'purchase_amount': '',
-                        'repair_quantity': str(record.get('Repair Quantity', 0)),
-                        'repair_cost': str(record.get('Repair Cost', 0)),
-                        'on_rent': "false",
-                        'vendor_name': '',
-                        'total_rent': '',
-                        'rented_inventory_returned': "false",
-                        'on_event': "false",
-                        'in_office': "true",
-                        'in_warehouse': "false",
-                        'issued_qty': str(record.get('Issued Qty', 0)),
-                        'balance_qty': str(record.get('Balance Qty', 0)),
-                        'submitted_by': "System Sync",
-                        'inventory_barcode': '',
-                        'inventory_barcode_url': '',
-                        'created_at': datetime.now(timezone.utc).isoformat(),
-                        'updated_at': datetime.now(timezone.utc).isoformat()
-                    }
-
-                    # Generate barcode
-                    barcode, unique_code = self.barcode_generator.generate_linked_codes({
-                        'inventory_name': inventory_data['inventory_name'],
-                        'inventory_id': inventory_data['inventory_id'],
-                        'id': inventory_data['id']
-                    })
-                    inventory_data.update({
-                        'inventory_barcode': barcode,
-                        'inventory_unique_code': unique_code
-                    })
-
-                    # Store in Redis
-                    redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"
-                    await self.redis.set(
-                        redis_key,
-                        json.dumps(inventory_data, default=str)
-                    )
-                    
-                    synced_items.append(InventoryRedisOut(**inventory_data))
-                    
-                except Exception as e:
-                    logger.warning(f"Error processing row {idx}: {str(e)}")
-                    continue
-            
-            return synced_items
-            
-        except Exception as e:
-            logger.error(f"Sync failed: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to sync inventory from Google Sheets"
             )
