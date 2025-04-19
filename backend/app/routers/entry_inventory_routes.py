@@ -18,11 +18,19 @@ from backend.app.schema.entry_inventory_schema import (
 import requests
 from fastapi import Request
 from backend.app.curd.entry_inverntory_curd import EntryInventoryService
-from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
+from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSync
+from backend.app.interface.entry_inverntory_interface import (
+    EntryInventoryInterface,
+    GoogleSheetsToRedisSyncInterface
+)
 
 # Dependency to get the entry inventory service
 def get_entry_inventory_service() -> EntryInventoryService:
     return EntryInventoryService()
+
+# Dependency to get the Google Sheets to Redis sync service
+def get_google_sheets_to_redis_service() -> GoogleSheetsToRedisSync:
+    return GoogleSheetsToRedisSync()
 
 # Set up the router
 router = APIRouter()
@@ -51,7 +59,7 @@ logger.setLevel(logging.INFO)
 )
 async def sync_from_sheets(
     request: Request,
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
+    service: GoogleSheetsToRedisSync = Depends(get_google_sheets_to_redis_service)
 ):
     """
     Synchronize inventory data from Google Sheets to Redis cache.
@@ -82,6 +90,7 @@ async def sync_from_sheets(
             detail="Failed to sync with Google Sheets"
         )
 
+# -------------------------------------------------------------------------------------------------
 # Show all inventory entries directly from local Redis Database  (no search) according in sequence alphabetical order after clicking `Show All` button
 @router.get("/show-all/",
     response_model=List[InventoryRedisOut],

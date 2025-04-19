@@ -3,6 +3,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
+from fastapi import HTTPException, Request
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
@@ -18,11 +19,9 @@ from pydantic import BaseModel
 from datetime import date
 import requests
 
-class EntryInventoryInterface:
-    """Interface for EntryInventory operations with immutable core fields."""
-
+class GoogleSheetsToRedisSyncInterface:
     #  Store all recored in Redis after clicking {sync} button
-    async def sync_inventory_from_google_sheets(self) -> List[InventoryRedisOut]:
+    async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
         """
         Sync inventory data from Google Sheets to Redis
         
@@ -33,6 +32,9 @@ class EntryInventoryInterface:
             HTTPException: If sync fails
         """
         pass
+
+class EntryInventoryInterface:
+    """Interface for EntryInventory operations with immutable core fields."""
     
     async def create_entry_inventory(self, db: AsyncSession, entry_inventory: EntryInventoryCreate) -> EntryInventory:
         """
