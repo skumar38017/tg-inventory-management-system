@@ -1,24 +1,33 @@
-# backend/app/utils/date_utils.py
 from datetime import datetime, date, timezone, timedelta
 from typing import Optional, Union
 from pydantic import field_validator
 
-INDIAN_TIMEZONE = timezone(timedelta(hours=5, minutes=30))
+UTC_TIMEZONE = timezone.utc
 
-class IndianDateUtils:
+class UTCDateUtils:
     """
-    Utility class for handling dates in Indian timezone (IST)
+    Utility class for handling dates in UTC timezone
     """
     
     @staticmethod
     def get_current_datetime() -> datetime:
-        """Get current datetime in Indian timezone"""
-        return datetime.now(INDIAN_TIMEZONE)
+        """Get current datetime in UTC timezone as datetime object"""
+        return datetime.now(UTC_TIMEZONE)
+    
+    @staticmethod
+    def get_current_datetime_str() -> str:
+        """Get current datetime in UTC timezone as formatted string (YYYY-MM-DD HH:MM:SS)"""
+        return datetime.now(UTC_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+    
+    @staticmethod
+    def get_current_datetime_iso() -> str:
+        """Get current datetime in UTC timezone as ISO format string"""
+        return datetime.now(UTC_TIMEZONE).isoformat()
     
     @staticmethod
     def get_current_date() -> date:
-        """Get current date in Indian timezone"""
-        return IndianDateUtils.get_current_datetime().date()
+        """Get current date in UTC timezone"""
+        return datetime.now(UTC_TIMEZONE).date()  # Changed from UTCDateUtils to datetime
     
     @staticmethod
     def format_date(dt: Union[date, datetime, None]) -> Optional[str]:
@@ -31,15 +40,13 @@ class IndianDateUtils:
     
     @staticmethod
     def format_datetime(dt: Union[datetime, None]) -> Optional[str]:
-        """Format datetime to ISO string with Indian timezone"""
+        """Format datetime to ISO string with UTC timezone"""
         if dt is None:
             return None
         if dt.tzinfo is None:
-            # If no timezone info, assume it's in Indian timezone
-            dt = dt.replace(tzinfo=INDIAN_TIMEZONE)
+            dt = dt.replace(tzinfo=UTC_TIMEZONE)
         else:
-            # Convert to Indian timezone if it's in another timezone
-            dt = dt.astimezone(INDIAN_TIMEZONE)
+            dt = dt.astimezone(UTC_TIMEZONE)
         return dt.isoformat()
     
     @staticmethod
@@ -54,13 +61,15 @@ class IndianDateUtils:
     
     @staticmethod
     def parse_datetime(datetime_str: Optional[str]) -> Optional[datetime]:
-        """Parse ISO datetime string to datetime object with Indian timezone"""
+        """Parse ISO datetime string to datetime object with UTC timezone"""
         if not datetime_str:
             return None
         try:
             dt = datetime.fromisoformat(datetime_str)
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=INDIAN_TIMEZONE)
+                dt = dt.replace(tzinfo=UTC_TIMEZONE)
+            else:
+                dt = dt.astimezone(UTC_TIMEZONE)
             return dt
         except ValueError:
             return None
@@ -75,7 +84,7 @@ class IndianDateUtils:
         if isinstance(value, datetime):
             return value.date()
         if isinstance(value, str):
-            parsed = IndianDateUtils.parse_date(value)
+            parsed = UTCDateUtils.parse_date(value)  # Now UTCDateUtils is fully defined
             if parsed is None:
                 raise ValueError("Date must be in YYYY-MM-DD format")
             return parsed
@@ -87,9 +96,11 @@ class IndianDateUtils:
         if value is None:
             return None
         if isinstance(value, datetime):
-            return value.replace(tzinfo=INDIAN_TIMEZONE)
+            if value.tzinfo is None:
+                return value.replace(tzinfo=UTC_TIMEZONE)
+            return value.astimezone(UTC_TIMEZONE)
         if isinstance(value, str):
-            parsed = IndianDateUtils.parse_datetime(value)
+            parsed = UTCDateUtils.parse_datetime(value)  # Now UTCDateUtils is fully defined
             if parsed is None:
                 raise ValueError("Datetime must be in ISO format")
             return parsed

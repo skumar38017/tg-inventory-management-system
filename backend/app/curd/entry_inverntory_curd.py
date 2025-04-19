@@ -51,7 +51,7 @@ logger.setLevel(logging.INFO)
 # Google API Scopes
 SCOPES = os.getenv('GOOGLE_API_SCOPES').split(',')
 
-from backend.app.utils.date_utils import INDIAN_TIMEZONE, IndianDateUtils
+from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
 class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
@@ -80,7 +80,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 inventory_data['id'] = inventory_id
 
             # Set timestamps (server-side only)
-            current_time = IndianDateUtils.get_current_datetime()
+            current_time = UTCDateUtils.get_current_datetime()
             inventory_data['updated_at'] = current_time
             inventory_data['created_at'] = current_time 
 
@@ -122,8 +122,8 @@ class EntryInventoryService(EntryInventoryInterface):
         except KeyError as ke:
             logger.error(f"Missing required field: {str(ke)}")
             raise HTTPException(status_code=400, detail=f"Missing required field: {str(ke)}")
-        except json.JSONEncodeError as je:
-            logger.error(f"JSON encoding error: {str(je)}")
+        except (TypeError, ValueError) as e:  # Changed from JSONEncodeError
+            logger.error(f"JSON encoding error: {str(e)}")
             raise HTTPException(status_code=400, detail="Invalid inventory data format")
         except Exception as e:
             logger.error(f"Redis storage failed: {str(e)}", exc_info=True)
@@ -142,12 +142,12 @@ class EntryInventoryService(EntryInventoryInterface):
         try:
             # Handle both string and date inputs
             start_date = (
-                IndianDateUtils.parse_date(date_range_filter.from_date)
+                UTCDateUtils.parse_date(date_range_filter.from_date)
                 if isinstance(date_range_filter.from_date, str)
                 else date_range_filter.from_date
             )
             end_date = (
-                IndianDateUtils.parse_date(date_range_filter.to_date)
+                UTCDateUtils.parse_date(date_range_filter.to_date)
                 if isinstance(date_range_filter.to_date, str)
                 else date_range_filter.to_date
             )
@@ -168,15 +168,15 @@ class EntryInventoryService(EntryInventoryInterface):
                         if not created_at_str:
                             continue
                             
-                        created_at = IndianDateUtils.parse_datetime(created_at_str)
+                        created_at = UTCDateUtils.parse_datetime(created_at_str)
                         if not created_at:
                             continue
                             
                         # Check if within date range
                         if start_date <= created_at.date() <= end_date:
-                            # Convert timestamps using IndianDateUtils
-                            item_data['created_at'] = IndianDateUtils.validate_datetime_field(item_data.get('created_at'))
-                            item_data['updated_at'] = IndianDateUtils.validate_datetime_field(item_data.get('updated_at'))
+                            # Convert timestamps using UTCDateUtils
+                            item_data['created_at'] = UTCDateUtils.validate_datetime_field(item_data.get('created_at'))
+                            item_data['updated_at'] = UTCDateUtils.validate_datetime_field(item_data.get('updated_at'))
                             filtered_items.append(EntryInventoryOut(**item_data))
                     except (KeyError, ValueError) as e:
                         logger.warning(f"Skipping invalid inventory item {key}: {str(e)}")
@@ -311,8 +311,8 @@ class EntryInventoryService(EntryInventoryInterface):
                 if field not in IMMUTABLE_FIELDS:
                     updated_dict[field] = value
 
-            # Always update the timestamp with Indian timezone
-            updated_dict['updated_at'] = IndianDateUtils.get_current_datetime().isoformat()
+            # Always update the timestamp with UTC timezone
+            updated_dict['updated_at'] = UTCDateUtils.get_current_datetime().isoformat()
 
             # Save back to Redis
             await self.redis.set(
@@ -336,7 +336,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 status_code=500,
                 detail=f"Failed to update inventory: {str(e)}"
             )
-
+    
     # DELETE: Delete an inventory entry by  {Inventory ID}
     async def delete_entry(self, db: AsyncSession, inventory_id: str) -> bool:
         try:
