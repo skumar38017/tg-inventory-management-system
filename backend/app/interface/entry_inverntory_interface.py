@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from datetime import date
 import requests
 
-class GoogleSheetsToRedisSyncInterface:
+class EntryInventoryInterface:
     #  Store all recored in Redis after clicking {sync} button
     async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
         """
@@ -33,7 +33,6 @@ class GoogleSheetsToRedisSyncInterface:
         """
         pass
 
-class EntryInventoryInterface:
     """Interface for EntryInventory operations with immutable core fields."""
     
     async def create_entry_inventory(self, db: AsyncSession, entry_inventory: EntryInventoryCreate) -> EntryInventory:

@@ -26,7 +26,7 @@ from google.oauth2 import service_account
 
 
 from sqlalchemy.exc import SQLAlchemyError
-from backend.app.interface.entry_inverntory_interface import GoogleSheetsToRedisSyncInterface
+from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 import logging
 import uuid
 from fastapi import HTTPException
@@ -52,9 +52,8 @@ logger.setLevel(logging.INFO)
 # CRUD OPERATIONS
 # ------------------------ 
 
-class GoogleSheetsToRedisSync(GoogleSheetsToRedisSyncInterface):
+class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
-
     def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
         self.base_url = base_url
         self.redis = redis_client
