@@ -1,4 +1,7 @@
 #  backend/app/curd/to_event_inventry_curd.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, time, timedelta, timezone, date
@@ -29,7 +32,6 @@ from backend.app.interface.to_event_interface import ToEventInventoryInterface
 import logging
 from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
 import redis.asyncio as redis
@@ -40,6 +42,8 @@ import json
 from sqlalchemy import select, delete
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
+from backend.app.database.redisclient import get_redis
+redis_client=get_redis()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -49,10 +53,10 @@ logger.setLevel(logging.INFO)
 # ------------------------ 
 
 class ToEventInventoryService(ToEventInventoryInterface):
-    def __init__(self, base_url: str = config.BASE_URL, redis_client = redis_client):
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
 
 # upload all to_event_inventory entries from local Redis to the database after click on upload data button
     async def upload_to_event_inventory(self, db: AsyncSession) -> List[ToEventUploadResponse]:
@@ -61,8 +65,8 @@ class ToEventInventoryService(ToEventInventoryInterface):
             await db.rollback()
             
             # Get both types of Redis keys
-            inventory_keys = await redis_client.keys("to_event_inventory:*")
-            item_keys = await redis_client.keys("inventory_item:*")
+            inventory_keys = await self.redis.keys("to_event_inventory:*")
+            item_keys = await self.redis.keys("inventory_item:*")
             
             logger.info(f"Starting upload with {len(inventory_keys)} inventory keys and {len(item_keys)} item keys")
             
@@ -81,7 +85,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     # Ensure fresh transaction for each key
                     await db.rollback()
                     
-                    redis_data = await redis_client.get(key)
+                    redis_data = await self.redis.keys(key)
                     if not redis_data:
                         logger.debug(f"Empty data for key {key}")
                         continue
@@ -189,7 +193,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     # Fresh transaction for each item
                     await db.rollback()
                     
-                    redis_data = await redis_client.get(key)
+                    redis_data = await self.redis.keys(key)
                     if not redis_data:
                         continue
 
@@ -321,14 +325,14 @@ class ToEventInventoryService(ToEventInventoryInterface):
             }
     
             # Store main inventory in Redis
-            await redis_client.set(
+            await self.redis.set(
                 f"to_event_inventory:{inventory_data['project_id']}",
                 json.dumps(redis_data, default=str)
             )
     
             # Store individual items with their own keys (still without timestamps)
             for item in inventory_items:
-                await redis_client.set(
+                await self.redis.set(
                     f"inventory_item:{item['id']}",
                     json.dumps(item, default=str)
                 )
@@ -379,7 +383,8 @@ class ToEventInventoryService(ToEventInventoryInterface):
     async def get_project_data(self, project_id: str):
         try:
             redis_key = f"to_event_inventory:{project_id}"
-            existing_data = await redis_client.get(redis_key)
+            # Use get() instead of keys() to retrieve the actual value
+            existing_data = await self.redis.get(redis_key)
 
             if not existing_data:
                 return None
@@ -388,16 +393,21 @@ class ToEventInventoryService(ToEventInventoryInterface):
             project_dict = json.loads(existing_data)
             
             # Ensure inventory_items is properly formatted
-            if 'inventory_items' in project_dict and isinstance(project_dict['inventory_items'], str):
-                try:
-                    project_dict['inventory_items'] = json.loads(project_dict['inventory_items'])
-                except json.JSONDecodeError:
+            if 'inventory_items' in project_dict:
+                if isinstance(project_dict['inventory_items'], str):
+                    try:
+                        project_dict['inventory_items'] = json.loads(project_dict['inventory_items'])
+                    except json.JSONDecodeError:
+                        project_dict['inventory_items'] = []
+                elif not isinstance(project_dict['inventory_items'], list):
                     project_dict['inventory_items'] = []
+                    
             return ToEventRedisOut(**project_dict)
         
         except Exception as e:
             logger.error(f"Error fetching project {project_id} from Redis: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
+
 
     async def update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
         try:
@@ -411,7 +421,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
             ]
 
             # Fetch existing project data from Redis
-            existing_data = await redis_client.get(redis_key)
+            existing_data = await self.redis.get(redis_key)  # Changed from keys() to get()
             if not existing_data:
                 raise HTTPException(status_code=404, detail="Project not found")
                 
@@ -462,7 +472,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                 raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
 
             # Save to Redis
-            await redis_client.set(
+            await self.redis.set(  # Changed from redis_client to self.redis
                 redis_key,
                 validated_data.model_dump_json()
             )
@@ -474,9 +484,4 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except Exception as e:
             logger.error(f"Error updating project {project_id}: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error updating project: {str(e)}")
-
-    class CustomJSONEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, (datetime, date)):
-                return obj.isoformat()
-            return super().default(obj)
+        
