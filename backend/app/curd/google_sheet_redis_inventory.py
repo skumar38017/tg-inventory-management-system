@@ -14,9 +14,10 @@ from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     InventoryRedisOut
 )
+import httpx 
 import os
 from backend.app.utils.field_validators import BaseValidators
-from backend.app.interface.entry_inverntory_interface import GoogleSheetsToRedisSyncInterface
+from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 
 import redis.asyncio as redis
 from backend.app.database.redisclient import redis_client
@@ -28,7 +29,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 logger = logging.getLogger(__name__)
 
-class GoogleSheetsToRedisSync(GoogleSheetsToRedisSyncInterface):
+class GoogleSheetsToRedisSync(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
 
     def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
@@ -40,36 +41,39 @@ class GoogleSheetsToRedisSync(GoogleSheetsToRedisSyncInterface):
         self.scope = ['https://www.googleapis.com/auth/spreadsheets.readonly','https://docs.google.com/spreadsheets/d/1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8/edit?usp=sharing']
         
     async def _get_google_sheets_client(self):
-        """Authenticate with Google Sheets API using OAuth"""
+        """Simplified authentication with automatic token handling"""
         try:
-            creds = None
-            
-            # If token exists, use it
+            # Pre-configured credentials (you'll set this up once)
+            if not os.path.exists('credentials.json'):
+                raise HTTPException(
+                    status_code=500,
+                    detail="Missing credentials.json - setup required"
+                )
+                
+            # Try to use existing token
             if os.path.exists(self.token_file):
                 creds = Credentials.from_authorized_user_file(self.token_file, self.scope)
-            
-            # If no valid credentials, let the user log in
-            if not creds or not creds.valid:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-                else:
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        'credentials.json',  # You'll need to create this
-                        self.scope
-                    )
-                    creds = flow.run_local_server(port=0)
+                return gspread.authorize(creds)
                 
-                # Save the credentials for next run
-                with open(self.token_file, 'w') as token:
-                    token.write(creds.to_json())
+            # First-time setup (automatic browser login)
+            from google_auth_oauthlib.flow import InstalledAppFlow
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json',
+                self.scope
+            )
+            creds = flow.run_local_server(port=0)
             
+            # Save token for future use
+            with open(self.token_file, 'w') as token:
+                token.write(creds.to_json())
+                
             return gspread.authorize(creds)
             
         except Exception as e:
-            logger.error(f"Google Sheets authentication failed: {str(e)}")
+            logger.error(f"Auth failed: {str(e)}")
             raise HTTPException(
                 status_code=500,
-                detail="Failed to authenticate with Google Sheets"
+                detail="Automatic authentication failed - check logs"
             )
 
     async def _process_sheet_row(self, record: dict, idx: int) -> Optional[EntryInventoryCreate]:
@@ -141,39 +145,51 @@ class GoogleSheetsToRedisSync(GoogleSheetsToRedisSyncInterface):
 
     async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
         """
-        Securely sync inventory data from Google Sheets to Redis
-        
-        Args:
-            request: FastAPI request object
-            
-        Returns:
-            List of successfully synced inventory items
-            
-        Raises:
-            HTTPException: If sync fails
+        Sync inventory data from Google Sheets to Redis with enhanced error handling
         """
         try:
-            gc = await self._get_google_sheets_client()
-            SPREADSHEET_KEY = "1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8"
-            WORKSHEET_INDEX = 0
-            
+            # First try the API method with OAuth
             try:
+                gc = await self._get_google_sheets_client()
+                SPREADSHEET_KEY = "1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8"
+                WORKSHEET_INDEX = 0
+                
                 spreadsheet = gc.open_by_key(SPREADSHEET_KEY)
                 worksheet = spreadsheet.get_worksheet(WORKSHEET_INDEX)
                 records = worksheet.get_all_records()
-            except Exception as e:
-                logger.error(f"Failed to access Google Sheet: {str(e)}")
-                raise HTTPException(
-                    status_code=500,
-                    detail="Could not access Google Sheets data"
-                )
-            
+                
+                logger.info(f"Successfully fetched {len(records)} records via Sheets API")
+                
+            except Exception as api_error:
+                logger.warning(f"API access failed, trying CSV fallback: {str(api_error)}")
+                
+                # Fallback to CSV export if API fails
+                CSV_URL = "https://docs.google.com/spreadsheets/d/1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8/export?format=csv"
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(CSV_URL)
+                    response.raise_for_status()
+                    csv_data = response.text
+
+                # Parse CSV to list of dicts
+                from io import StringIO
+                import csv
+                records = []
+                reader = csv.DictReader(StringIO(csv_data))
+                records = list(reader)
+                logger.info(f"Successfully fetched {len(records)} records via CSV")
+
+            # Process records
             synced_items = []
             success_count = 0
             error_count = 0
             
             for idx, record in enumerate(records, start=1):
                 try:
+                    # Debug: Log first record
+                    if idx == 1:
+                        logger.debug(f"First record sample: {dict(list(record.items())[:3])}")
+                    
                     inventory_data = await self._process_sheet_row(record, idx)
                     if not inventory_data:
                         continue
@@ -184,33 +200,34 @@ class GoogleSheetsToRedisSync(GoogleSheetsToRedisSyncInterface):
                         exclude_none=True
                     )
                     
-                    # Store in Redis
-                    redis_key = f"inventory:{inventory_data.inventory_id}"
+                    # Create unique Redis key
+                    redis_key = f"inventory:{inventory_data.inventory_id}:{inventory_data.inventory_name}"
                     await self.redis.set(
                         redis_key,
-                        json.dumps(inventory_dict, default=str)
+                        json.dumps(inventory_dict, default=str),
+                        ex=86400  # Optional: Set expiration (1 day)
                     )
                     
-                    # Convert to output schema
                     synced_items.append(InventoryRedisOut(**inventory_dict))
                     success_count += 1
                     
                 except Exception as e:
                     error_count += 1
-                    logger.error(f"Failed to process row {idx}: {str(e)}")
+                    logger.error(f"Row {idx} failed: {str(e)}", exc_info=True)
                     continue
             
-            logger.info(
-                f"Sync completed: {success_count} successful, {error_count} errors"
-            )
-            
+            logger.info(f"Sync completed: {success_count} items, {error_count} errors")
             return synced_items
             
-        except HTTPException:
-            raise
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error accessing Google Sheets: {str(e)}")
+            raise HTTPException(
+                status_code=502,
+                detail="Failed to connect to Google Sheets"
+            )
         except Exception as e:
-            logger.error(f"Sync failed: {str(e)}", exc_info=True)
+            logger.error(f"Critical sync error: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to sync inventory: {str(e)}"
+                detail=f"Sync failed: {str(e)}"
             )
