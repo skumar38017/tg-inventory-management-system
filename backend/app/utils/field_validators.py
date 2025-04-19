@@ -5,9 +5,7 @@ from datetime import datetime, date, timezone, timedelta
 from typing import Optional, Union, Dict, Any
 from pydantic import field_validator, model_validator, ValidationInfo, ConfigDict
 from enum import Enum
-from backend.app.utils.date_utils import IndianDateUtils
-
-INDIAN_TIMEZONE = timezone(timedelta(hours=5, minutes=30))
+from backend.app.utils.date_utils import UTCDateUtils  # Changed from IndianDateUtils to UTCDateUtils
 
 class BaseValidators:
     """Contains reusable validators that can be inherited by different schemas"""
@@ -16,8 +14,8 @@ class BaseValidators:
         extra="forbid",
         from_attributes=True,
         json_encoders={
-            datetime: lambda v: IndianDateUtils.format_datetime(v),
-            date: lambda v: IndianDateUtils.format_date(v),
+            datetime: lambda v: UTCDateUtils.format_datetime(v),  # Changed to UTC format
+            date: lambda v: UTCDateUtils.format_date(v),
             Enum: lambda v: v.value
         }
     )
@@ -55,14 +53,11 @@ class BaseValidators:
         if v is None:
             return None
         
-        v = str(v).strip().upper()  # Convert to string and normalize case
+        v = str(v).strip().upper()
         if not v:
             return None
         
-        # Remove any existing prefix (case insensitive)
         clean_id = re.sub(f'^{prefix}', '', v, flags=re.IGNORECASE)
-        
-        # Extract all digits from the remaining string
         digits = re.sub(r'[^\d]', '', clean_id)
         if not digits:
             raise ValueError(f"ID must contain numbers after prefix (input: {v})")
@@ -107,21 +102,21 @@ class BaseValidators:
 
     @field_validator('product_id', mode='before', check_fields=False)
     def validate_product_id(cls, v):
-        """Standard product ID validator that ensures format PRD12345"""
+        """Standard product ID validator"""
         result = cls.format_id_field(v, 'PRD')
         if result is None:
             return None
-        if len(result) > 20:  # Example length check
+        if len(result) > 20:
             raise ValueError("Product ID too long (max 20 chars)")
         return result
 
     @field_validator('inventory_id', mode='before', check_fields=False)
     def validate_inventory_id(cls, v):
-        """Standard inventory ID validator that ensures format INV12345"""
+        """Standard inventory ID validator"""
         result = cls.format_id_field(v, 'INV')
         if result is None:
             return None
-        if len(result) > 20:  # Example length check
+        if len(result) > 20:
             raise ValueError("Inventory ID too long (max 20 chars)")
         return result
 
@@ -152,7 +147,7 @@ class BaseValidators:
     )
     def validate_dates(cls, v):
         """Standard date fields validator"""
-        return IndianDateUtils.validate_date_field(v)
+        return UTCDateUtils.validate_date_field(v)
 
     @field_validator(
         'created_at', 'updated_at', 'submission_date',
@@ -160,7 +155,13 @@ class BaseValidators:
     )
     def validate_timestamps(cls, v):
         """Standard datetime fields validator with timezone handling"""
-        return IndianDateUtils.validate_datetime_field(v)
+        if isinstance(v, str):
+            try:
+                dt = UTCDateUtils.parse_datetime(v)  # Changed to UTC
+                return UTCDateUtils.format_datetime(dt) if dt else v  # Changed to UTC format
+            except ValueError:
+                return v
+        return UTCDateUtils.validate_datetime_field(v)  # Changed to UTC
 
     @field_validator(
         'inventory_barcode_url', 'barcode_image_url', 
@@ -211,10 +212,10 @@ class BaseValidators:
             if 'cretaed_at' in values and values['cretaed_at'] is not None:
                 values['created_at'] = values['cretaed_at']
             else:
-                values['created_at'] = IndianDateUtils.get_current_datetime()
+                values['created_at'] = UTCDateUtils.get_current_datetime_iso()  # Changed to UTC ISO format
         
-        # Always set updated_at to now
-        values['updated_at'] = IndianDateUtils.get_current_datetime()
+        # Always set updated_at to now in UTC
+        values['updated_at'] = UTCDateUtils.get_current_datetime_iso()  # Changed to UTC ISO format
             
         return values
 
@@ -230,9 +231,9 @@ class BaseValidators:
             
             if from_date and to_date:
                 if isinstance(from_date, str):
-                    from_date = IndianDateUtils.parse_date(from_date)
+                    from_date = UTCDateUtils.parse_date(from_date)  # Changed to UTC
                 if isinstance(to_date, str):
-                    to_date = IndianDateUtils.parse_date(to_date)
+                    to_date = UTCDateUtils.parse_date(to_date)  # Changed to UTC
                 
                 if from_date and to_date and to_date < from_date:
                     raise ValueError("To date must be after From date")

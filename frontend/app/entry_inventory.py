@@ -72,9 +72,13 @@ def refresh_form(scrollable_frame, header_labels):
     entries['ProductID'].insert(0, generate_product_id())
     entries['ProductID'].config(state='readonly')
     
-    # Clear the added items list
-    if added_items_listbox:
-        added_items_listbox.delete(0, tk.END)
+    # Don't clear the added items list if it's from today
+    today = datetime.now().date()
+    current_list_date = getattr(added_items_listbox, 'current_date', None)
+    if current_list_date != today:
+        if added_items_listbox:
+            added_items_listbox.delete(0, tk.END)
+            added_items_listbox.current_date = today
     
     messagebox.showinfo("Refreshed", "Form has been refreshed with new IDs")
 
@@ -103,12 +107,18 @@ def clear_fields():
 def update_inventory_list():
     """Update all three listboxes with current data"""
     update_main_inventory_list()
-    # Clear added items and search results when refreshing main inventory
-    if added_items_listbox:
-        added_items_listbox.delete(0, tk.END)
+    # Only clear search results when refreshing main inventory
     if search_results_listbox:
         search_results_listbox.delete(0, tk.END)
-
+    
+    # Don't clear today's added items
+    today = datetime.now().date()
+    current_list_date = getattr(added_items_listbox, 'current_date', None)
+    if current_list_date != today:
+        if added_items_listbox:
+            added_items_listbox.delete(0, tk.END)
+            added_items_listbox.current_date = today
+        
 # Update main inventory listbox with all items by clicking sync button
 def update_main_inventory_list():
     """Update only the main inventory listbox with all items"""
@@ -401,9 +411,14 @@ def create_inventory_item(scrollable_frame, header_labels):
                  'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Sno']
     
     added_items = []
+    today = datetime.now().date()
+    
+    # Track if we have any valid data to submit
+    has_valid_data = False
     
     for row in range(row_count):
         item_data = {}
+        row_has_data = False
         
         # Helper function to safely get and clean field values
         def get_field_value(field_name, default=None):
@@ -416,8 +431,15 @@ def create_inventory_item(scrollable_frame, header_labels):
         for field in all_fields:
             field_name = f"{field}_{row}" if row > 0 else field
             value = get_field_value(field_name)
-            if value is not None:
+            if value:
                 item_data[field] = value
+                row_has_data = True
+        
+        # Skip empty rows (except first row which is required)
+        if not row_has_data and row > 0:
+            continue
+            
+        has_valid_data = has_valid_data or row_has_data
         
         # Auto-generate InventoryID if not provided
         if 'InventoryID' not in item_data or not item_data['InventoryID']:
@@ -432,22 +454,37 @@ def create_inventory_item(scrollable_frame, header_labels):
             field_name = f"{field}_{row}" if row > 0 else field
             if field_name in checkbox_vars:
                 item_data[field] = checkbox_vars[field_name].get()
+                if item_data[field]:  # If checkbox is checked
+                    row_has_data = True
         
-        if item_data:
+        if row_has_data or row == 0:  # Always process first row
             try:
+                # Add current date to the item data
+                item_data['added_date'] = today.strftime("%Y-%m-%d")
                 added_item = add_new_inventory_item(item_data)
                 added_items.append(added_item)
             except Exception as e:
                 logger.error(f"Failed to add item (row {row+1}): {str(e)}")
                 messagebox.showerror("Error", f"Failed to add item from row {row+1}\nError: {str(e)}")
+                return  # Stop processing if there's an error
+
+    if not has_valid_data and row_count > 1:
+        messagebox.showwarning("Warning", "No valid data to submit in additional rows")
+        return
 
     # Display results if any items were added
     if added_items:
         if added_items_listbox:
-            added_items_listbox.delete(0, tk.END)
+            # Only clear if we're starting a new day
+            current_list_date = getattr(added_items_listbox, 'current_date', None)
+            if current_list_date != today:
+                added_items_listbox.delete(0, tk.END)
+                added_items_listbox.current_date = today
+            
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for idx, item in enumerate(added_items, start=1):
                 display_str = (
-                    f"ID: {idx}. {item.get('id', 'N/A')} | "
+                    f"[Today] ID: {idx}. {item.get('id', 'N/A')} | "
                     f"Serial No.: {item.get('sno', 'N/A')} | "
                     f"Inventory ID: {item.get('inventory_id', 'N/A')} | "
                     f"Product ID: {item.get('product_id', 'N/A')} | "
@@ -464,8 +501,9 @@ def create_inventory_item(scrollable_frame, header_labels):
                 )
                 added_items_listbox.insert(tk.END, display_str)
         
-        clear_fields()
+        # Refresh form and generate new IDs
         update_main_inventory_list()
+        refresh_form(scrollable_frame, header_labels)
         messagebox.showinfo("Success", f"{len(added_items)} items added successfully")
     else:
         messagebox.showwarning("Warning", "No items were added")
@@ -888,37 +926,26 @@ def create_list_frames(root):
     button_frame = tk.Frame(form_container)
     button_frame.pack(fill='x', pady=5)
     
-    # Clear button
+    # Left side buttons (Clear and Refresh)
     clear_button = tk.Button(
         button_frame, 
         text="Clear", 
         command=clear_fields,
         font=('Helvetica', 10),
-        width=10
+        width=15
     )
     clear_button.pack(side='left', padx=2)
-    
-    # Refresh button
+
     refresh_button = tk.Button(
         button_frame, 
         text="Refresh", 
         command=lambda: refresh_form(scrollable_frame, header_labels),
         font=('Helvetica', 10),
-        width=10
-    )
-    refresh_button.pack(side='left', padx=2)
-    
-    # Remove Row button
-    remove_row_button = tk.Button(
-        button_frame, 
-        text="Remove Row", 
-        command=lambda: remove_last_row(scrollable_frame),
-        font=('Helvetica', 10, 'bold'),
         width=15
     )
-    remove_row_button.pack(side='left', padx=5)
-    
-    # Add Item button
+    refresh_button.pack(side='left', padx=2)
+
+    # Center button (Add Item) with expand
     add_button = tk.Button(
         button_frame, 
         text="Add Item", 
@@ -927,8 +954,17 @@ def create_list_frames(root):
         width=15
     )
     add_button.pack(side='left', padx=5, expand=True)
-    
-    # Add Row button
+
+    # Right side buttons (Remove Row and Add Row)
+    remove_row_button = tk.Button(
+        button_frame, 
+        text="Remove Row", 
+        command=lambda: remove_last_row(scrollable_frame),
+        font=('Helvetica', 10, 'bold'),
+        width=15
+    )
+    remove_row_button.pack(side='left', padx=5)
+
     add_row_button = tk.Button(
         button_frame, 
         text="Add Row", 
@@ -937,7 +973,7 @@ def create_list_frames(root):
         width=15
     )
     add_row_button.pack(side='left', padx=2)
-    
+        
     # Added Items List section
     list_frame = tk.Frame(new_entry_frame)
     list_frame.pack(fill='both', expand=True, padx=10, pady=5)

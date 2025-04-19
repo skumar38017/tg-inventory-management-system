@@ -6,7 +6,7 @@ import re
 import json
 from typing import Union
 from enum import Enum
-from backend.app.utils.date_utils import IndianDateUtils, INDIAN_TIMEZONE
+from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
 
 class EntryInventoryBase(BaseValidators,BaseModel):
@@ -37,8 +37,8 @@ class EntryInventoryBase(BaseValidators,BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_encoders={
-            datetime: lambda v: IndianDateUtils.format_datetime(v),
-            date: lambda v: IndianDateUtils.format_date(v)
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
         }
     )
         
@@ -59,8 +59,8 @@ class EntryInventoryOut(EntryInventoryBase):
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            datetime: lambda v: IndianDateUtils.format_datetime(v),
-            date: lambda v: IndianDateUtils.format_date(v)
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils .format_date(v)
         }
     )
     
@@ -92,8 +92,8 @@ class EntryInventoryUpdate(BaseValidators, BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_encoders={
-            datetime: lambda v: IndianDateUtils.format_datetime(v),
-            date: lambda v: IndianDateUtils.format_date(v)
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
         }
     )
         
@@ -111,8 +111,8 @@ class EntryInventorySearch(BaseValidators, BaseModel):
         extra="forbid",
         from_attributes=True,
         json_encoders={
-            datetime: lambda v: IndianDateUtils.format_datetime(v),
-            date: lambda v: IndianDateUtils.format_date(v),
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v),
         }
     )
 
@@ -131,7 +131,7 @@ class DateRangeFilter(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_encoders={
-            date: lambda v: IndianDateUtils.format_date(v)
+            date: lambda v: UTCDateUtils.format_date(v)
         }
     )
 
@@ -177,8 +177,8 @@ class StoreInventoryRedis(BaseModel, BaseValidators):
 
     model_config = ConfigDict(
         json_encoders={
-            datetime: lambda v: IndianDateUtils.format_datetime(v),
-            date: lambda v: IndianDateUtils.format_date(v)
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
         }
     )
 
