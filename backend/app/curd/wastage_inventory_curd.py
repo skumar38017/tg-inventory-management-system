@@ -1,4 +1,7 @@
 # backend/app/crud/wastage_inventory_crud.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 import json
 import logging
@@ -15,7 +18,6 @@ import redis.asyncio as redis
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.schema.wastage_inventory_schema import *
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
 from typing import Union
@@ -25,12 +27,14 @@ from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxRespon
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+from backend.app.database.redisclient import get_redis
+redis_client=get_redis()
 
 class WastageInventoryService(WastageInventoryInterface):
-    def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
 
     async def upload_wastage_inventory(self, db: AsyncSession) -> List[WastageInventoryRedisOut]:
         """Upload all wastage inventory entries from Redis to database with bulk upsert."""
