@@ -1,4 +1,7 @@
 #  backend/app/routers/from_event_routes.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 import re
 from typing import Optional, List
@@ -25,8 +28,10 @@ from backend.app.curd.from_event_inventory_curd import FromEventInventoryService
 from backend.app.interface.from_event_interface import FromEventInventoryInterface
 
 # Dependency to get the to_event service
-def get_to_event_service() -> FromEventInventoryService:
-    return FromEventInventoryService()
+def get_to_event_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> FromEventInventoryService:
+    return FromEventInventoryService(redis)
 
 # Set up the router
 router = APIRouter()

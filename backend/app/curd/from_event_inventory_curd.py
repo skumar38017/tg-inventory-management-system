@@ -1,4 +1,7 @@
 #  backend/app/curd/from_event_inventry_curd.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, time, timedelta, timezone, date
@@ -29,7 +32,6 @@ from backend.app.interface.from_event_interface import FromEventInventoryInterfa
 import logging
 from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
 import redis.asyncio as redis
@@ -40,7 +42,8 @@ import json
 from sqlalchemy import select, delete
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
-
+from backend.app.database.redisclient import get_redis
+redis_client=get_redis()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -49,10 +52,10 @@ logger.setLevel(logging.INFO)
 # ------------------------ 
 
 class FromEventInventoryService(FromEventInventoryInterface):
-    def __init__(self, base_url: str = config.BASE_URL, redis_client = redis_client):
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
 
 # upload all from_event_inventory entries from local Redis to the database after click on upload data button
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[ToEventUploadResponse]:
@@ -81,7 +84,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
                     # Ensure fresh transaction for each key
                     await db.rollback()
                     
-                    redis_data = await redis_client.get(key)
+                    redis_data = await self.redis.set(key)
                     if not redis_data:
                         logger.debug(f"Empty data for key {key}")
                         continue
@@ -189,7 +192,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
                     # Fresh transaction for each item
                     await db.rollback()
                     
-                    redis_data = await redis_client.get(key)
+                    redis_data = await self.redis.set(key)
                     if not redis_data:
                         continue
 
@@ -273,7 +276,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
             raise HTTPException(status_code=500, detail=str(e))    
 
 # ------------------------------------------------------------------------------------------------
-    #  Create new entry of inventory for to_event which is directly stored in redis
+#  Create new entry of inventory for to_event which is directly stored in redis
     async def create_from_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:
         try:
             """Create inventory with multiple items directly in Redis"""
@@ -321,14 +324,14 @@ class FromEventInventoryService(FromEventInventoryInterface):
             }
     
             # Store main inventory in Redis
-            await redis_client.set(
+            await self.redis.set(
                 f"from_event_inventory:{inventory_data['project_id']}",
                 json.dumps(redis_data, default=str)
             )
     
             # Store individual items with their own keys (still without timestamps)
             for item in inventory_items:
-                await redis_client.set(
+                await self.redis.set(
                     f"inventory_item:{item['id']}",
                     json.dumps(item, default=str)
                 )
@@ -342,38 +345,59 @@ class FromEventInventoryService(FromEventInventoryInterface):
                 detail=f"Failed to create inventory: {str(e)}"
             )
     
-    #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
+ #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def from_event_load_submitted_project_from_redis(self, skip: int = 0) -> List[ToEventRedisOut]:
+        """Retrieve submitted projects from Redis with pagination"""
         try:
-            # Get all keys matching your project pattern
-            keys = await self.redis.keys("from_event_inventory:*")
+            # Get all project keys from both patterns
+            from_event_keys = await self.redis.keys("from_event_inventory:*")
+            to_event_keys = await self.redis.keys("to_event_inventory:*")
+            all_keys = from_event_keys + to_event_keys
             
             projects = []
-            for key in keys:
-                data = await self.redis.get(key)
-                if data:
-                    try:
-                        project_data = json.loads(data)
-                        # Handle the 'cretaed_at' typo if present
-                        if 'cretaed_at' in project_data and 'created_at' not in project_data:
-                            project_data['created_at'] = project_data['cretaed_at']
-                        # Validate the data against your schema
-                        validated_project = ToEventRedisOut.model_validate(project_data)
-                        projects.append(validated_project)
-                    except ValidationError as ve:
-                        logger.warning(f"Validation error for project {key}: {ve}")
-                        continue
+            processed_keys = set()  # To avoid duplicates
             
-            # Sort by updated_at (descending)
+            for key in all_keys:
+                if key in processed_keys:
+                    continue
+                    
+                processed_keys.add(key)
+                
+                data = await self.redis.get(key)
+                if not data:
+                    continue
+                    
+                try:
+                    project_data = json.loads(data)
+                    
+                    # Handle the 'cretaed_at' typo if present
+                    if 'cretaed_at' in project_data and 'created_at' not in project_data:
+                        project_data['created_at'] = project_data['cretaed_at']
+                    
+                    # Convert string dates to datetime objects
+                    for date_field in ['created_at', 'updated_at']:
+                        if date_field in project_data and isinstance(project_data[date_field], str):
+                            project_data[date_field] = datetime.fromisoformat(project_data[date_field])
+                    
+                    # Validate the data
+                    validated_project = ToEventRedisOut.model_validate(project_data)
+                    projects.append(validated_project)
+                except (json.JSONDecodeError, ValidationError) as e:
+                    logger.warning(f"Skipping invalid project data in key {key}: {str(e)}")
+                    continue
+            
+            # Sort by updated_at (newest first)
             projects.sort(key=lambda x: x.updated_at, reverse=True)
             
-            # Apply pagination
-            paginated_projects = projects[skip:skip+250]  # Assuming page size of 100
-            
-            return paginated_projects
+            # Apply pagination (1000 items per page)
+            return projects[skip : skip + 1000]
+
         except Exception as e:
-            logger.error(f"Redis error fetching entries: {e}")
-            raise HTTPException(status_code=500, detail="Redis error")
+            logger.error(f"Redis error fetching projects: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error loading projects from Redis: {str(e)}"
+            )
     
     #  search all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def from_event_get_project_data(self, project_id: str):
@@ -387,7 +411,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
             
             existing_data = None
             for key in key_patterns:
-                existing_data = await redis_client.get(key)
+                existing_data = await self.redis.set(key)
                 if existing_data:
                     break  # Stop if we found the data
                     
@@ -416,7 +440,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
             ]
 
             # Fetch existing project data from Redis
-            existing_data = await redis_client.get(redis_key)
+            existing_data = await self.redis.set(redis_key)
             if not existing_data:
                 raise HTTPException(status_code=404, detail="Project not found")
                 
@@ -467,7 +491,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
                 raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
 
             # Save to Redis
-            await redis_client.set(
+            await redis_client.get(
                 redis_key,
                 validated_data.model_dump_json()
             )
