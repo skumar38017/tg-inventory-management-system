@@ -1,3 +1,8 @@
+# backend/app/crud/google_sheet_redis_inventory.py
+
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 import gspread
 from google.oauth2.service_account import Credentials
 from fastapi import HTTPException, Request
@@ -20,23 +25,24 @@ from backend.app.utils.field_validators import BaseValidators
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 
 import redis.asyncio as redis
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 
+from backend.app.database.redisclient import get_redis
+redis_client=get_redis()
 
 logger = logging.getLogger(__name__)
 
 class GoogleSheetsToRedisSync(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
 
-    def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
- 
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
+        
         self.token_file = 'token.json'  # Will store the OAuth token
         self.scope = ['https://www.googleapis.com/auth/spreadsheets.readonly','https://docs.google.com/spreadsheets/d/1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8/edit?usp=sharing']
         
