@@ -10,9 +10,9 @@ import string
 import json
 import os
 from tkcalendar import Calendar, DateEntry
-from backend.app.utils.field_validators import StatusEnum
-from frontend.app.widgets.inventory_combobox import InventoryComboBox
-from .api_request.to_event_inventory_request import (
+from utils.field_validators import StatusEnum
+from widgets.inventory_combobox import InventoryComboBox
+from api_request.to_event_inventory_request import (
     create_to_event_inventory_list, 
     load_submitted_project_from_db,
     update_submitted_project_in_db,

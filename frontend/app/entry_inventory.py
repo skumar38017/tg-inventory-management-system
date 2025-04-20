@@ -6,19 +6,19 @@ import uuid
 import re
 import json
 import logging
-from .api_request.entry_inventory_api_request import (
+from api_request.entry_inventory_api_request import (
                             sync_inventory, 
                             show_all_inventory,
                             filter_inventory_by_date_range,
                             add_new_inventory_item,
                             search_inventory_by_id
                             )
-from .api_request.to_event_inventory_request import search_project_details_by_id
+from api_request.to_event_inventory_request import search_project_details_by_id
 from tkcalendar import Calendar, DateEntry
-from .to_event import ToEventWindow
-from .from_event import FromEventWindow
-from .assign_inventory import AssignInventoryWindow
-from .damage_inventory import DamageWindow
+from to_event import ToEventWindow
+from from_event import FromEventWindow
+from assign_inventory import AssignInventoryWindow
+from damage_inventory import DamageWindow
 import requests
 from typing import List, Dict
 import random

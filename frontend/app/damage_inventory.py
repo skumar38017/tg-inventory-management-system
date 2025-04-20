@@ -4,7 +4,7 @@ from datetime import datetime
 import platform
 import logging
 from tkcalendar import Calendar, DateEntry
-from .api_request.damage_inventory_api_request import (
+from api_request.damage_inventory_api_request import (
     search_wastage_inventory_by_id,
     submit_wastage_inventory,
     update_wastage_inventory,
@@ -12,8 +12,8 @@ from .api_request.damage_inventory_api_request import (
     load_submitted_wastage_inventory,
     show_all_wastage_inventory
 )
-from backend.app.utils.field_validators import StatusEnum
-from frontend.app.widgets.inventory_combobox import InventoryComboBox
+from utils.field_validators import StatusEnum
+from widgets.inventory_combobox import InventoryComboBox
 
 
 logger = logging.getLogger(__name__)
