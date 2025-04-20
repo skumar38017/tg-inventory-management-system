@@ -18,10 +18,6 @@ media
 backend/app/.env
 credentials.json
 authorized_user.json
-redis_data/*
-redis_data/
-redis_data
-
 staticfiles/
 /static/barcodes
 static/barcodes
