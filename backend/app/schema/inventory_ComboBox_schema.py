@@ -81,17 +81,26 @@ class InventoryComboBoxItem(BaseModel):
     purchase_amount: Optional[str] = None
     repair_quantity: Optional[str] = None
     repair_cost: Optional[str] = None
-    on_rent: Optional[str] = None
+    on_rent: Optional[Union[str, bool]] = None
     vendor_name: Optional[str] = None
     total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = None
-    on_event: Optional[str] = None
-    in_office: Optional[str] = None
-    in_warehouse: Optional[str] = None
+    rented_inventory_returned: Optional[Union[str, bool]] = None
+    on_event: Optional[Union[str, bool]] = None
+    in_office: Optional[Union[str, bool]] = None
+    in_warehouse: Optional[Union[str, bool]] = None
     issued_qty: Optional[str] = None
     balance_qty: Optional[str] = None
     bar_code: Optional[str] = None
     barcode_image_url: Optional[str] = None
+
+    @field_validator(
+        'on_rent', 'rented_inventory_returned', 'on_event', 
+        'in_office', 'in_warehouse', mode='before'
+    )
+    def convert_bool_to_string(cls, v):
+        if isinstance(v, bool):
+            return str(v).lower()
+        return v
 
 class InventoryComboBoxResponse(BaseModel):
     items: List[InventoryComboBoxItem]

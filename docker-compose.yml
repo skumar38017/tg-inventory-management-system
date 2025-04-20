@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: ${POSTGRES_CONTAINER_NAME}
+    image: ${POSTGRES_IMAGE}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_HTTP_PORT}"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 90s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    container_name: ${REDIS_CONTAINER_NAME}
+    image: ${REDIS_IMAGE}
+    ports:
+      - "${REDIS_PORT}:${REDIS_HTTP_PORT}"
+    command: 
+      - sh
+      - -c 
+      - |
+        # Replace environment variables in config
+        sed -i "s/\${REDIS_PORT}/${REDIS_PORT}/g" /etc/redis_data/redis.conf
+        sed -i "s/\${REDIS_BIND_IP}/${REDIS_BIND_IP}/g" /etc/redis_data/redis.conf
+        sed -i "s/\${REDIS_USER}/${REDIS_USERNAME}/g" /etc/redis_data/redis.conf
+        sed -i "s/\${REDIS_PASSWORD}/${REDIS_PASSWORD}/g" /etc/redis_data/redis.conf
+        # Start Redis
+        exec redis-server /etc/redis/redis.conf
+    volumes:
+      - ./redis_data:/data
+      - ./redis_data/redis.conf:/etc/redis/redis.conf
+      - ./redis_data/redis.log:/var/log/redis/redis.log
+    environment:
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USER=${REDIS_USERNAME}  # For healthcheck
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--user", "${REDIS_USER}", "--pass", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  redis_data:

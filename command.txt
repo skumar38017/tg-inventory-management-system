@@ -12,6 +12,65 @@ python -m frontend.app.ui
 frontend : This will host your frontend at http://localhost:9000.
 ```
         
-Run the Frontend: python -m frontend.app.app
+Run the Frontend: 
+python -m frontend.app.app
+python frontend/app/entry_inventory.py
 
+export PYTHONPATH="$PYTHONPATH:$(pwd)"
+gunicorn -w 1 -b 0.0.0.0:5555 "frontend.app.app:app" --daemon
+docker run -p 5555:5555 -v $(pwd):/app ims-frontend
+gunicorn -w 4 -b 127.0.0.1:5555 "frontend.app.app:app" --daemon
         
+######################################################################
+# Docker Commands
+######################################################################
+docker build -t ims-frontend -f frontend/Dockerfile .
+docker build -t ims-backend -f backend/Dockerfile .
+
+docker run -d -p 8000:8000 --name ims-backend ims-backend
+docker run -d -p 5555:5555 --name ims-frontend ims-frontend
+
+docker build -t ims-frontend -f frontend/Dockerfile .
+docker run -p 5555:5555 ims-frontend
+
+docker exec -it ims-backend /bin/bash
+docker exec -it ims-frontend /bin/bash
+
+# ----------------------------------------------------------------------------
+docker run -it \
+  --env="DISPLAY" \
+  --env="QT_X11_NO_MITSHM=1" \
+  --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+  ims-frontend
+
+######################################################################
+On Linux:
+
+xhost +local:docker
+docker run -it --rm \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -e PYTHONPATH=/app \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v $(pwd):/app \
+  tkinter-app python app/entry_inventory.py
+
+xhost +local:docker
+docker run -it --rm \
+  -e DISPLAY=$DISPLAY \
+  -e PYTHONPATH=/app \
+  -e BACKEND_URL=http://$HOST_IP:8000 \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v $(pwd):/app \
+  tkinter-app python app/entry_inventory.py
+
+# ---------------------------------------------------------------------
+On Windows (requires Xming/VcXsrv):
+docker build -t tkinter-app .
+
+docker run -it --rm \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -e DISPLAY=host.docker.internal:0 \
+  -v $(pwd):/app \
+  tkinter-app python app/entry_inventory.py \
+  tkinter-app

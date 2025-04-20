@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from backend.app.database.database import (
     check_db_connectivity, 
     check_sync_db_connectivity_with_retry, 
@@ -30,6 +31,15 @@ app = FastAPI(
     title="Tagglab - Inventory Management System",
     description="This is an inventory management system for the tagglab course.",
     version="1.1.0",
+)
+
+# Enable CORS for development only
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development only
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/", include_in_schema=True)
