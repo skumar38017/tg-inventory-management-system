@@ -546,6 +546,20 @@ class WastageInventoryService(WastageInventoryInterface):
                     data = await self.redis.get(key)
                     if data:
                         item_data = json.loads(data)
+                        
+                        # Convert boolean fields to strings
+                        boolean_fields = [
+                            'on_rent', 
+                            'rented_inventory_returned', 
+                            'on_event', 
+                            'in_office', 
+                            'in_warehouse'
+                        ]
+                        
+                        for field in boolean_fields:
+                            if field in item_data and isinstance(item_data[field], bool):
+                                item_data[field] = str(item_data[field]).lower()
+                        
                         # Check only 'inventory_name' field
                         if search_term:
                             inventory_name = item_data.get("inventory_name") or item_data.get("name")
@@ -570,4 +584,4 @@ class WastageInventoryService(WastageInventoryInterface):
         except Exception as e:            
             logger.error(f"Redis search error: {e}")            
             raise ValueError(f"Error searching inventory: {e}")
-    
+        
