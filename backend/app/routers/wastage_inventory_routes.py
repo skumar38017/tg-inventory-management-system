@@ -1,4 +1,7 @@
 #  backend/app/routers/wastage_inventory_routes.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 import requests
 from fastapi import Response
@@ -25,8 +28,10 @@ from backend.app.interface.wastage_inventory_interface import WastageInventoryIn
 from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
 # Dependency to get the Wastage inventory service
-def get_Wastage_inventory_service() -> WastageInventoryService:
-    return WastageInventoryService()
+def get_Wastage_inventory_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> WastageInventoryService:
+    return WastageInventoryService(redis)
 
 # Set up the router
 router = APIRouter()
