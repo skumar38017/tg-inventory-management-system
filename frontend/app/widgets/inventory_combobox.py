@@ -5,9 +5,9 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-from ..config import make_api_request
+from config import make_api_request
 from datetime import datetime
-from ..utils.inventory_utils import format_wastage_inventory_item
+from utils.inventory_utils import format_wastage_inventory_item
 
 logger = logging.getLogger(__name__)
 

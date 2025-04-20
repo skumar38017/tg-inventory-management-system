@@ -8,7 +8,7 @@ import json
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
-from ..config import *
+from config import *
 
 # Format a single  inventory item to match the table headers
 def format_wastage_inventory_item(item: Dict, include_timestamps: bool = False) -> Dict:

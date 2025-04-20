@@ -8,9 +8,9 @@ import uuid
 import os
 import platform
 from typing import Dict, List
-from backend.app.utils.field_validators import StatusEnum
-from frontend.app.widgets.inventory_combobox import InventoryComboBox
-from .api_request.assign_inventory_api_request import (
+from utils.field_validators import StatusEnum
+from widgets.inventory_combobox import InventoryComboBox 
+from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
     submit_assigned_inventory,

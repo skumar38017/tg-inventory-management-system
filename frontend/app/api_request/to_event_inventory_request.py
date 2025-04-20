@@ -8,7 +8,7 @@ import uuid
 import re
 from tkinter import messagebox
 from datetime import datetime, timezone, date
-from ..config import *
+from config import *
 from typing import Optional, Union
 
 

@@ -8,9 +8,9 @@ import json
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
-from ..config import *
+from config import *
 import traceback
-from ..utils.inventory_utils import format_wastage_inventory_item 
+from utils.inventory_utils import format_wastage_inventory_item 
 
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ import json
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
-from ..config import *
+from config import *
 import traceback
 
 logger = logging.getLogger(__name__)

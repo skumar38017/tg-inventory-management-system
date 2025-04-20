@@ -10,9 +10,9 @@ import string
 import json
 import os
 from tkcalendar import Calendar, DateEntry
-from backend.app.utils.field_validators import StatusEnum
+from utils.field_validators import StatusEnum
 import pandas as pd
-from .api_request.from_event_inventory_request import (
+from api_request.from_event_inventory_request import (
     create_to_return_inventory_list,
     load_submitted_project_return_from_db,
     update_submitted__return_project_in_db,

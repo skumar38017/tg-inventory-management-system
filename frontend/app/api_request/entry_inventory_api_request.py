@@ -7,7 +7,7 @@ import uuid
 import re
 from tkinter import messagebox
 from datetime import datetime, timezone, date
-from ..config import *
+from config import *
 
 logger = logging.getLogger(__name__)
 
