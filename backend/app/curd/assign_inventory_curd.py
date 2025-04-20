@@ -1,4 +1,7 @@
 # backend/app/crud/assign_inventory_crud.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timezone, date
 from typing import List, Optional
 import json
@@ -24,7 +27,6 @@ from backend.app.schema.assign_inventory_schema import (
     AssignmentInventorySearch,
     RedisSearchResult
 )
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
 from typing import Union
@@ -32,12 +34,14 @@ from typing import Union
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+from backend.app.database.redisclient import get_redis
+redis_client=get_redis()
 
 class AssignInventoryService(AssignmentInventoryInterface):
-    def __init__(self, base_url: str = config.BASE_URL, redis_client: redis.Redis = redis_client):
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
 
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[AssignmentInventoryRedisOut]:
         """Upload all assign_inventory entries from Redis to database with bulk upsert."""
@@ -152,7 +156,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 })
 
             redis_key = f"assignment:{inventory_data['employee_name']}{inventory_data['inventory_id']}"            
-            await self.redis.set(redis_key, json.dumps(inventory_data, default=str))
+            await self.redis.set(redis_key, json.dumps(inventory_data, default=str), ex=86400)
             return AssignmentInventory(**inventory_data)
 
         except ValueError as ve:
@@ -396,7 +400,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
             projects.sort(key=lambda x: x.updated_at, reverse=True)
             
             # Apply pagination
-            paginated_projects = projects[skip:skip+250]  # Assuming page size of 100
+            paginated_projects = projects[skip:skip+1000]  # Assuming page size of 100
             
             return paginated_projects
         except Exception as e:
@@ -435,3 +439,61 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 detail=f"Failed to delete assignment: {str(e)}"
             )
         
+#  Show all Assigned Inventory by [employee name, inventory_id] from redis
+    async def get_assigned_inventory(
+        self,
+        employee_name: str,
+        inventory_id: str
+    ) -> Optional[RedisSearchResult]:
+        """
+        Get assigned inventory from Redis by employee name and inventory ID
+        
+        Args:
+            employee_name: Name of the employee assigned
+            inventory_id: ID of the inventory item
+        
+        Returns:
+            RedisSearchResult if found, None otherwise
+        """
+        try:
+            # Define all possible key patterns where assignments might be stored
+            key_patterns = [
+                "assignment:*",
+                "inventory_assignment:*",
+                "assigned_inventory:*",
+                "emp_assignments:*",
+                "inv_assignments:*"
+            ]
+            
+            # Search through each key pattern
+            for pattern in key_patterns:
+                async for key in self.redis.scan_iter(match=pattern):
+                    data = await self.redis.get(key)
+                    if not data:
+                        continue
+
+                    try:
+                        entry = json.loads(data)
+                        # Check if entry matches both criteria
+                        if (str(entry.get('employee_name', '')).lower() == employee_name.lower() and 
+                            str(entry.get('inventory_id', '')) == inventory_id):
+                            # Handle the 'cretaed_at' typo if present
+                            if 'cretaed_at' in entry and entry['cretaed_at'] is not None:
+                                entry['created_at'] = entry['cretaed_at']
+                            
+                            # Create RedisSearchResult object
+                            validated_data = AssignmentInventoryRedisOut.model_validate(entry)
+                            return RedisSearchResult(
+                                key=key,
+                                data=validated_data
+                            )
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Error processing Redis entry {key}: {e}")
+                        continue
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Redis search failed: {str(e)}", exc_info=True)
+            raise
+

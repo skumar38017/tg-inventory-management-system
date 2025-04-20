@@ -1,4 +1,7 @@
 # backend/app/routers/Assign_inventory_routes.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 import requests
 from fastapi import Response
@@ -23,8 +26,10 @@ from backend.app.curd.assign_inventory_curd import AssignInventoryService
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 
 # Dependency to get the Assign inventory service
-def get_Assign_inventory_service() -> AssignInventoryService:
-    return AssignInventoryService()
+def get_Assign_inventory_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> AssignInventoryService:
+    return AssignInventoryService(redis)
 
 # Set up the router
 router = APIRouter()
@@ -282,25 +287,32 @@ async def delete_assigned_inventory(
     
     return {"status": "success", "message": "Assignment deleted"}
 
-# GET: Get inventory by inventory_id, and employee_name
+# GET: Get inventory by inventory_id and employee_name
 @router.get("/get-assigned-inventory/{employee_name}/{inventory_id}/",
-            response_model=AssignmentInventoryRedisOut,
+            response_model=RedisSearchResult,
             status_code=200,
-            summary="Get assigned inventory by multiple fields",
-            description="Get inventory assignment by inventory_id, project_id, product_id, or employee_name",
+            summary="Get assigned inventory by employee name and inventory ID",
+            description="Get inventory assignment by employee_name and inventory_id from Redis cache",
             response_model_exclude_unset=True,
             tags=["Get Inventory (Redis)"]
 )
 async def get_assigned_inventory_by_id(
     employee_name: str,
     inventory_id: str,
-    db: AsyncSession = Depends(get_async_db),
     service: AssignInventoryService = Depends(get_Assign_inventory_service)
 ):
-    """Fetch inventory data filtered by search criteria from the API"""
+    """Fetch inventory data by employee name and inventory ID from Redis"""
     try:
-        item = await service.get_assigned_id(db, employee_name, inventory_id)
+        logger.info(f"Fetching inventory for employee {employee_name} and inventory {inventory_id}")
+        item = await service.get_assigned_inventory(employee_name, inventory_id)
+        if not item:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Inventory assignment not found for employee {employee_name} and inventory {inventory_id}"
+            )
         return item
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error fetching inventory item: {e}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        logger.error(f"Error fetching inventory item: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error while fetching inventory")
