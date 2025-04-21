@@ -52,49 +52,74 @@ logger.setLevel(logging.INFO)
     status_code=200,
     summary="Upload all entries from Redis to database",
     description="Uploads all to_event_inventory entries from local Redis to the database",
-    tags=["upload Inventory (DataBase)"]
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_to_event_data(
     db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
-):
+) -> List[ToEventUploadResponse]:
+    """
+    Upload all to_event_inventory entries from Redis to the database.
+    
+    Returns:
+        List of ToEventUploadResponse objects with upload status for each project
+    """
     try:
         logger.info("Starting Redis to database upload process")
         
         # Get data from service
-        inventory_items = await service.upload_to_event_inventory(db)
+        uploaded_items = await service.upload_to_event_inventory(db)
         
-        # Prepare response
+        if not uploaded_items:
+            logger.warning("No inventory items found in Redis for upload")
+            raise HTTPException(
+                status_code=404,
+                detail="No to_event inventory items found in Redis"
+            )
+        
+        # Convert service response to proper output format
         results = []
-        for item in inventory_items:
-            # Ensure we have proper timestamps
-            created_at = item.created_at if hasattr(item, 'created_at') else datetime.now(timezone.utc)
-            updated_at = item.updated_at if hasattr(item, 'updated_at') else datetime.now(timezone.utc)
+        for item in uploaded_items:
+            # Handle both direct objects and Pydantic models
+            if isinstance(item, dict):
+                item_data = item
+            else:
+                item_data = item.model_dump() if hasattr(item, 'model_dump') else dict(item)
             
-            # Handle both ToEventRedisOut and direct database models
-            project_id = getattr(item, 'project_id', None)
-            if not project_id and hasattr(item, 'id'):
-                project_id = item.id
+            # Ensure required fields are present
+            if 'project_id' not in item_data:
+                logger.warning(f"Skipping item missing project_id: {item_data}")
+                continue
                 
-            results.append({
-                "success": True,
-                "message": "Upload successful",
-                "project_id": project_id,
-                "inventory_items_count": len(getattr(item, 'inventory_items', [])),
-                "created_at": created_at,
-                "updated_at": updated_at,
-                # Explicitly omit cretaed_at unless present in data
-                **({'cretaed_at': item.cretaed_at} if hasattr(item, 'cretaed_at') else {})
-            })
-            
+            results.append(ToEventUploadResponse(
+                success=True,
+                message=item_data.get('message', 'Upload successful'),
+                project_id=item_data['project_id'],
+                inventory_items_count=item_data.get('inventory_items_count', 0),
+                created_at=item_data.get('created_at', datetime.now(timezone.utc)),
+                updated_at=item_data.get('updated_at', datetime.now(timezone.utc))
+            ))
+        
         logger.info(f"Successfully processed {len(results)} items")
         return results
         
     except ValidationError as ve:
-        logger.error(f"Data validation error: {ve}")
+        logger.error(f"Data validation error: {ve}", exc_info=True)
         raise HTTPException(
             status_code=422,
-            detail={"message": "Data validation failed", "errors": ve.errors()}
+            detail={
+                "message": "Data validation failed",
+                "errors": ve.errors()
+            }
+        )
+    except HTTPException:
+        # Re-raise existing HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload to_event inventory data: {str(e)}"
         )
 
 # ----------------------------------------------------------------------------------------

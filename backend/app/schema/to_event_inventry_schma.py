@@ -19,7 +19,7 @@ class InventoryItemBase(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    RecQty: Optional[str] = None
+    RecQty: Optional[Union[str, float, int]] = None 
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None
@@ -56,7 +56,7 @@ class InventoryItemOut(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    RecQty: Optional[str] = None
+    RecQty: Optional[Union[str, float, int]] = None 
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
@@ -111,13 +111,13 @@ class ToEventInventoryBase(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     inventory_items: List[InventoryItemBase]
-    cretaed_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    cretaed_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -155,9 +155,9 @@ class ToEventInventoryUpdate(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
@@ -183,7 +183,7 @@ class ToEventInventoryOut(ToEventInventoryBase):
     client_name: Optional[str] = None
     setup_date: Optional[date] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
@@ -244,12 +244,12 @@ class ToEventRedis(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None  
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[Union[str, datetime]] = None  
+    updated_at: Optional[Union[str, datetime]] = None  
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
@@ -279,9 +279,9 @@ class ToEventRedisUpdateIn(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None  
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
     inventory_items: Optional[List[InventoryItemBase]] = None
 
@@ -309,9 +309,9 @@ class ToEventRedisUpdateOut(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None  
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
     inventory_items: List[Dict[str, Any]] = Field(default_factory=list)
     id: Optional[str] = None
@@ -319,9 +319,8 @@ class ToEventRedisUpdateOut(BaseModel):
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    cretaed_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None  
+    updated_at: Optional[Union[str, datetime]] = None  
 
     @model_validator(mode='before')
     def handle_timestamps(cls, values):
@@ -379,11 +378,11 @@ class RedisInventoryItem(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    RecQty: Optional[str] = None
+    RecQty: Optional[Union[str, float, int]] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
-    per_unit_power: Optional[str] = None
+    per_unit_power: Optional[Union[str, float, int]] = None
     total_power: Optional[Union[str, float, int]] = None 
     status: Optional[str] = None
     poc: Optional[str] = None
@@ -422,13 +421,13 @@ class ToEventUploadSchema(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     inventory_items: List[RedisInventoryItem]=[]
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
@@ -476,9 +475,8 @@ class ToEventUploadResponse(BaseModel):
     message: str
     project_id: str
     inventory_items_count: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    cretaed_at: Optional[datetime] = None  # Keep for backward compatibility
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None   
 
     @model_validator(mode='before')
     def handle_timestamps(cls, data: dict) -> dict:
