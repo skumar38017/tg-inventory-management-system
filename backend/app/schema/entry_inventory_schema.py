@@ -60,8 +60,8 @@ class EntryInventoryCreate(EntryInventoryBase):
 
 class EntryInventoryOut(EntryInventoryBase):
     id: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
     inventory_barcode: Optional[str] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
@@ -96,8 +96,8 @@ class EntryInventoryUpdate(BaseValidators, BaseModel):
     issued_qty: Optional[Union[str, float, int]] = None
     balance_qty: Optional[Union[str, float, int]] = None
     submitted_by: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
 
     model_config = ConfigDict(
         extra="forbid",
@@ -190,8 +190,8 @@ class StoreInventoryRedis(BaseModel, BaseValidators):
     issued_qty: Optional[Union[str, float, int]] = None
     balance_qty: Optional[Union[str, float, int]] = None
     submitted_by: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
     inventory_barcode: Optional[str] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
