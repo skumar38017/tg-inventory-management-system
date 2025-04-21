@@ -60,9 +60,9 @@ def search_return_details_by_id(work_id: str) -> List[Dict]:
             return []
             
     except Exception as e:
-        warning_mess = f"New Entry is processing want to create a new entry: {str(e)}"
+        warning_mess = f"New Entry is processing: {e}"
         logger.warning(warning_mess)
-        messagebox.showerror("Error", warning_mess)
+        messagebox.showwarning("Error", warning_mess)
         return []
 
 def clean_value(value: Optional[Union[str, int, float]]) -> Optional[str]:
@@ -201,10 +201,6 @@ def load_submitted_project_return_from_db() -> List[Dict]:
         response = make_api_request(
             "GET",
             "from_event-load-project-redis/"
-        )
-        response = make_api_request(
-            "GET",
-            "to_event-load-submitted-project-redis/"
         )
         
         # Ensure we have a valid response

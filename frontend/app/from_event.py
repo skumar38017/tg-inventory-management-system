@@ -256,7 +256,7 @@ class FromEventWindow:
         self.setup_date = DateEntry(info_frame, 
                                 font=('Helvetica', 9), 
                                 width=15,
-                                date_pattern='dd/mm/yyyy',
+                                date_pattern='yyyy-mm-dd',
                                 background='darkblue',
                                 foreground='white',
                                 borderwidth=2)
@@ -271,7 +271,7 @@ class FromEventWindow:
         self.event_date = DateEntry(info_frame, 
                                 font=('Helvetica', 9), 
                                 width=15,
-                                date_pattern='dd/mm/yyyy',
+                                date_pattern='yyyy-mm-dd',
                                 background='darkblue',
                                 foreground='white',
                                 borderwidth=2)
@@ -620,7 +620,7 @@ class FromEventWindow:
                     try:
                         dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
                     except ValueError:
-                        dt = datetime.strptime(record['setup_date'], '%d/%m/%Y')
+                        dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
                     self.setup_date.set_date(dt)
                 else:
                     self.setup_date.set_date(record['setup_date'])
@@ -638,7 +638,7 @@ class FromEventWindow:
                     try:
                         dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
                     except ValueError:
-                        dt = datetime.strptime(record['event_date'], '%d/%m/%Y')
+                        dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
                     self.event_date.set_date(dt)
                 else:
                     self.event_date.set_date(record['event_date'])
@@ -996,9 +996,9 @@ class FromEventWindow:
             self.client_name.delete(0, tk.END)
             
             # Clear DateEntry widgets properly
-            self.setup_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            self.setup_date.set_date(datetime.now().strftime('%Y-%m-%d'))
             self.project_name.delete(0, tk.END)
-            self.event_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            self.event_date.set_date(datetime.now().strftime('%Y-%m-%d'))
             
             # Clear table entries
             for row in self.table_entries:
