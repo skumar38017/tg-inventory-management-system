@@ -20,7 +20,7 @@ class FromEventInventoryInterface:
     """Interface for ToEventInventory operations with immutable core fields."""
     
     # # Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
-    async def upload_from_event_inventory(self, db: AsyncSession, skip: int = 0) -> List[ToEventRedisOut]:
+    async def upload_from_event_inventory(self, db: AsyncSession) -> List[ToEventRedisOut]:
         """
         Upload all `to_event_inventory` entries from local Redis to the database.
         Returns a list of ToEventRedisOut schema instances.

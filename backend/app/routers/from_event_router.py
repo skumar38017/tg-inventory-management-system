@@ -52,7 +52,7 @@ logger.setLevel(logging.INFO)
     status_code=200,
     summary="Upload all from evententries from Redis to database",
     description="Uploads all to_event_inventory entries from local Redis to the database",
-    tags=["upload Inventory (DataBase)"]
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_to_return_event_data(
     db: AsyncSession = Depends(get_async_db),
@@ -156,7 +156,7 @@ async def from_event_load_submitted_project_from_redis(
     
 # Search project data project directly in local Redis  via `project_id`
 @router.get("/from_event-search-entries-by-project-id/{project_id}/",
-    response_model=ToEventRedisOut,  # Changed from List[ToEventRedisOut]
+    response_model=ToEventRedisOut,  
     status_code=200,
     summary="Search project in local Redis by project_id",
     description="This endpoint searches for a project in local Redis by project_id and returns the complete project data.",
