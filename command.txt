@@ -28,13 +28,15 @@ docker build -t ims-frontend -f frontend/Dockerfile .
 docker build -t ims-backend -f backend/Dockerfile .
 
 docker run -d -p 8000:8000 --name ims-backend ims-backend
-docker run -d -p 5555:5555 --name ims-frontend ims-frontend
 
 docker build -t ims-frontend -f frontend/Dockerfile .
-docker run -p 5555:5555 ims-frontend
 
 docker exec -it ims-backend /bin/bash
-docker exec -it ims-frontend /bin/bash
+docker exec -it ims-frontend /bin/bash 
+
+export DISPLAY=host.docker.internal:0
+xhost +localhost
+docker-compose up -d
 
 # ----------------------------------------------------------------------------
 docker run -it \
