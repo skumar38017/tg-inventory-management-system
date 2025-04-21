@@ -79,24 +79,6 @@ class FromEventInventoryService(FromEventInventoryInterface):
             error_count = 0
             processed_projects = set()
 
-            # Protected fields that shouldn't be changed
-            protected_fields = [
-                'id', 'project_id', 'uuid', 'created_at', 'cretaed_at',
-                'project_barcode', 'project_barcode_unique_code',
-                'project_barcode_image_url'
-            ]
-
-            def parse_datetime(value):
-                """Helper to parse datetime strings from Redis"""
-                if value is None:
-                    return None
-                if isinstance(value, datetime):
-                    return value
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except (TypeError, ValueError):
-                    return datetime.now(timezone.utc)
-
             # Process main inventory entries
             for key in inventory_keys:
                 try:
@@ -139,39 +121,19 @@ class FromEventInventoryService(FromEventInventoryInterface):
                             existing = existing.scalar_one_or_none()
 
                             entry_dict = entry.model_dump(exclude={'inventory_items'})
-                            # Convert datetime strings to datetime objects
-                            for dt_field in ['created_at', 'updated_at', 'cretaed_at']:
-                                if dt_field in entry_dict and entry_dict[dt_field]:
-                                    entry_dict[dt_field] = parse_datetime(entry_dict[dt_field])
 
                             if existing:
-                                # PATCH operation - update existing entry
+                                # PATCH operation - update existing entry with all fields
                                 logger.info(f"Updating existing project with project_id: {entry.project_id}")
-                                
-                                # Remove protected fields from update
-                                update_data = {k: v for k, v in entry_dict.items() 
-                                            if k not in protected_fields and hasattr(existing, k)}
-                                
-                                # Ensure updated_at is set to now
-                                if 'updated_at' in update_data:
-                                    update_data['updated_at'] = datetime.now(timezone.utc)
-                                
-                                # Update the existing record
                                 await db.execute(
                                     update(ToEventInventory)
                                     .where(ToEventInventory.project_id == entry.project_id)
-                                    .values(**update_data)
+                                    .values(**entry_dict)
                                 )
                                 parent_id = existing.id
                             else:
                                 # PUT operation - create new entry
                                 logger.info(f"Creating new project with project_id: {entry.project_id}")
-                                # Ensure created_at is set if not provided
-                                if 'created_at' not in entry_dict or not entry_dict['created_at']:
-                                    entry_dict['created_at'] = datetime.now(timezone.utc)
-                                if 'updated_at' not in entry_dict or not entry_dict['updated_at']:
-                                    entry_dict['updated_at'] = datetime.now(timezone.utc)
-                                
                                 new_entry = ToEventInventory(**entry_dict)
                                 db.add(new_entry)
                                 await db.flush()
@@ -180,6 +142,13 @@ class FromEventInventoryService(FromEventInventoryInterface):
                             # Process inventory items from main entry
                             if entry.inventory_items:
                                 for item in entry.inventory_items:
+                                    item_data = item.model_dump(exclude={'project_id'})
+                                    item_data['project_id'] = parent_id
+                                    
+                                    # Convert numeric total to string if needed
+                                    if isinstance(item_data.get('total'), (int, float)):
+                                        item_data['total'] = str(item_data['total'])
+                                    
                                     # Check if item already exists
                                     existing_item = await db.execute(
                                         select(InventoryItem)
@@ -187,25 +156,16 @@ class FromEventInventoryService(FromEventInventoryInterface):
                                     )
                                     existing_item = existing_item.scalar_one_or_none()
 
-                                    item_data = item.model_dump(exclude={'project_id'})
-
                                     if existing_item:
-                                        # PATCH operation for item - update existing
-                                        update_data = {k: v for k, v in item_data.items() 
-                                                    if k not in protected_fields and hasattr(existing_item, k)}
-                                        
-                                        if update_data:
-                                            await db.execute(
-                                                update(InventoryItem)
-                                                .where(InventoryItem.id == item.id)
-                                                .values(**update_data)
-                                            )
-                                    else:
-                                        # PUT operation for item - create new
-                                        new_item = InventoryItem(
-                                            project_id=parent_id,
-                                            **item_data
+                                        # Update existing item with all fields
+                                        await db.execute(
+                                            update(InventoryItem)
+                                            .where(InventoryItem.id == item.id)
+                                            .values(**item_data)
                                         )
+                                    else:
+                                        # Create new item
+                                        new_item = InventoryItem(**item_data)
                                         db.add(new_item)
 
                             # Commit after each successful project
@@ -217,7 +177,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
                                 message="Copied to database successfully",
                                 project_id=entry.project_id,
                                 inventory_items_count=len(entry.inventory_items),
-                                created_at=entry.created_at or datetime.now(timezone.utc)
+                                created_at=entry.created_at or datetime.now(timezone.utc).isoformat()
                             )
                             uploaded_entries.append(response)
                             success_count += 1
@@ -267,6 +227,14 @@ class FromEventInventoryService(FromEventInventoryInterface):
                         logger.warning(f"No parent project found for item {item.id}")
                         continue
 
+                    # Prepare item data
+                    item_data = item.model_dump(exclude={'project_id'})
+                    item_data['project_id'] = parent.id
+                    
+                    # Convert numeric total to string if needed
+                    if isinstance(item_data.get('total'), (int, float)):
+                        item_data['total'] = str(item_data['total'])
+
                     # Check if item already exists
                     existing_item = await db.execute(
                         select(InventoryItem)
@@ -274,25 +242,16 @@ class FromEventInventoryService(FromEventInventoryInterface):
                     )
                     existing_item = existing_item.scalar_one_or_none()
 
-                    item_data = item.model_dump(exclude={'project_id'})
-
                     if existing_item:
-                        # PATCH operation - update existing item
-                        update_data = {k: v for k, v in item_data.items() 
-                                    if k not in protected_fields and hasattr(existing_item, k)}
-                        
-                        if update_data:
-                            await db.execute(
-                                update(InventoryItem)
-                                .where(InventoryItem.id == item.id)
-                                .values(**update_data)
-                            )
-                    else:
-                        # PUT operation - create new item
-                        new_item = InventoryItem(
-                            project_id=parent.id,
-                            **item_data
+                        # Update existing item with all fields
+                        await db.execute(
+                            update(InventoryItem)
+                            .where(InventoryItem.id == item.id)
+                            .values(**item_data)
                         )
+                    else:
+                        # Create new item
+                        new_item = InventoryItem(**item_data)
                         db.add(new_item)
                     
                     # Commit after each item
@@ -310,7 +269,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
                             message="Copied item to database",
                             project_id=item.project_id,
                             inventory_items_count=1,
-                            created_at=datetime.now(timezone.utc)
+                            created_at=datetime.now(timezone.utc).isoformat()
                         )
                         uploaded_entries.append(response)
 
@@ -329,7 +288,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
             await db.rollback()
             logger.error(f"Copy operation failed: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
-
+    
 # ------------------------------------------------------------------------------------------------
 #  Create new entry of inventory for to_event which is directly stored in redis
     async def create_from_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:

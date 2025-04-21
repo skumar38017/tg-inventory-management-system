@@ -34,10 +34,10 @@ class ToEventInventory(Base):
     submitted_by = Column(String, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
+    created_at = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
     
-    # Barcode fields
+    # Barcode   
     project_barcode = Column(String, nullable=True)
     project_barcode_unique_code = Column(String, nullable=True)
     project_barcode_image_url = Column(String, nullable=True)
@@ -47,7 +47,7 @@ class ToEventInventory(Base):
 
     __table_args__ = (
         Index('ix_to_event_inventory_created_at', 'created_at'),
-        Index('ix_to_event_inventory_updated_at', 'updated_at'),
+            Index('ix_to_event_inventory_updated_at', 'updated_at'),
         Index('ix_to_event_inventory_project_id', 'project_id'),
     )
 
