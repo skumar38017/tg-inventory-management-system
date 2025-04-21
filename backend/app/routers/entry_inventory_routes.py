@@ -99,7 +99,7 @@ async def sync_from_sheets(
     status_code=200,
     summary="Upload all entries from Redis to database",
     description="Uploads all inventory entries from local Redis to the database",
-    tags=["upload Inventory (DataBase)"]
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_inventory_data(
     db: AsyncSession = Depends(get_async_db),
