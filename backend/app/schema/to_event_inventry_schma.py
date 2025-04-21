@@ -116,8 +116,6 @@ class ToEventInventoryBase(BaseModel):
     event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     inventory_items: List[InventoryItemBase]
-    cretaed_at: Optional[Union[str, datetime]] = None
-    updated_at: Optional[Union[str, datetime]] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -347,23 +345,25 @@ class ToEventRedisUpdateOut(BaseModel):
     )
     
 class ToEventRedisOut(ToEventInventoryOut):
-    """Schema for retrieving inventory from Redis"""
-    created_at: Optional [datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: Optional [datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    cretaed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    cretaed_at: Optional[datetime] = None  # Handle the typo field
 
     @model_validator(mode='before')
     def handle_timestamps(cls, values):
-        # First ensure values is a dictionary
         if not isinstance(values, dict):
             return values
             
-        # Ensure created_at is never null
-        if 'created_at' not in values or values['created_at'] is None:
-            if 'cretaed_at' in values and values['cretaed_at'] is not None:
+        # Handle the typo field
+        if 'cretaed_at' in values:
+            if values['cretaed_at'] == 'string' or values['cretaed_at'] is None:
+                values['cretaed_at'] = datetime.now(timezone.utc)
+            if 'created_at' not in values or values['created_at'] is None:
                 values['created_at'] = values['cretaed_at']
-            else:
-                values['created_at'] = datetime.now(timezone.utc)
+        
+        # Ensure created_at is set
+        if 'created_at' not in values or values['created_at'] is None:
+            values['created_at'] = datetime.now(timezone.utc)
         
         # Ensure updated_at is set
         if 'updated_at' not in values or values['updated_at'] is None:

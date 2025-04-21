@@ -262,13 +262,15 @@ class ToEventWindow:
         self.client_name.grid(row=1, column=5, sticky='w', padx=2)
 
         tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=1, column=6, sticky='e', padx=2)
-        self.setup_date = DateEntry(info_frame, 
-                                font=('Helvetica', 9), 
-                                width=15,
-                                date_pattern='dd/mm/yyyy',
-                                background='darkblue',
-                                foreground='white',
-                                borderwidth=2)
+        self.setup_date = DateEntry(
+            info_frame, 
+            font=('Helvetica', 9), 
+            width=15,
+            date_pattern='yyyy-mm-dd',  # Changed format
+            background='darkblue',
+            foreground='white',
+            borderwidth=2
+        )
         self.setup_date.grid(row=1, column=7, sticky='w', padx=2)
 
 
@@ -280,7 +282,7 @@ class ToEventWindow:
         self.event_date = DateEntry(info_frame, 
                                 font=('Helvetica', 9), 
                                 width=15,
-                                date_pattern='dd/mm/yyyy',
+                                date_pattern='yyyy-mm-dd',
                                 background='darkblue',
                                 foreground='white',
                                 borderwidth=2)
@@ -336,7 +338,7 @@ class ToEventWindow:
 
         # Create entry fields
         self.table_entries = []
-        for row in range(1, 2):  # 2 empty rows
+        for row in range(1, 1):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
                 if col == 2:  # Inventory column - use InventoryComboBox
@@ -635,7 +637,7 @@ class ToEventWindow:
         """Load project data into the form"""
         record = self.load_from_db(work_id)
         if not record:
-            messagebox.showerror("Error", f"Record with Work ID {work_id} not found")
+            messagebox.showwarning("Error", f"Record with Work ID {work_id} not found")
             return
         
         # Populate form fields
@@ -661,7 +663,7 @@ class ToEventWindow:
                     try:
                         dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
                     except ValueError:
-                        dt = datetime.strptime(record['setup_date'], '%d/%m/%Y')
+                        dt = datetime.strptime(record['setup_date'], '%d-%m-%Y')
                     self.setup_date.set_date(dt)
                 else:
                     self.setup_date.set_date(record['setup_date'])
@@ -681,7 +683,7 @@ class ToEventWindow:
                     try:
                         dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
                     except ValueError:
-                        dt = datetime.strptime(record['event_date'], '%d/%m/%Y')
+                        dt = datetime.strptime(record['event_date'], '%d-%m-%Y')
                     self.event_date.set_date(dt)
                 else:
                     self.event_date.set_date(record['event_date'])
@@ -1060,9 +1062,9 @@ class ToEventWindow:
             self.client_name.delete(0, tk.END)
             
             # Clear DateEntry widgets properly
-            self.setup_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            self.setup_date.set_date(datetime.now().strftime('%d-%m-%Y'))
             self.project_name.delete(0, tk.END)
-            self.event_date.set_date(datetime.now().strftime('%d/%m/%Y'))
+            self.event_date.set_date(datetime.now().strftime('%d-%m-%Y'))
             
             # Clear table entries
             for row in self.table_entries:
