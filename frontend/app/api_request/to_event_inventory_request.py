@@ -60,7 +60,7 @@ def search_project_details_by_id(work_id: str) -> List[Dict]:
             return []
             
     except Exception as e:
-        warning_mess = f"New Entry is processing want to create a new entry: {str(e)}"
+        warning_mess = f"New Entry is processing: {str(e)}"
         logger.warning(warning_mess)
         messagebox.showerror("Error", warning_mess)
         return []

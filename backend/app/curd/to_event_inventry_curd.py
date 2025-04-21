@@ -39,7 +39,7 @@ from typing import List, Optional
 from fastapi import HTTPException
 from pydantic import ValidationError
 import json
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update, insert
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
 from backend.app.database.redisclient import get_redis
@@ -79,13 +79,31 @@ class ToEventInventoryService(ToEventInventoryInterface):
             error_count = 0
             processed_projects = set()
 
+            # Protected fields that shouldn't be changed
+            protected_fields = [
+                'id', 'project_id', 'uuid', 'created_at', 'cretaed_at',
+                'project_barcode', 'project_barcode_unique_code',
+                'project_barcode_image_url'
+            ]
+
+            def parse_datetime(value):
+                """Helper to parse datetime strings from Redis"""
+                if value is None:
+                    return None
+                if isinstance(value, datetime):
+                    return value
+                try:
+                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except (TypeError, ValueError):
+                    return datetime.now(timezone.utc)
+
             # Process main inventory entries
             for key in inventory_keys:
                 try:
                     # Ensure fresh transaction for each key
                     await db.rollback()
                     
-                    redis_data = await self.redis.keys(key)
+                    redis_data = await self.redis.get(key)
                     if not redis_data:
                         logger.debug(f"Empty data for key {key}")
                         continue
@@ -121,19 +139,43 @@ class ToEventInventoryService(ToEventInventoryInterface):
                             existing = existing.scalar_one_or_none()
 
                             entry_dict = entry.model_dump(exclude={'inventory_items'})
+                            # Convert datetime strings to datetime objects
+                            for dt_field in ['created_at', 'updated_at', 'cretaed_at']:
+                                if dt_field in entry_dict and entry_dict[dt_field]:
+                                    entry_dict[dt_field] = parse_datetime(entry_dict[dt_field])
 
                             if existing:
-                                # If the project already exists, delete the old entry
-                                await db.execute(
-                                    delete(ToEventInventory).where(ToEventInventory.project_id == entry.project_id)
-                                )
-                                logger.info(f"Deleted existing project with project_id: {entry.project_id}")
+                                # PATCH operation - update existing entry
+                                logger.info(f"Updating existing project with project_id: {entry.project_id}")
                                 
-                            # Create new entry (whether it existed or not)
-                            new_entry = ToEventInventory(**entry_dict)
-                            db.add(new_entry)
-                            await db.flush()
-                            parent_id = new_entry.id
+                                # Remove protected fields from update
+                                update_data = {k: v for k, v in entry_dict.items() 
+                                            if k not in protected_fields and hasattr(existing, k)}
+                                
+                                # Ensure updated_at is set to now
+                                if 'updated_at' in update_data:
+                                    update_data['updated_at'] = datetime.now(timezone.utc)
+                                
+                                # Update the existing record
+                                await db.execute(
+                                    update(ToEventInventory)
+                                    .where(ToEventInventory.project_id == entry.project_id)
+                                    .values(**update_data)
+                                )
+                                parent_id = existing.id
+                            else:
+                                # PUT operation - create new entry
+                                logger.info(f"Creating new project with project_id: {entry.project_id}")
+                                # Ensure created_at is set if not provided
+                                if 'created_at' not in entry_dict or not entry_dict['created_at']:
+                                    entry_dict['created_at'] = datetime.now(timezone.utc)
+                                if 'updated_at' not in entry_dict or not entry_dict['updated_at']:
+                                    entry_dict['updated_at'] = datetime.now(timezone.utc)
+                                
+                                new_entry = ToEventInventory(**entry_dict)
+                                db.add(new_entry)
+                                await db.flush()
+                                parent_id = new_entry.id
 
                             # Process inventory items from main entry
                             if entry.inventory_items:
@@ -148,12 +190,18 @@ class ToEventInventoryService(ToEventInventoryInterface):
                                     item_data = item.model_dump(exclude={'project_id'})
 
                                     if existing_item:
-                                        # Update existing item if necessary
-                                        for field, value in item_data.items():
-                                            if hasattr(existing_item, field) and getattr(existing_item, field) != value:
-                                                setattr(existing_item, field, value)
+                                        # PATCH operation for item - update existing
+                                        update_data = {k: v for k, v in item_data.items() 
+                                                    if k not in protected_fields and hasattr(existing_item, k)}
+                                        
+                                        if update_data:
+                                            await db.execute(
+                                                update(InventoryItem)
+                                                .where(InventoryItem.id == item.id)
+                                                .values(**update_data)
+                                            )
                                     else:
-                                        # Add new item
+                                        # PUT operation for item - create new
                                         new_item = InventoryItem(
                                             project_id=parent_id,
                                             **item_data
@@ -193,7 +241,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     # Fresh transaction for each item
                     await db.rollback()
                     
-                    redis_data = await self.redis.keys(key)
+                    redis_data = await self.redis.get(key)
                     if not redis_data:
                         continue
 
@@ -229,12 +277,18 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     item_data = item.model_dump(exclude={'project_id'})
 
                     if existing_item:
-                        # Update existing item
-                        for field, value in item_data.items():
-                            if hasattr(existing_item, field) and getattr(existing_item, field) != value:
-                                setattr(existing_item, field, value)
+                        # PATCH operation - update existing item
+                        update_data = {k: v for k, v in item_data.items() 
+                                    if k not in protected_fields and hasattr(existing_item, k)}
+                        
+                        if update_data:
+                            await db.execute(
+                                update(InventoryItem)
+                                .where(InventoryItem.id == item.id)
+                                .values(**update_data)
+                            )
                     else:
-                        # Add new item
+                        # PUT operation - create new item
                         new_item = InventoryItem(
                             project_id=parent.id,
                             **item_data
@@ -274,8 +328,8 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except Exception as e:
             await db.rollback()
             logger.error(f"Copy operation failed: {str(e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))    
-
+            raise HTTPException(status_code=500, detail=str(e))
+    
 # ------------------------------------------------------------------------------------------------
     #  Create new entry of inventory for to_event which is directly stored in redis
     async def create_to_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:
@@ -407,7 +461,6 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except Exception as e:
             logger.error(f"Error fetching project {project_id} from Redis: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
-
 
     async def update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
         try:
