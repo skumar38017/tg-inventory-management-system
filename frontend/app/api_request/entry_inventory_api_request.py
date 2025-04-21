@@ -69,7 +69,7 @@ def handle_api_error(error: Exception, action: str, show_error: bool = True) -> 
 #   Now the original functions can be simplified using these helpers:
 #  ------------------------------------------------------------------------------------------------
 
-#  Sync inventory data from the API by `sync` button
+#  Sync inventory data from the API by `sync` button from google sheets to database
 def sync_inventory() -> List[Dict[str, str]]:
     """Fetch inventory data from the API and return formatted data"""
     try:
@@ -84,6 +84,20 @@ def sync_inventory() -> List[Dict[str, str]]:
         messagebox.showerror("Error", "An unexpected error occurred")
         return []
     
+#  Upload all inventory entries from local Redis to the database after click on upload data button
+def upload_inventory() -> List[Dict[str, str]]:
+    """Upload all inventory entries from Redis to the database"""
+    try:
+        response = make_api_request("POST", "Upload-entry-inventory/")
+        response.raise_for_status()
+        return format_inventory_response(response.json())
+    except requests.RequestException as e:
+        handle_api_error(e, "Upload inventory")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {str(e)}")
+        messagebox.showerror("Error", "An unexpected error occurred")
+        return []
 
 #  Filter inventory by date range by `filter` button
 def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict[str, str]]:
