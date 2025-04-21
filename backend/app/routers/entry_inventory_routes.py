@@ -4,6 +4,7 @@ from redis import asyncio as aioredis
 from fastapi import APIRouter, HTTPException, Depends
 import logging
 from typing import Optional, List
+from pydantic import ValidationError
 from fastapi import APIRouter, HTTPException, Depends, Query
 from datetime import datetime, date
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,6 +90,60 @@ async def sync_from_sheets(
         raise HTTPException(
             status_code=500,
             detail="Failed to sync with Google Sheets"
+        )
+
+#  Upload/update all inventory entries from local Redis to the database after click on upload data button
+@router.post(
+    "/Upload-entry-inventory/",
+    response_model=List[InventoryRedisOut],
+    status_code=200,
+    summary="Upload all entries from Redis to database",
+    description="Uploads all inventory entries from local Redis to the database",
+    tags=["upload Inventory (DataBase)"]
+)
+async def upload_inventory_data(
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    """
+    Upload all inventory entries from Redis to the database.
+    
+    Returns:
+        List of InventoryRedisOut objects with upload status for each item
+    """
+    try:
+        logger.info("Starting Redis to database upload process")
+        
+        # Get data from service
+        uploaded_items = await service.upload_from_event_inventory(db)
+        
+        if not uploaded_items:
+            logger.warning("No inventory items found in Redis for upload")
+            raise HTTPException(
+                status_code=404,
+                detail="No inventory items found in Redis"
+            )
+            
+        logger.info(f"Successfully processed {len(uploaded_items)} items")
+        return uploaded_items
+        
+    except ValidationError as ve:
+        logger.error(f"Data validation error: {ve}", exc_info=True)
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Data validation failed",
+                "errors": ve.errors()
+            }
+        )
+    except HTTPException:
+        # Re-raise existing HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload inventory data: {str(e)}"
         )
 
 # -------------------------------------------------------------------------------------------------

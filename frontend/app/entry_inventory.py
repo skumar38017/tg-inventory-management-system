@@ -7,7 +7,8 @@ import re
 import json
 import logging
 from api_request.entry_inventory_api_request import (
-                            sync_inventory, 
+                            sync_inventory,
+                            upload_inventory,
                             show_all_inventory,
                             filter_inventory_by_date_range,
                             add_new_inventory_item,
@@ -106,6 +107,7 @@ def clear_fields():
 
 def update_inventory_list():
     """Update all three listboxes with current data"""
+    sync_inventory()
     update_main_inventory_list()
     # Only clear search results when refreshing main inventory
     if search_results_listbox:
@@ -591,6 +593,16 @@ def quit_application():
     if messagebox.askokcancel("Quit", "Do you really want to quit?"):
         root.destroy()
 
+# Add this new function above the create_list_frames function:
+def upload_inventory_with_message():
+    """Upload inventory and show success message"""
+    result = upload_inventory()
+    if result:
+        messagebox.showinfo("Success", "Inventory data uploaded successfully!")
+    else:
+        # The upload_inventory function already shows error messages
+        pass
+
 #  Adjust UI elements based on screen size
 def configure_responsive_grid():
     """Adjust UI elements based on screen size"""
@@ -756,6 +768,18 @@ def create_list_frames(root):
     right_frame = tk.Frame(date_filter_frame)
     right_frame.pack(side="right", fill="x")
     
+    # Upload button
+    upload_btn = tk.Button(
+        right_frame, 
+        text="Upload", 
+        command=lambda: upload_inventory_with_message(),
+        font=('Helvetica', 9, 'bold')
+    )
+    upload_btn.pack(side="right", padx=5)
+
+    right_frame = tk.Frame(date_filter_frame)
+    right_frame.pack(side="right", fill="x")
+
     # Main List Sync Item Container button
     sync_btn = tk.Button(
         right_frame, 
@@ -767,7 +791,7 @@ def create_list_frames(root):
     
     # Separator
     ttk.Separator(inventory_frame, orient='horizontal').pack(fill="x", pady=5)
-    
+        
     # Main List Sync Item Container
     list_container = tk.Frame(inventory_frame)
     list_container.pack(fill="both", expand=True)

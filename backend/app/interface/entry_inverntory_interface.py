@@ -20,6 +20,16 @@ from datetime import date
 import requests
 
 class EntryInventoryInterface:
+    #  Upload all inventory entries from local Redis to the database after click on upload data button
+    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+        """
+        Upload all inventory entries from Redis to the database.
+        
+        Returns:
+            List of InventoryRedisOut objects with upload status for each item
+        """
+        pass
+
     #  Store all recored in Redis after clicking {sync} button
     async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
         """

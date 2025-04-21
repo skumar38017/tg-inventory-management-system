@@ -33,6 +33,7 @@ from google.oauth2 import service_account
 from sqlalchemy.exc import SQLAlchemyError
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 import logging
+from sqlalchemy import insert, update 
 import uuid
 from fastapi import HTTPException
 from typing import List, Optional
@@ -62,8 +63,133 @@ class EntryInventoryService(EntryInventoryInterface):
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
 
-    # Remove the get_redis_client() method since we're injecting the client directly
 
+# Upload/update all inventory entries from local Redis to the database after click on upload data button
+    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+        """Upload all inventory entries from Redis to the database with proper PUT/PATCH handling."""
+        try:
+            await db.rollback()  # Start fresh
+            
+            # Combine both key patterns
+            inventory_keys = await self.redis.keys("inventory:*")
+            all_keys = inventory_keys 
+
+            if not all_keys:
+                logger.warning("No inventory keys found in Redis")
+                raise HTTPException(status_code=404, detail="No inventory items found in Redis")
+
+            uploaded_entries = []
+            processed_ids = set()
+            new_entries = []
+            updates = []
+            
+            IMMUTABLE_FIELDS = {
+                'id', 'sno', 'inventory_id', 'product_id', 
+                'created_at', 'inventory_barcode', 
+                'inventory_unique_code', 'inventory_barcode_url'
+            }
+
+            for key in all_keys:
+                try:
+                    redis_data = await self.redis.get(key)
+                    if not redis_data:
+                        continue
+                    
+                    try:
+                        data = json.loads(redis_data)
+                        if isinstance(data, dict):
+                            data = [data]  # Normalize to list
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON for key {key}: {str(e)}")
+                        continue
+                    
+                    for entry_data in data:
+                        try:
+                            if not entry_data.get('id'):
+                                logger.warning(f"Entry missing ID in key {key}")
+                                continue
+                            
+                            entry_id = entry_data["id"]
+                            if entry_id in processed_ids:
+                                logger.debug(f"Skipping duplicate ID {entry_id}")
+                                continue
+                                
+                            processed_ids.add(entry_id)
+                            
+                            # Validate the data
+                            try:
+                                validated_data = StoreInventoryRedis(**entry_data).model_dump()
+                            except ValidationError as ve:
+                                logger.error(f"Validation error for entry {entry_id}: {ve}")
+                                continue
+                            
+                            # Check if entry exists in DB
+                            existing_entry = await db.get(EntryInventory, entry_id)
+                            
+                            if existing_entry:
+                                # Prepare PATCH update (only mutable fields)
+                                update_data = {
+                                    k: v for k, v in validated_data.items() 
+                                    if k not in IMMUTABLE_FIELDS and v is not None
+                                }
+                                
+                                if update_data:
+                                    updates.append({
+                                        "id": entry_id,
+                                        "data": update_data
+                                    })
+                            else:
+                                # Prepare PUT (full data)
+                                new_entries.append(validated_data)
+                            
+                            # Keep for response
+                            uploaded_entries.append(InventoryRedisOut(**validated_data))
+                        
+                        except Exception as e:
+                            logger.error(f"Error processing entry {entry_id}: {e}")
+                            continue
+                
+                except Exception as e:
+                    logger.error(f"Error processing key {key}: {e}")
+                    continue
+            
+            if not uploaded_entries:
+                raise HTTPException(status_code=404, detail="No valid inventory items found in Redis")
+            
+            try:
+                # Bulk insert new entries (PUT)
+                if new_entries:
+                    stmt = insert(EntryInventory).values(new_entries)
+                    await db.execute(stmt)
+                
+                # Bulk update existing entries (PATCH)
+                for update_item in updates:
+                    stmt = (
+                        update(EntryInventory)
+                        .where(EntryInventory.id == update_item["id"])
+                        .values(**update_item["data"])
+                    )
+                    await db.execute(stmt)
+                
+                await db.commit()
+                            
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Database operation failed: {e}")
+                raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
+            
+            return uploaded_entries
+        
+        except HTTPException:
+            raise
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Upload operation failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Upload operation failed: {str(e)}")
+        
+# ------------------------------------------------------------------------------------------------------------------------------------------------
+#  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Create new entry of inventory for to_event which is directly stored in redis
     async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
@@ -437,10 +563,6 @@ class EntryInventoryService(EntryInventoryInterface):
                 status_code=500,
                 detail=f"Error searching inventory items: {str(e)}"
             )
-
-# ------------------------------------------------------------------------------------------------------------------------------------------------
-#  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
-# ------------------------------------------------------------------------------------------------------------------------------------------------
 
     #  Show all inventory entries directly from local Redis after clicking {Show All} button
     async def show_all_inventory_from_redis(self) -> List[InventoryRedisOut]:
