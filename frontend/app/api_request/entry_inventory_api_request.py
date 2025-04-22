@@ -93,7 +93,6 @@ def upload_inventory() -> List[Dict[str, str]]:
         "Upload-entry-inventory/",
         "upload-assign-inventory/",
         "upload-wastage-inventory/",
-        "upload-wastage-inventory/",
     ]
     
     responses = []
