@@ -54,25 +54,27 @@ docker run -it --rm \
   -e DISPLAY=$DISPLAY \
   -e PYTHONPATH=/app \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v $(pwd):/app \
-  tkinter-app python app/entry_inventory.py
+  # -v $(pwd):/app \
+  ims-frontend python app/entry_inventory.py
 
 xhost +local:docker
-docker run -it --rm \
+docker run -it --rm \a
   -e DISPLAY=$DISPLAY \
   -e PYTHONPATH=/app \
   -e BACKEND_URL=http://$HOST_IP:8000 \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v $(pwd):/app \
-  tkinter-app python app/entry_inventory.py
+  ims-frontend python app/entry_inventory.py
 
 # ---------------------------------------------------------------------
 On Windows (requires Xming/VcXsrv):
-docker build -t tkinter-app .
+docker build -t ims-frontend -f frontend/Dockerfile .
 
 docker run -it --rm \
+  --network host \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -e DISPLAY=host.docker.internal:0 \
+  -e BACKEND_URL=http://$HOST_IP:8000 \
   -v $(pwd):/app \
-  tkinter-app python app/entry_inventory.py \
-  tkinter-app
+  ims-frontend python app/entry_inventory.py \
+  ims-frontend
