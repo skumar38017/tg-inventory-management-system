@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 from backend.app.database.redisclient import get_redis
-redis_client=get_redis()
 
 class AssignInventoryService(AssignmentInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
@@ -44,84 +43,98 @@ class AssignInventoryService(AssignmentInventoryInterface):
         self.base_url = config.BASE_URL
 
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[AssignmentInventoryRedisOut]:
-        """Upload all assign_inventory entries from Redis to database with bulk upsert."""
+        """Simple Redis-to-DB dump with PUT/PATCH semantics and proper type handling"""
         try:
             await db.rollback()  # Start fresh
             inventory_keys = await self.redis.keys("assignment:*")
-            uploaded_entries = []
-            processed_ids = set()
-            all_validated_data = []
+            
+            if not inventory_keys:
+                raise HTTPException(status_code=404, detail="No inventory items found in Redis")
 
-            # First pass: validate all data and collect for bulk operation
+            results = []
+            
             for key in inventory_keys:
                 try:
                     redis_data = await self.redis.get(key)
                     if not redis_data:
                         continue
-
-                    try:
-                        data = json.loads(redis_data)
-                        if isinstance(data, dict):
-                            data = [data]  # Normalize to list
-                    except json.JSONDecodeError:
-                        logger.error(f"Invalid JSON for key {key}")
+                    
+                    entry_data = json.loads(redis_data)
+                    
+                    if not entry_data.get("id"):
+                        logger.warning(f"Skipping entry without ID from key {key}")
                         continue
-
-                    for entry_data in data:
-                        try:
-                            if not entry_data.get("id"):
-                                logger.warning(f"Entry missing ID in key {key}")
-                                continue
-
-                            entry_id = entry_data["id"]
-                            if entry_id in processed_ids:
-                                logger.debug(f"Skipping duplicate ID {entry_id}")
-                                continue
-                                
-                            processed_ids.add(entry_id)
-
-                            # Clean and validate the data
+                    
+                    # Convert only the fields that need conversion
+                    processed_data = entry_data.copy()
+                    
+                    # Convert quantity to string if it's a number
+                    if isinstance(processed_data.get('quantity'), (float, int)):
+                        processed_data['quantity'] = str(processed_data['quantity'])
+                    
+                    # Convert date fields to date objects
+                    date_fields = ['assigned_date', 'assignment_return_date']
+                    for field in date_fields:
+                        if field in processed_data and isinstance(processed_data[field], str):
                             try:
-                                validated_data = AssignmentInventoryRedisIn(**entry_data).model_dump()
-                                all_validated_data.append(validated_data)
-                                # Keep for response
-                                uploaded_entries.append(AssignmentInventoryRedisOut(**validated_data))
-                            except ValidationError as ve:
-                                logger.error(f"Validation error for entry {entry_id}: {ve}")
-                                continue
-
-                        except Exception as e:
-                            logger.error(f"Error processing entry {entry_id}: {e}")
-                            continue
-
+                                processed_data[field] = datetime.strptime(
+                                    processed_data[field], "%Y-%m-%d"
+                                ).date()
+                            except ValueError:
+                                processed_data[field] = None
+                    
+                    # Convert datetime fields to datetime objects
+                    datetime_fields = ['submission_date']
+                    for field in datetime_fields:
+                        if field in processed_data and isinstance(processed_data[field], str):
+                            try:
+                                # Handle both ISO format and space-separated format
+                                if 'T' in processed_data[field]:
+                                    processed_data[field] = datetime.fromisoformat(
+                                        processed_data[field].split('+')[0]
+                                    )
+                                elif ' ' in processed_data[field]:
+                                    processed_data[field] = datetime.strptime(
+                                        processed_data[field].split('+')[0], 
+                                        '%Y-%m-%d %H:%M:%S.%f'
+                                    )
+                            except ValueError:
+                                processed_data[field] = None
+                    
+                    # Keep created_at and updated_at as strings (don't convert to datetime)
+                    
+                    # Check if entry exists
+                    existing = await db.get(AssignmentInventory, processed_data["id"])
+                    
+                    if existing:
+                        # PATCH - update existing
+                        stmt = (
+                            update(AssignmentInventory)
+                            .where(AssignmentInventory.id == processed_data["id"])
+                            .values(**processed_data)
+                        )
+                    else:
+                        # PUT - create new
+                        stmt = insert(AssignmentInventory).values(**processed_data)
+                    
+                    await db.execute(stmt)
+                    results.append(AssignmentInventoryRedisOut(**processed_data))
+                    
                 except Exception as e:
-                    logger.error(f"Error processing key {key}: {e}")
+                    logger.error(f"Error processing key {key}: {str(e)}")
                     continue
-
-            if not all_validated_data:
-                raise HTTPException(status_code=404, detail="No valid inventory items found in Redis")
-
-            # Bulk upsert operation
-            try:
-                stmt = insert(AssignmentInventory).values(all_validated_data)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=['id'],
-                    set_={k: v for k, v in stmt.excluded.items() if k != 'id'}
-                )
-                await db.execute(stmt)
-                await db.commit()
-            except Exception as e:
-                await db.rollback()
-                logger.error(f"Bulk upsert failed: {e}")
-                raise
-
-            return uploaded_entries
-
+            
+            await db.commit()
+            return results if results else []
+            
         except Exception as e:
             await db.rollback()
-            logger.error(f"Upload operation failed: {e}", exc_info=True)
-            raise
-
+            logger.error(f"Upload failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to upload inventory data: {str(e)}"
+            )
+    
 # Create new entry of inventory for to_event which is directly stored in redis
     async def create_assignment_inventory(self, db: AsyncSession, item: Union[AssignmentInventoryCreate, dict]) -> AssignmentInventory:
         try:

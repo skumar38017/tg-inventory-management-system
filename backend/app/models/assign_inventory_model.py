@@ -39,8 +39,8 @@ class AssignmentInventory(Base):
     assignment_barcode = Column(String, nullable=True)
     assignment_barcode_unique_code = Column(String, nullable=True)
     assignment_barcode_image_url = Column(String, nullable=True)
-    created_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, nullable=True)
+    created_at = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
 
     def __repr__(self):
         return f"<AssignmentInventory(employee='{self.employee_name}', inventory='{self.inventory_name}', status='{self.status}')>"
