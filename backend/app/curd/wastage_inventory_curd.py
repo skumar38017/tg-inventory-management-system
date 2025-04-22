@@ -36,78 +36,122 @@ class WastageInventoryService(WastageInventoryInterface):
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
 
+    # Upload all `wastage_inventory` entries from local Redis to the database after click on `upload data` button
     async def upload_wastage_inventory(self, db: AsyncSession) -> List[WastageInventoryRedisOut]:
-        """Upload all wastage inventory entries from Redis to database with bulk upsert."""
         try:
-            await db.rollback()  # Start fresh
+            await db.rollback()
             inventory_keys = await self.redis.keys("wastage_inventory:*")
             uploaded_entries = []
-            processed_ids = set()
-            all_validated_data = []
+            all_redis_data = []
 
-            # First pass: validate all data and collect for bulk operation
             for key in inventory_keys:
                 try:
                     redis_data = await self.redis.get(key)
                     if not redis_data:
                         continue
 
-                    try:
-                        data = json.loads(redis_data)
-                        if isinstance(data, dict):
-                            data = [data]  # Normalize to list
-                    except json.JSONDecodeError:
-                        logger.error(f"Invalid JSON for key {key}")
-                        continue
+                    data = json.loads(redis_data)
+                    if isinstance(data, dict):
+                        data = [data]
 
-                    for entry_data in data:
+                    for entry in data:
+                        if not entry.get('id'):
+                            continue
+                        
+                        # Validate and convert data using the schema
                         try:
-                            if not entry_data.get('id'):
-                                logger.warning(f"Entry missing ID in key {key}")
-                                continue
-
-                            entry_id = entry_data["id"]
-                            if entry_id in processed_ids:
-                                logger.debug(f"Skipping duplicate ID {entry_id}")
-                                continue
-                                
-                            processed_ids.add(entry_id)
-
-                            # Clean and validate the data
-                            try:
-                                validated_data = WastageInventoryRedisIn(**entry_data).model_dump()
-                                all_validated_data.append(validated_data)
-                                # Keep for response
-                                uploaded_entries.append(WastageInventoryRedisOut(**validated_data))
-                            except ValidationError as ve:
-                                logger.error(f"Validation error for entry {entry_id}: {ve}")
-                                continue
-
-                        except Exception as e:
-                            logger.error(f"Error processing entry {entry_id}: {e}")
+                            validated_data = WastageInventoryRedisIn(**entry).model_dump()
+                            
+                            # Convert date fields to date objects (for Date columns)
+                            for date_field in ['receive_date', 'event_date', 'wastage_date']:
+                                if date_field in validated_data and validated_data[date_field]:
+                                    if isinstance(validated_data[date_field], str):
+                                        try:
+                                            # Parse string to date object
+                                            validated_data[date_field] = datetime.strptime(
+                                                validated_data[date_field], "%Y-%m-%d"
+                                            ).date()
+                                        except ValueError:
+                                            logger.error(f"Invalid date format for {date_field}: {validated_data[date_field]}")
+                                            validated_data[date_field] = None
+                                    elif isinstance(validated_data[date_field], datetime):
+                                        # Extract date part from datetime
+                                        validated_data[date_field] = validated_data[date_field].date()
+                                    # If it's already a date object, leave as is
+                            
+                            # Convert datetime fields to formatted strings (for String columns)
+                            for datetime_field in ['created_at', 'updated_at']:
+                                if datetime_field in validated_data and validated_data[datetime_field]:
+                                    if isinstance(validated_data[datetime_field], (datetime, date)):
+                                        # Format as string in ISO format
+                                        validated_data[datetime_field] = validated_data[datetime_field].strftime("%Y-%m-%d %H:%M:%S")
+                                    elif isinstance(validated_data[datetime_field], str):
+                                        # If it's already a string, ensure it's in the right format
+                                        try:
+                                            # Try parsing to validate format
+                                            datetime.strptime(validated_data[datetime_field], "%Y-%m-%d %H:%M:%S")
+                                        except ValueError:
+                                            try:
+                                                # Try to parse and reformat if not in correct format
+                                                dt = datetime.strptime(validated_data[datetime_field], "%Y-%m-%dT%H:%M:%S")
+                                                validated_data[datetime_field] = dt.strftime("%Y-%m-%d %H:%M:%S")
+                                            except ValueError:
+                                                logger.error(f"Invalid datetime format for {datetime_field}: {validated_data[datetime_field]}")
+                                                validated_data[datetime_field] = None
+                            
+                            all_redis_data.append(validated_data)
+                            uploaded_entries.append(WastageInventoryRedisOut(**validated_data))
+                        except ValidationError as e:
+                            logger.error(f"Validation error for entry {entry.get('id')}: {e}")
                             continue
 
                 except Exception as e:
                     logger.error(f"Error processing key {key}: {e}")
                     continue
 
-            if not all_validated_data:
-                raise HTTPException(status_code=404, detail="No valid inventory items found in Redis")
+            if not all_redis_data:
+                raise HTTPException(status_code=404, detail="No inventory items found in Redis")
 
-            # Bulk upsert operation
-            try:
-                stmt = insert(WastageInventory).values(all_validated_data)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=['id'],
-                    set_={k: v for k, v in stmt.excluded.items() if k != 'id'}
+            # Get existing IDs from database
+            existing_ids_result = await db.execute(
+                select(WastageInventory.id).where(
+                    WastageInventory.id.in_([d['id'] for d in all_redis_data])
                 )
-                await db.execute(stmt)
-                await db.commit()
-            except Exception as e:
-                await db.rollback()
-                logger.error(f"Bulk upsert failed: {e}")
-                raise
+            )
+            existing_ids = {row[0] for row in existing_ids_result}
 
+            # Separate new records (PUT) and existing records (PATCH)
+            new_records = [d for d in all_redis_data if d['id'] not in existing_ids]
+            existing_records = [d for d in all_redis_data if d['id'] in existing_ids]
+
+            # Perform PUT operations (insert new records)
+            if new_records:
+                try:
+                    stmt = insert(WastageInventory).values(new_records)
+                    await db.execute(stmt)
+                    logger.info(f"PUT {len(new_records)} new records")
+                except Exception as e:
+                    await db.rollback()
+                    logger.error(f"PUT operation failed: {e}")
+                    raise
+
+            # Perform PATCH operations (update existing records)
+            if existing_records:
+                try:
+                    for record in existing_records:
+                        stmt = (
+                            update(WastageInventory)
+                            .where(WastageInventory.id == record['id'])
+                            .values({k: v for k, v in record.items() if k != 'id'})
+                        )
+                        await db.execute(stmt)
+                    logger.info(f"PATCH {len(existing_records)} existing records")
+                except Exception as e:
+                    await db.rollback()
+                    logger.error(f"PATCH operation failed: {e}")
+                    raise
+
+            await db.commit()
             return uploaded_entries
 
         except Exception as e:
@@ -115,8 +159,7 @@ class WastageInventoryService(WastageInventoryInterface):
             logger.error(f"Upload operation failed: {e}", exc_info=True)
             raise
 
-        # Create new entry of wastage inventory for to_event which is directly stored in redis
-    
+    # Create new entry of wastage inventory for to_event which is directly stored in redis
     async def create_wastage_inventory(self,  db: AsyncSession, item: Union[WastageInventoryCreate, dict]) -> WastageInventory:
         try:
             if isinstance(item, WastageInventoryCreate):

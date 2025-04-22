@@ -86,18 +86,40 @@ def sync_inventory() -> List[Dict[str, str]]:
     
 #  Upload all inventory entries from local Redis to the database after click on upload data button
 def upload_inventory() -> List[Dict[str, str]]:
-    """Upload all inventory entries from Redis to the database"""
-    try:
-        response = make_api_request("POST", "Upload-entry-inventory/")
-        response.raise_for_status()
-        return format_inventory_response(response.json())
-    except requests.RequestException as e:
-        handle_api_error(e, "Upload inventory")
+    """Upload all inventory entries from Redis to the database by trying multiple endpoints"""
+    endpoints = [
+        "from_event-upload-data/",
+        "to_event-upload-data/",
+        "Upload-entry-inventory/",
+        "upload-assign-inventory/",
+        "upload-wastage-inventory/",
+        "upload-wastage-inventory/",
+    ]
+    
+    responses = []
+    
+    for endpoint in endpoints:
+        try:
+            response = make_api_request("POST", endpoint)
+            response.raise_for_status()
+            responses.append(response.json())
+        except requests.RequestException as e:
+            logger.warning(f"Failed to upload via {endpoint}: {str(e)}")
+            continue  # Try next endpoint if one fails
+    
+    if not responses:
+        messagebox.showerror("Error", "All upload attempts failed")
         return []
-    except Exception as e:
-        logger.error(f"Unexpected error during upload: {str(e)}")
-        messagebox.showerror("Error", "An unexpected error occurred")
-        return []
+    
+    # Combine all successful responses
+    combined_results = []
+    for response in responses:
+        if isinstance(response, list):
+            combined_results.extend(response)
+        else:
+            combined_results.append(response)
+    
+    return format_inventory_response(combined_results)
 
 #  Filter inventory by date range by `filter` button
 def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict[str, str]]:
