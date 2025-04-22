@@ -19,8 +19,14 @@ backend/app/.env
 credentials.json
 authorized_user.json
 staticfiles/
-/static/barcodes
-static/barcodes
+/static/barcodes/*
+static/barcodes/*
+backend.zip
+postgres_data
+inventory_data.json
+Project Structure.txt
+
+
 
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
@@ -39,6 +45,7 @@ static/barcodes
 *.sqlite3
 versions
 alembic/versions/*
+
 
 #  Static files
 staticfiles
