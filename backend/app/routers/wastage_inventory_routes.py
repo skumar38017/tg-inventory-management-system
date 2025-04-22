@@ -51,7 +51,7 @@ logger.setLevel(logging.INFO)
     status_code=200,
     summary="Upload all wastage inventory entries from Redis to database",
     description="Uploads all wastage inventory entries from local Redis to the database",
-    tags=["upload Inventory (DataBase)"]
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_wastage_inventory(
     db: AsyncSession = Depends(get_async_db),
@@ -66,7 +66,7 @@ async def upload_wastage_inventory(
         logger.info("Starting Redis to database upload process")
         
         # Get data from service
-        uploaded_items = await service.upload_from_event_inventory(db)
+        uploaded_items = await service.upload_wastage_inventory(db)
         
         if not uploaded_items:
             logger.warning("No inventory items found in Redis for upload")

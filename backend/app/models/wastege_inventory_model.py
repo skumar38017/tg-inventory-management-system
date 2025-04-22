@@ -21,11 +21,11 @@ class WastageInventory(Base):
     quantity = Column(Integer, nullable=True)
     status = Column(String, nullable=True)
     receive_date = Column(Date, nullable=True)
+    event_date = Column(Date, nullable=True)
     receive_by = Column(String, nullable=True)
     check_status = Column(String, nullable=True)
     location = Column(String, nullable=True)
     project_name = Column(String, nullable=True)
-    event_date = Column(Date, nullable=True)
     comment = Column(String, nullable=True)
     zone_activity = Column(String, nullable=True)
     
@@ -40,8 +40,8 @@ class WastageInventory(Base):
     wastage_approved_by = Column(String, nullable=True)
     wastage_status = Column(String, nullable=True)
     
-    created_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, nullable=True)
+    created_at = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
 
     def __repr__(self):
         return f"<AssignmentInventory(employee='{self.employee_name}', inventory='{self.inventory_name}', status='{self.status}')>"
