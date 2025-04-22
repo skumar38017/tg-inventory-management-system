@@ -3,6 +3,7 @@
 from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
 from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
+from pydantic import field_serializer
 import uuid
 import json
 import re
@@ -107,10 +108,10 @@ class AssignmentInventoryCreate(AssignmentInventoryBase):
     pass
 
 class AssignmentInventoryOut(BaseModel):
-    id: Optional[str]  = Field(None, frozen=True) 
+    id: Optional[str] = Field(None, frozen=True) 
     assign_to: Optional[str] = None
-    inventory_id: Optional[str]  = Field(None, frozen=True) 
-    project_id: Optional[str]  = Field(None, frozen=True) 
+    inventory_id: Optional[str] = Field(None, frozen=True) 
+    project_id: Optional[str] = Field(None, frozen=True) 
     product_id: Optional[str] = Field(None, frozen=True) 
     employee_name: Optional[str] = Field(None, frozen=True) 
     sno: Optional[str] = None
@@ -120,29 +121,49 @@ class AssignmentInventoryOut(BaseModel):
     quantity: Optional[Union[str, float, int]] = None
     status: Optional[str] = None
     purpose_reason: Optional[str] = None
-    assigned_date: Optional[date]  = Field(None, frozen=True) 
-    submission_date: Optional[datetime] = None
+    assigned_date: Optional[Union[str, date]] = None
+    submission_date: Optional[Union[str, datetime]] = None
     assign_by: Optional[str] = None
     comment: Optional[str] = None
-    assignment_return_date: Optional[date] = None
-    assignment_barcode:  Optional[str] = Field(None, frozen=True) 
-    assignment_barcode_unique_code:  Optional[str]  = Field(None, frozen=True) 
+    assignment_return_date: Optional[Union[str, date]] = None
+    assignment_barcode: Optional[str] = Field(None, frozen=True) 
+    assignment_barcode_unique_code: Optional[str] = Field(None, frozen=True) 
     assignment_barcode_image_url: Optional[str] = Field(None, frozen=True) 
-    
-    
-    created_at: Optional[datetime]  = Field(None, frozen=True) 
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
 
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            date: lambda v: v.isoformat(),
-            StatusEnum: lambda v: v.value
+            date: lambda v: v.isoformat() if v else None,
+            datetime: lambda v: v.isoformat() if v else None
         },
         extra='forbid'
     )
 
+    @field_validator('assigned_date', 'assignment_return_date', mode='before')
+    def parse_date_fields(cls, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                return value
+        return value
 
+    @field_validator('submission_date', 'created_at', 'updated_at', mode='before')
+    def parse_datetime_fields(cls, value):
+        if isinstance(value, str):
+            try:
+                # Try ISO format first
+                if 'T' in value:
+                    return datetime.fromisoformat(value.split('+')[0])
+                # Try space-separated format
+                elif ' ' in value:
+                    return datetime.strptime(value.split('+')[0], '%Y-%m-%d %H:%M:%S.%f')
+            except ValueError:
+                return value
+        return value
+    
 class AssignmentInventoryRedisIn(BaseModel):
     id: Optional[str] = None
     project_id: Optional[str] = None
@@ -158,15 +179,15 @@ class AssignmentInventoryRedisIn(BaseModel):
     status: Optional[str] = None
     purpose_reason: Optional[str] = None
     assigned_date: Optional[date] = None
-    submission_date: Optional[datetime] = None
+    submission_date: Optional[Union[str, datetime]] = None
     assign_by: Optional[str] = None
     comment: Optional[str] = None
     assignment_return_date: Optional[date] = None
     assignment_barcode: Optional[str] = None
     assignment_barcode_unique_code: Optional[str] = None
     assignment_barcode_image_url: Optional[str] = None
-    created_at: Optional[datetime] = None  
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None  
+    updated_at: Optional[Union[str, datetime]] = None
 
     @field_validator('submission_date', 'created_at', 'updated_at', mode='before')
     def parse_datetime(cls, value):
@@ -202,6 +223,12 @@ class AssignmentInventoryRedisIn(BaseModel):
         },
         extra='forbid'
     )
+
+    @field_serializer('created_at', 'updated_at', 'submission_date')
+    def serialize_dt(self, dt: datetime | None, _info) -> str | None:
+        if dt is None:
+            return None
+        return dt.isoformat()
 
 class AssignmentInventoryRedisOut(AssignmentInventoryOut):
     success: Optional[bool] = Field(None, exclude=True)  # Mark as excluded from schema
@@ -244,7 +271,7 @@ class AssignmentInventoryUpdate(BaseModel):
     purpose_reason: Optional[str] = None
     assign_by: Optional[str] = None
     comment: Optional[str] = None
-    submission_date: Optional[datetime] = None
+    submission_date: Optional[Union[str, datetime]] = None
     assigned_date: Optional[date]  = Field(None, frozen=True) 
     assignment_return_date: Optional[date] = None
        
