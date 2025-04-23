@@ -24,10 +24,6 @@ echo ✅ BACKEND_URL set to: %BACKEND_URL%
 
 REM Optional: You may prompt user securely for password if needed
 
-REM Build Docker image
-echo 🔧 Building Docker image...
-docker build -t ims-frontend -f frontend/Dockerfile .
-
 REM Run Docker container
 echo 🚀 Starting frontend container...
 docker run -it --rm ^
@@ -36,4 +32,5 @@ docker run -it --rm ^
   -v /tmp/.X11-unix:/tmp/.X11-unix ^
   -e DISPLAY=host.docker.internal:0 ^
   -e BACKEND_URL=%BACKEND_URL% ^
-  ims-frontend python app/entry_inventory.py
+    891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+    python app/entry_inventory.py

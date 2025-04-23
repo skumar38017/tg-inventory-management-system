@@ -55,7 +55,10 @@ docker run -it --rm \
   -e DISPLAY=$DISPLAY \
   -e PYTHONPATH=/app \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  ims-frontend python app/entry_inventory.py
+  891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+  python app/entry_inventory.py
+
+
 
 
 #  secon script
