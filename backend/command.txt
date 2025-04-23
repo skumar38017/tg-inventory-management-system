@@ -73,3 +73,15 @@ PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
 PYTHONPATH=./ alembic upgrade head
 alembic revision --autogenerate -m "Fix missing revision"
 
+
+
+---------------------------------------------------------------
+# Build with console visible for debugging
+pyinstaller --onefile --windowed --icon=logo.ico frontend.spec
+
+For Production Release:
+# Clean previous builds
+rm -rf build/ dist/
+
+# Build with all security optimizations
+pyinstaller --onefile --noconsole --icon=logo.ico frontend.spec
