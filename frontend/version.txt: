@@ -1,0 +1,19 @@
+# UTF-8
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0)),
+  kids=[
+    StringFileInfo(
+      [StringTable(
+        '040904B0',
+        [StringStruct('CompanyName', 'Tagglabs Experiential Pvt. Ltd.'),
+        StringStruct('FileDescription', 'Inventory Management System'),
+        StringStruct('FileVersion', '1.0.0.0'),
+        StringStruct('InternalName', 'InventoryManagement'),
+        StringStruct('LegalCopyright', '© 2025 'Tagglabs Experiential Pvt. Ltd.. All rights reserved.'),
+        StringStruct('OriginalFilename', 'InventoryManagement.exe'),
+        StringStruct('ProductName', 'Inventory Management'),
+        StringStruct('ProductVersion', '1.0.0.0')])]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])]
+)
