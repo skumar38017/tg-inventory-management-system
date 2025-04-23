@@ -1,15 +1,5 @@
 #  frontend/app/entry_inventory_functions_request.py
-import requests
-from typing import List, Dict, Any
-import logging
-import tkinter as tk
-import uuid
-import re
-from tkinter import messagebox
-from datetime import datetime, timezone, date
-from config import *
-
-logger = logging.getLogger(__name__)
+from common_imports import *
 
 def format_inventory_item(item: Dict[str, Any]) -> Dict[str, str]:
     """Helper function to format inventory item data consistently across all functions."""

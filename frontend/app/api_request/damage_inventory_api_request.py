@@ -1,19 +1,7 @@
 #  frontend/app/api_request/damage_inventory_api_request.py
 
-import requests
-from typing import List, Dict
-from datetime import datetime, timedelta, date
-import logging
-import json
-import tkinter as tk
-from tkinter import messagebox
-from datetime import datetime
-from config import *
-import traceback
-from utils.inventory_utils import format_wastage_inventory_item 
-
-
-logger = logging.getLogger(__name__)
+from common_imports import *
+from utils.inventory_utils import format_wastage_inventory_item
 
 def search_wastage_inventory_by_id(
     inventory_id: str = None, 

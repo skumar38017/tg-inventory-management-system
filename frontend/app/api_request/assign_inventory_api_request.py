@@ -1,17 +1,6 @@
 # front-end/app/api_request/assign_inventory_api_request.py
 
-import requests
-from typing import List, Dict
-from datetime import datetime, timedelta, date
-import logging
-import json
-import tkinter as tk
-from tkinter import messagebox
-from datetime import datetime
-from config import *
-import traceback
-
-logger = logging.getLogger(__name__)
+from common_imports import *
 
 # Format a single assigned inventory item to match the table headers
 def format_assigned_inventory_item(item: Dict, include_timestamps: bool = False) -> Dict:

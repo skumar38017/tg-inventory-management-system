@@ -1,25 +1,13 @@
 # frontend/app/from_event.py
 
-import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
-import platform
-import logging
-import random
-import string
-import json
-import os
-from tkcalendar import Calendar, DateEntry
-from utils.field_validators import StatusEnum
-import pandas as pd
+from common_imports import *
 from api_request.from_event_inventory_request import (
     create_to_return_inventory_list,
     load_submitted_project_return_from_db,
     update_submitted__return_project_in_db,
-    search_return_details_by_id, 
+    search_return_details_by_id
 )
-
-logger = logging.getLogger(__name__)
+import pandas as pd
 
 class FromEventWindow:
     def __init__(self, parent):

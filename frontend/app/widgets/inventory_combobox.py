@@ -1,15 +1,7 @@
 #  frontend/app/widgets/inventory_combobox.py
-import requests
-from typing import List, Dict
-import logging
-import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from common_imports import *
 from config import make_api_request
-from datetime import datetime
 from utils.inventory_utils import format_wastage_inventory_item
-
-logger = logging.getLogger(__name__)
 
 class InventoryComboBox(ttk.Combobox):
     def __init__(self, master=None, **kwargs):

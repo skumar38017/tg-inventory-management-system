@@ -1,28 +1,18 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
-from datetime import datetime
-import platform
-import uuid
-import re
-import json
-import logging
+#  frontend/app/entry_inventory.py
+from common_imports import *
 from api_request.entry_inventory_api_request import (
-                            sync_inventory,
-                            upload_inventory,
-                            show_all_inventory,
-                            filter_inventory_by_date_range,
-                            add_new_inventory_item,
-                            search_inventory_by_id
-                            )
+    sync_inventory,
+    upload_inventory,
+    show_all_inventory,
+    filter_inventory_by_date_range,
+    add_new_inventory_item,
+    search_inventory_by_id
+)
 from api_request.to_event_inventory_request import search_project_details_by_id
-from tkcalendar import Calendar, DateEntry
 from to_event import ToEventWindow
 from from_event import FromEventWindow
 from assign_inventory import AssignInventoryWindow
 from damage_inventory import DamageWindow
-import requests
-from typing import List, Dict
-import random
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging

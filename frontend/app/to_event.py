@@ -1,25 +1,13 @@
 # frontend/app/to_event.py
 
-import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
-import platform
-import logging
-import random
-import string
-import json
-import os
-from tkcalendar import Calendar, DateEntry
-from utils.field_validators import StatusEnum
-from widgets.inventory_combobox import InventoryComboBox
+from common_imports import *
 from api_request.to_event_inventory_request import (
     create_to_event_inventory_list, 
     load_submitted_project_from_db,
     update_submitted_project_in_db,
     search_project_details_by_id
 )
-
-logger = logging.getLogger(__name__)
+from widgets.inventory_combobox import InventoryComboBox
 
 class ToEventWindow:
     def __init__(self, parent):
