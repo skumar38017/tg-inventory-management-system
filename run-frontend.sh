@@ -33,14 +33,15 @@ if [[ "$OS" == "MINGW"* || "$OS" == "CYGWIN"* || "$OS" == "MSYS_NT"* || "$OS" ==
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -e DISPLAY=host.docker.internal:0 \
     -e BACKEND_URL=$BACKEND_URL \
-    ims-frontend python app/entry_inventory.py
+    891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+    python app/entry_inventory.py
 
 # ========== LINUX / macOS ==========
 else
-    echo "🐧 Detected Linux / macOS"
     #!/bin/bash
+    echo "🐧 Detected Linux / macOS"
     # Start the Frontend
-    
+
     # Load environment variables from .env file
     if [ -f .env ]; then
     # Export only non-comment, non-empty lines from .env
@@ -89,10 +90,11 @@ else
     xhost +local:docker
 
     # Run the Docker container and pass DISPLAY from the host to the container
-    docker run -it --rm \
+  docker run -it --rm \
     --network host \
     -e DISPLAY=$DISPLAY \
     -e PYTHONPATH=/app \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
-    ims-frontend python app/entry_inventory.py
+    891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+    python app/entry_inventory.py
 fi
