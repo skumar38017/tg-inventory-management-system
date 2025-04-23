@@ -213,4 +213,3 @@ class StatusEnum(str, Enum):
     VERIFIED = "Verified"
     VISIBLE = "Visible"
     VOIDED = "voided"
-
