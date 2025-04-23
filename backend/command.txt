@@ -77,7 +77,10 @@ alembic revision --autogenerate -m "Fix missing revision"
 
 ---------------------------------------------------------------
 # Build with console visible for debugging
-pyinstaller --onefile --windowed --icon=logo.ico frontend.spec
+pyinstaller frontend.spec
+
+# Use PyInstaller for window
+wine pyinstaller --onefile --windowed --icon=logo.ico app/entry_inventory.py
 
 For Production Release:
 # Clean previous builds
