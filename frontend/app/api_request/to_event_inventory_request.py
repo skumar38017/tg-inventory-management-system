@@ -1,18 +1,6 @@
 #  frontend/app/to_event_functions_request.py
 
-import requests
-from typing import List, Dict
-import logging
-import tkinter as tk
-import uuid
-import re
-from tkinter import messagebox
-from datetime import datetime, timezone, date
-from config import *
-from typing import Optional, Union
-
-
-logger = logging.getLogger(__name__)
+from common_imports import *
 
 # Search for Project with there inventory list by [Project_id] by clicking search
 DEFAULT_SUBMITTED_BY = "inventory-admin"

@@ -1,15 +1,5 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
-from tkcalendar import Calendar, DateEntry
-from datetime import datetime, timedelta, date
-import logging
-from tkinter import font
-import uuid
-import os
-import platform
-from typing import Dict, List
-from utils.field_validators import StatusEnum
-from widgets.inventory_combobox import InventoryComboBox 
+# frontend/app/assign_inventory.py
+from common_imports import *
 from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
@@ -19,8 +9,7 @@ from api_request.assign_inventory_api_request import (
     get_assigned_inventory_by_id,
     delete_assigned_inventory
 )
-
-logger = logging.getLogger(__name__)
+from widgets.inventory_combobox import InventoryComboBox
 
 class AssignInventoryWindow:
     def __init__(self, parent):

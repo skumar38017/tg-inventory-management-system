@@ -1,14 +1,5 @@
 #  app.utils.loader.py
-import tkinter
-import tkinter as tk
-from tkinter import ttk, messagebox
-import time
-import queue
-import threading
-from itertools import cycle
-from PIL import Image, ImageTk
-import io
-import base64
+from common_imports import *
 
 # Enhanced loading indicator with animation
 class EnhancedLoader:

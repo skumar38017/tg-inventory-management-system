@@ -1,9 +1,6 @@
-import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
-import platform
-import logging
-from tkcalendar import Calendar, DateEntry
+# frontend/app/damage_inventory.py
+
+from common_imports import *
 from api_request.damage_inventory_api_request import (
     search_wastage_inventory_by_id,
     submit_wastage_inventory,
@@ -12,11 +9,7 @@ from api_request.damage_inventory_api_request import (
     load_submitted_wastage_inventory,
     show_all_wastage_inventory
 )
-from utils.field_validators import StatusEnum
 from widgets.inventory_combobox import InventoryComboBox
-
-
-logger = logging.getLogger(__name__)
 
 class DamageWindow:
     def __init__(self, parent):

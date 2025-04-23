@@ -1,14 +1,6 @@
 #  frontend/app/utils/inventory_utils.py
 
-import requests
-from typing import List, Dict
-from datetime import datetime, timedelta, date
-import logging
-import json
-import tkinter as tk
-from tkinter import messagebox
-from datetime import datetime
-from config import *
+from common_imports import *
 
 # Format a single  inventory item to match the table headers
 def format_wastage_inventory_item(item: Dict, include_timestamps: bool = False) -> Dict:

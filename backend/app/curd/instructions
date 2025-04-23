@@ -1,128 +1,42 @@
-One-Time Setup Instructions:
-Create credentials.json once:
-
+✅ Step-by-Step: Access Google Sheets Data via Service Account
+🛠️ 1. Create a Google Cloud Project
 Go to Google Cloud Console
 
-Create OAuth credentials (Desktop app type)
+Create or select a project.
 
-Download as credentials.json and place in your project root
+📦 2. Enable the Google Sheets API
+In the left menu: APIs & Services > Library
 
-First Run:
+Search for Google Sheets API
 
-When you first click Sync, it will:
+Click Enable
 
-Open a browser window for you to login with sumitkumar@tagglabs.in
+👤 3. Create a Service Account + Download Credentials
+Go to: IAM & Admin > Service Accounts
 
-Save a token.json file for automatic future use
+Click Create Service Account
 
-Subsequent Syncs:
+Name it (e.g., "Sheets Bot")
 
-Will use the saved token.json automatically
+Click Create and Continue
 
-No additional logins needed (until token expires)
+(Optional) Assign roles – not needed if you’re only accessing data shared with the service account
 
-Key Improvements:
-Removed redundant config checks
+Click Done
 
-Automatic token refresh handling
+Now click on the service account → "Keys" tab → Add Key > Create new key
 
-Clean error messages
+Choose JSON
 
-Single-click sync after initial setup
+Download the file (keep it safe, you’ll use this in your code)
 
-Important Notes:
-Keep credentials.json secure - don't commit to version control
+🔒 4. Share the Google Sheet with Your Service Account
+VERY IMPORTANT!
 
-The spreadsheet must be shared with your Google account
+Open the Google Sheet you want to access
 
-If auth fails, delete token.json to restart the flow
+Click Share
 
+Paste the service account’s email (e.g., your-service@project-id.iam.gserviceaccount.com)
 
-
-ok now i have this this 
-
-{https://docs.google.com/spreadsheets/d/1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8/edit?usp=sharing}
-sumitkumar@tagglabs.in
-
-then what is the nest stepa ?
-Now that you have:
-✅ Google Sheet access (sumitkumar@tagglabs.in has edit permissions)
-✅ FastAPI sync endpoint (/sync-from-sheets/)
-
-Here’s the next step-by-step process to make it work:
-
-Step 1: Generate credentials.json (One-Time Setup)
-Go to Google Cloud Console
-→ Select your project (or create one named TaggLabs-Sync).
-
-Enable Google Sheets API:
-
-Navigate to APIs & Services > Library
-
-Search for "Google Sheets API" → Click "Enable".
-
-Create OAuth Credentials:
-
-Go to APIs & Services > Credentials
-
-Click "Create Credentials" > "OAuth client ID"
-
-Choose Application Type: "Desktop App"
-
-Name: TaggLabs-Sync-Client
-
-Click "Create" → Download credentials.json (save in your project root).
-
-Step 2: Run the Sync Endpoint (Automatic token.json Generation)
-Start your FastAPI app:
-
-bash
-uvicorn main:app --reload
-Trigger the sync endpoint:
-
-Open Swagger UI (http://localhost:8000/docs)
-
-Find POST /api/v1/sync-from-sheets/ → Click "Try it out" > "Execute".
-
-First-time auth flow:
-
-A browser window will open asking you to log in with sumitkumar@tagglabs.in.
-
-Click "Allow" to grant permissions.
-
-The app will auto-save token.json (no manual steps).
-
-Step 3: Verify Sync Worked
-Check logs:
-
-Look for:
-
-INFO: Google Sheets sync completed with X items
-Check Redis:
-
-Use redis-cli or a GUI (like RedisInsight) to verify keys like inventory:INV123456.
-
-Check the Google Sheet:
-
-Data should remain unchanged (the script only reads, doesn’t modify).
-
-Troubleshooting
-❌ Error: credentials.json not found
-→ Re-download from Google Cloud Console (Step 1).
-
-❌ Error: 403 Access Denied
-→ Ensure:
-
-The sheet is shared with sumitkumar@tagglabs.in (as Editor).
-
-credentials.json is in your project root.
-
-❌ Error: token.json expired
-→ Delete token.json and re-run the sync (it will auto-refresh).
-
-Final Notes
-After setup, just click Sync anytime to fetch latest data.
-
-No manual logins needed (unless token.json expires after ~7 days).
-
-Security: Never commit credentials.json or token.json to GitHub!
+Give Viewer or Editor access
