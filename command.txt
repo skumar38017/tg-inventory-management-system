@@ -38,6 +38,47 @@ export DISPLAY=host.docker.internal:0
 xhost +localhost
 docker-compose up -d
 
+######################################################################
+# ECR Commands
+######################################################################
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 891377266155.dkr.ecr.ap-south-1.amazonaws.com
+
+2. Build your Docker image using the following command.
+docker build -t tg/inventory .
+
+2. Tag your image for ECR: 
+docker tag tg/inventory:latest 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
+
+3. Push the image to ECR
+docker push 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
+
+4. pull the image from ECR
+docker pull 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory/ims-frontend:latest
+
+
+5. Run the image
+
+xhost +local:docker
+docker run -it --rm \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -e PYTHONPATH=/app \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  tg/inventory/ims-frontend:latest python app/entry_inventory.py
+
+
+On Linux:
+xhost +local:docker
+docker run -it --rm \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -e PYTHONPATH=/app \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+  python app/entry_inventory.py
+  
+
+######################################################################
 # ----------------------------------------------------------------------------
 docker run -it \
   --env="DISPLAY" \
