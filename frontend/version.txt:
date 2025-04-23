@@ -9,7 +9,7 @@ VSVersionInfo(
         '040904B0',
         [StringStruct('CompanyName', 'Tagglabs Experiential Pvt. Ltd.'),
         StringStruct('FileDescription', 'Inventory Management System'),
-        StringStruct('FileVersion', '1.0.0.0'),
+        StringStruct('FileVersion', '1.0.0.1'),
         StringStruct('InternalName', 'InventoryManagement'),
         StringStruct('LegalCopyright', '© 2025 'Tagglabs Experiential Pvt. Ltd.. All rights reserved.'),
         StringStruct('OriginalFilename', 'InventoryManagement.exe'),
