@@ -1,171 +1,149 @@
 #  frontend/app/entry_inventory_functions_request.py
-import requests
-from typing import List, Dict
-import logging
-import tkinter as tk
-import uuid
-import re
-from tkinter import messagebox
-from datetime import datetime, timezone, date
-from ..config import *
+from common_imports import *
 
-logger = logging.getLogger(__name__)
+def format_inventory_item(item: Dict[str, Any]) -> Dict[str, str]:
+    """Helper function to format inventory item data consistently across all functions."""
+    # Helper function to handle null/empty values and format them properly
+    def get_value(key: str, default: str = 'N/A') -> str:
+        value = item.get(key)
+        if value is None or str(value).lower() in ('', 'null', 'none'):
+            return default
+        if isinstance(value, bool):
+            return 'Yes' if value else 'No'
+        if isinstance(value, str) and value.lower() in ['true', 'false']:
+            return 'Yes' if value.lower() == 'true' else 'No'
+        return str(value)
+    
+    return {
+        'ID': get_value('id'),
+        'Serial No.': get_value('sno'),
+        'Product ID': get_value('product_id'),
+        'InventoryID': get_value('inventory_id'),
+        'Name': get_value('inventory_name'),
+        'Material': get_value('material'),
+        'Total Quantity': get_value('total_quantity', '0'),
+        'Manufacturer': get_value('manufacturer'),
+        'Purchase Dealer': get_value('purchase_dealer'),
+        'Purchase Date': get_value('purchase_date'),
+        'Purchase Amount': get_value('purchase_amount', '0.00'),
+        'Repair Quantity': get_value('repair_quantity', '0'),
+        'Repair Cost': get_value('repair_cost', '0.00'),
+        'On Rent': get_value('on_rent'),
+        'Vendor Name': get_value('vendor_name'),
+        'Total Rent': get_value('total_rent', '0.00'),
+        'Rented Inventory Returned': get_value('rented_inventory_returned'),
+        'Returned Date': get_value('returned_date'),
+        'On Event': get_value('on_event'),
+        'In Office': get_value('in_office'),
+        'In Warehouse': get_value('in_warehouse'),
+        'Issued Qty': get_value('issued_qty', '0'),
+        'Balance Qty': get_value('balance_qty', '0'),
+        'Submitted By': get_value('submitted_by'),
+        'Created At': get_value('created_at'),
+        'Updated At': get_value('updated_at'),
+        'BarCode': get_value('inventory_barcode'),
+        'BacodeUrl': get_value('inventory_barcode_url'),
+    }
 
-#  Sync inventory data from the API by `sync` button
-def sync_inventory() -> List[Dict]:
+def format_inventory_response(response_data: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """Helper function to format a list of inventory items from API response."""
+    return [format_inventory_item(item) for item in response_data]
+
+def handle_api_error(error: Exception, action: str, show_error: bool = True) -> None:
+    """Helper function to handle API errors consistently."""
+    logger.error(f"Failed to {action}: {error}")
+    if show_error:
+        messagebox.showerror("Error", f"Could not {action}")
+
+#  ------------------------------------------------------------------------------------------------
+#   Now the original functions can be simplified using these helpers:
+#  ------------------------------------------------------------------------------------------------
+
+#  Sync inventory data from the API by `sync` button from google sheets to database
+def sync_inventory() -> List[Dict[str, str]]:
     """Fetch inventory data from the API and return formatted data"""
     try:
-        response = requests.get("http://localhost:8000/api/v1/show-all/")
+        response = make_api_request("POST", "/sync-from-sheets/")
         response.raise_for_status()
-        
-        # Map backend fields to frontend display names
-        formatted_data = []
-        for item in response.json():
-            formatted_item = {
-                'ID': item.get('uuid', 'N/A'),
-                'Serial No.': item.get('sno', 'N/A'),
-                'InventoryID': item.get('inventory_id', 'N/A'),
-                'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
-                'Material': item.get('material', 'N/A'),
-                'Total Quantity': item.get('total_quantity', 'N/A'),
-                'Manufacturer': item.get('manufacturer', 'N/A'),
-                'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
-                'Purchase Date': item.get('purchase_date', 'N/A'),
-                'Purchase Amount': item.get('purchase_amount', 'N/A'),
-                'Repair Quantity': item.get('repair_quantity', 'N/A'),
-                'Repair Cost': item.get('repair_cost', 'N/A'),
-                'On Rent': item.get('on_rent', 'N/A'),
-                'Vendor Name': item.get('vendor_name', 'N/A'),
-                'Total Rent': item.get('total_rent', 'N/A'),
-                'Rented Inventory Returned': item.get('rented_inventory_returned', 'N/A'),
-                'Returned Date': item.get('returned_date', 'N/A'),
-                'On Event': item.get('on_event', 'N/A'),
-                'In Office': item.get('in_office', 'N/A'),
-                'In Warehouse': item.get('in_warehouse', 'N/A'),
-                'Issued Qty': item.get('issued_qty', 'N/A'),
-                'Balance Qty': item.get('balance_qty', 'N/A'),
-                'Submitted By': item.get('submitted_by', 'N/A'),
-                'Created At': item.get('created_at', 'N/A'),
-                'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
-                # Add any other fields you want to display
-            }
-            formatted_data.append(formatted_item)
-        
-        return formatted_data
-        
+        return format_inventory_response(response.json())
     except requests.RequestException as e:
-        logger.error(f"Failed to Sync inventory: {e}")
-        messagebox.showerror("Error", "Could not Sync inventory data")
+        handle_api_error(e, "Sync inventory")
         return []
+    except Exception as e:
+        logger.error(f"Unexpected error during sync: {str(e)}")
+        messagebox.showerror("Error", "An unexpected error occurred")
+        return []
+    
+#  Upload all inventory entries from local Redis to the database after click on upload data button
+def upload_inventory() -> List[Dict[str, str]]:
+    """Upload all inventory entries from Redis to the database by trying multiple endpoints"""
+    endpoints = [
+        "from_event-upload-data/",
+        "to_event-upload-data/",
+        "Upload-entry-inventory/",
+        "upload-assign-inventory/",
+        "upload-wastage-inventory/",
+    ]
+    
+    responses = []
+    
+    for endpoint in endpoints:
+        try:
+            response = make_api_request("POST", endpoint)
+            response.raise_for_status()
+            responses.append(response.json())
+        except requests.RequestException as e:
+            logger.warning(f"Failed to upload via {endpoint}: {str(e)}")
+            continue  # Try next endpoint if one fails
+    
+    if not responses:
+        messagebox.showerror("Error", "All upload attempts failed")
+        return []
+    
+    # Combine all successful responses
+    combined_results = []
+    for response in responses:
+        if isinstance(response, list):
+            combined_results.extend(response)
+        else:
+            combined_results.append(response)
+    
+    return format_inventory_response(combined_results)
 
 #  Filter inventory by date range by `filter` button
-def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict]:
+def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict[str, str]]:
     """Fetch inventory data filtered by date range from the API"""
     try:
-        # Make the API request with the date strings
-        response = requests.get(
-            "http://localhost:8000/api/v1/date-range/",
-            params={
-                "from_date": from_date,
-                "to_date": to_date
-            }
+        response = make_api_request(
+            "GET",
+            "date-range/",
+            params={"from_date": from_date, "to_date": to_date}
         )
         response.raise_for_status()
-        
-        # Map backend fields to frontend display names
-        formatted_data = []
-        for item in response.json():
-            formatted_item = {
-                'ID': item.get('uuid', 'N/A'),
-                'Serial No.': item.get('sno', 'N/A'),
-                'InventoryID': item.get('inventory_id', 'N/A'),
-                'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
-                'Material': item.get('material', 'N/A'),
-                'Total Quantity': item.get('total_quantity', 'N/A'),
-                'Manufacturer': item.get('manufacturer', 'N/A'),
-                'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
-                'Purchase Date': item.get('purchase_date', 'N/A'),
-                'Purchase Amount': item.get('purchase_amount', 'N/A'),
-                'Repair Quantity': item.get('repair_quantity', 'N/A'),
-                'Repair Cost': item.get('repair_cost', 'N/A'),                
-                'On Rent': item.get('on_rent', 'N/A'),
-                'Vendor Name': item.get('vendor_name', 'N/A'),
-                'Total Rent': item.get('total_rent', 'N/A'),
-                'Rented Inventory Returned': item.get('rented_inventory_returned', 'N/A'),
-                'Returned Date': item.get('returned_date', 'N/A'),
-                'On Event': item.get('on_event', 'N/A'),
-                'In Office': item.get('in_office', 'N/A'),
-                'In Warehouse': item.get('in_warehouse', 'N/A'),
-                'Issued Qty': item.get('issued_qty', 'N/A'),
-                'Balance Qty': item.get('balance_qty', 'N/A'),
-                'Submitted By': item.get('submitted_by', 'N/A'),
-                'Created At': item.get('created_at', 'N/A'),
-                'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
-            }
-            formatted_data.append(formatted_item)
-        
-        return formatted_data
-    
+        return format_inventory_response(response.json())
     except requests.RequestException as e:
-        logger.error(f"Failed to fetch inventory by date range: {e}")
-        messagebox.showerror("Error", "Could not fetch inventory data by date range")
+        handle_api_error(e, "fetch inventory by date range")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error during fetch: {str(e)}")
+        messagebox.showerror("Error", "An unexpected error occurred")
         return []
     
 #  Show all inventory from local database by clicking the `Show All` button
-def show_all_inventory():
+def show_all_inventory() -> List[Dict[str, str]]:
     """Show all inventory from local database"""
     try:
-        response = requests.get("http://localhost:8000/api/v1/show-all/")
+        response = make_api_request("GET", "show-all/")
         response.raise_for_status()
-        
-        # Map backend fields to frontend display names
-        formatted_data = []
-        for item in response.json():
-            formatted_item = {
-                'ID': item.get('uuid', 'N/A'),
-                'Serial No.': item.get('sno', 'N/A'),
-                'InventoryID': item.get('inventory_id', 'N/A'),
-                'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
-                'Material': item.get('material', 'N/A'),
-                'Total Quantity': item.get('total_quantity', 'N/A'),
-                'Manufacturer': item.get('manufacturer', 'N/A'),                
-                'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
-                'Purchase Date': item.get('purchase_date', 'N/A'),
-                'Purchase Amount': item.get('purchase_amount', 'N/A'),
-                'Repair Quantity': item.get('repair_quantity', 'N/A'),
-                'Repair Cost': item.get('repair_cost', 'N/A'),
-                'On Rent': item.get('on_rent', 'N/A'),
-                'Vendor Name': item.get('vendor_name', 'N/A'),
-                'Total Rent': item.get('total_rent', 'N/A'),
-                'Rented Inventory Returned': item.get('rented_inventory_returned', 'N/A'),
-                'Returned Date': item.get('returned_date', 'N/A'),
-                'On Event': item.get('on_event', 'N/A'),
-                'In Office': item.get('in_office', 'N/A'),
-                'In Warehouse': item.get('in_warehouse', 'N/A'),
-                'Issued Qty': item.get('issued_qty', 'N/A'),
-                'Balance Qty': item.get('balance_qty', 'N/A'),
-                'Submitted By': item.get('submitted_by', 'N/A'),
-                'Created At': item.get('created_at', 'N/A'),
-                'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
-            }
-            formatted_data.append(formatted_item)
-        
-        return formatted_data
-        
+        return format_inventory_response(response.json())
     except requests.RequestException as e:
-        logger.error(f"Failed to fetch inventory by date range: {e}")
-        messagebox.showerror("Error", "Could not fetch inventory data by date range")
+        handle_api_error(e, "fetch all inventory")
         return []
-
+    except Exception as e:
+        logger.error(f"Unexpected error during fetch: {str(e)}")
+        messagebox.showerror("Error", "An unexpected error occurred")
+        return []
+    
 # Add new inventory items to the database with proper data formatting
 def add_new_inventory_item(item_data: dict):
     """Inventory item creation with all fields optional"""
@@ -222,7 +200,7 @@ def add_new_inventory_item(item_data: dict):
             "product_id": product_id,
             "inventory_id": inventory_id,
             "sno": clean_value(item_data.get('Sno')),
-            "name": clean_value(item_data.get('Name')),
+            "inventory_name": clean_value(item_data.get('Name')),
             "material": clean_value(item_data.get('Material')),
             "manufacturer": clean_value(item_data.get('Manufacturer')),
             "submitted_by": clean_value(item_data.get('Submitedby')),
@@ -258,8 +236,9 @@ def add_new_inventory_item(item_data: dict):
         logger.debug(f"Sending payload: {payload}")
 
         # API request
-        response = requests.post(
-            url="http://localhost:8000/api/v1/create-item/",
+        response = make_api_request(
+            "POST",
+            "create-item/",
             headers={"Content-Type": "application/json"},
             json=payload
         )
@@ -281,75 +260,25 @@ def add_new_inventory_item(item_data: dict):
         raise Exception(f"Could not add inventory item: {str(e)}")
     
 # Search for an item by [inventory_id, product_id, Project_id] by clicking search
-def search_inventory_by_id(inventory_id: str = None, product_id: str = None, project_id: str = None) -> List[Dict]:
+def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> List[Dict[str, str]]:
     """Fetch inventory data filtered by a single ID from the API"""
     try:
-        # Validate that exactly one ID is provided
-        provided_ids = [id for id in [inventory_id, product_id, project_id] if id]
+        provided_ids = [id for id in [inventory_id, product_id] if id]
         if len(provided_ids) != 1:
-            raise ValueError("Please provide exactly one ID (Inventory ID, Product ID, or Project ID) for searching")
+            raise ValueError("Please provide exactly one ID (Inventory ID or Product ID) for searching")
         
-        # Prepare query parameters
-        params = {}
-        if inventory_id:
-            params['inventory_id'] = inventory_id
-        elif product_id:
-            params['product_id'] = product_id
-        else:
-            params['project_id'] = project_id
-
-        # Make the API request with the parameter
-        response = requests.get(
-            "http://localhost:8000/api/v1/search/",
-            params=params
-        )
+        params = {'inventory_id': inventory_id} if inventory_id else {'product_id': product_id}
+        response = make_api_request("GET", "search/", params=params)
         response.raise_for_status()
-        
-        # Map backend fields to frontend display names
-        formatted_data = []
-        for item in response.json():
-            formatted_item = {
-                'Sno': item.get('sno', 'N/A'),
-                'InventoryID': item.get('inventory_id', 'N/A'),
-                'Product ID': item.get('product_id', 'N/A'),
-                'Name': item.get('name', 'N/A'),
-                'Material': item.get('material', 'N/A'),
-                'Qty': item.get('total_quantity', 'N/A'),
-                'Manufacturer': item.get('manufacturer', 'N/A'),
-                'Purchase Dealer': item.get('purchase_dealer', 'N/A'),
-                'Purchase Date': item.get('purchase_date', 'N/A'),
-                'Purchase Amount': item.get('purchase_amount', 'N/A'),
-                'Repair Quantity': item.get('repair_quantity', 'N/A'),
-                'Repair Cost': item.get('repair_cost', 'N/A'),
-                'On Rent': 'Yes' if item.get('on_rent') else 'No',
-                'Vendor Name': item.get('vendor_name', 'N/A'),
-                'Total Rent': item.get('total_rent', 'N/A'),
-                'Rented Inventory Returned': 'Yes' if item.get('rented_inventory_returned') else 'No',
-                'Returned Date': item.get('returned_date', 'N/A'),
-                'On Event': 'Yes' if item.get('on_event') else 'No',
-                'In Office': 'Yes' if item.get('in_office') else 'No',
-                'In Warehouse': 'Yes' if item.get('in_warehouse') else 'No',
-                'Issued Qty': item.get('issued_qty', 'N/A'),
-                'Balance Qty': item.get('balance_qty', 'N/A'),
-                'Submitted By': item.get('submitted_by', 'N/A'),
-                'Created At': item.get('created_at', 'N/A'),
-                'Updated At': item.get('updated_at', 'N/A'),
-                'BarCode': item.get('bar_code', 'N/A'),
-                'BacodeUrl': item.get('barcode_image_url', 'N/A'),
-            }
-            formatted_data.append(formatted_item)
-        
-        return formatted_data
-    
+        return format_inventory_response(response.json())
     except requests.RequestException as e:
-        logger.error(f"Failed to fetch inventory by ID: {e}")
-        messagebox.showerror("Error", "Could not fetch inventory data")
+        handle_api_error(e, "fetch inventory by ID")
         return []
     except ValueError as e:
         logger.error(f"Search validation error: {e}")
         messagebox.showwarning("Search Error", str(e))
         return []
-    
+            
 async def upload_to_event_data():
     """Trigger upload of Redis data to main database"""
     try:
@@ -373,3 +302,89 @@ async def upload_to_event_data():
         logger.error(f"Upload failed: {str(e)}")
         messagebox.showerror("Error", "Failed to connect to upload service")
         return False
+    
+# #  Search  Project by [Project_id] by clicking search
+# def search_project_details_by_project_id(project_id: str) -> List[Dict]:
+#     """Fetch inventory data filtered by a single project_id from the API"""
+#     if not project_id or not str(project_id).strip():
+#         logger.error("Empty project_id provided for search")
+#         messagebox.showwarning("Search Error", "Project ID is required for searching")
+#         return []
+    
+#     try:
+#         # Ensure project_id has proper PRJ prefix if missing
+#         project_id = project_id.upper()
+#         if not project_id.startswith('PRJ'):
+#             project_id = f'PRJ{project_id}'
+            
+#         response = make_api_request(
+#             "GET",
+#             f"to_event-search-entries-by-project-id/{project_id}/"
+#         )
+        
+#         if response.status_code == 404:
+#             logger.debug(f"Project {project_id} not found")
+#             return []
+            
+#         response.raise_for_status()
+#         logger.debug(f"Raw API response for {project_id}: {response.text}")
+        
+#         data = response.json()
+        
+#         if isinstance(data, dict):
+#             return [format_project_item(data)]
+#         elif isinstance(data, list):
+#             return [format_project_item(item) for item in data]
+#         else:
+#             logger.error(f"Unexpected API response format: {type(data)}")
+#             return []
+            
+#     except Exception as e:
+#         error_msg = f"Could not fetch project data: {str(e)}"
+#         logger.error(error_msg, exc_info=True)
+#         messagebox.showerror("Error", error_msg)
+#         return []
+    
+# # Format project item from API response to consistent frontend format
+# def format_project_item(item: dict) -> dict:
+#     """Format project item from API response to consistent frontend format"""
+#     if not isinstance(item, dict):
+#         logger.error(f"Invalid item format: {type(item)}")
+#         return {}
+        
+#     # Handle both flat structure (old) and nested inventory_items (new)
+#     inventory_items = item.get('inventory_items', [])
+#     if not inventory_items:
+#         # Convert flat structure to nested if needed
+#         inventory_item = {
+#             'project_id': item.get('work_id') or item.get('project_id'),
+#             'zone_active': item.get('zone_active'),
+#             'sno': item.get('sno'),
+#             'name': item.get('inventory_name'),
+#             'description': item.get('description'),
+#             'quantity': item.get('quantity'),
+#             'material': item.get('material'),
+#             'comments': item.get('comments'),
+#             'total': item.get('total'),
+#             'unit': item.get('unit'),
+#             'per_unit_power': item.get('per_unit_power'),
+#             'total_power': item.get('total_power'),
+#             'status': item.get('status'),
+#             'poc': item.get('poc')
+#         }
+#         inventory_items = [inventory_item] if any(inventory_item.values()) else []
+    
+#     return {
+#         'id': item.get('id'),
+#         'work_id': item.get('project_id') or item.get('work_id'),
+#         'employee_name': item.get('employee_name'),
+#         'location': item.get('location'),
+#         'client_name': item.get('client_name'),
+#         'setup_date': item.get('setup_date'),
+#         'project_name': item.get('project_name'),
+#         'event_date': item.get('event_date'),
+#         'inventory_items': inventory_items,
+#         'submitted_by': item.get('submitted_by'),
+#         'barcode': item.get('project_barcode'),
+#         'updated_at': item.get('updated_at')
+#     }

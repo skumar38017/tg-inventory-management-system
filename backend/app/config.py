@@ -14,11 +14,16 @@ BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 # Redis Configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "192.168.192.3")
+REDIS_USERNAME = os.getenv("REDIS_USERNAME", "")  # empty fallback
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
-REDIS_DB = os.getenv("REDIS_DB", "1")
-REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+REDIS_DB = os.getenv("REDIS_DB", "0")
+
+if REDIS_USERNAME:
+    REDIS_URL = f"redis://{REDIS_USERNAME}:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+else:
+    REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
 # Load environment variables from .env file
 # AWS S3 Configuration
@@ -49,4 +54,3 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 SYNC_DB_URL=f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 ASYNC_DB_URL=f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-

@@ -1,0 +1,42 @@
+✅ Step-by-Step: Access Google Sheets Data via Service Account
+🛠️ 1. Create a Google Cloud Project
+Go to Google Cloud Console
+
+Create or select a project.
+
+📦 2. Enable the Google Sheets API
+In the left menu: APIs & Services > Library
+
+Search for Google Sheets API
+
+Click Enable
+
+👤 3. Create a Service Account + Download Credentials
+Go to: IAM & Admin > Service Accounts
+
+Click Create Service Account
+
+Name it (e.g., "Sheets Bot")
+
+Click Create and Continue
+
+(Optional) Assign roles – not needed if you’re only accessing data shared with the service account
+
+Click Done
+
+Now click on the service account → "Keys" tab → Add Key > Create new key
+
+Choose JSON
+
+Download the file (keep it safe, you’ll use this in your code)
+
+🔒 4. Share the Google Sheet with Your Service Account
+VERY IMPORTANT!
+
+Open the Google Sheet you want to access
+
+Click Share
+
+Paste the service account’s email (e.g., your-service@project-id.iam.gserviceaccount.com)
+
+Give Viewer or Editor access

@@ -16,12 +16,19 @@ db.sqlite3
 db.sqlite3-journal
 media
 backend/app/.env
+credentials.json
+authorized_user.json
 staticfiles/
+/static/barcodes/*
 static/barcodes/*
+backend.zip
+postgres_data
+inventory_data.json
+Project Structure.txt
+sumit_accessKeys.csv
+sumit_credentials.csv
 
-staticfiles/
-/static/barcodes
-static/barcodes
+
 
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
@@ -35,6 +42,20 @@ static/barcodes
 
 # C extensions
 *.so
+
+#  Almbic version
+*.sqlite3
+versions
+alembic/versions/*
+
+
+#  Static files
+staticfiles
+static/barcodes/*
+!static/barcodes/.gitkeep
+static/*
+
+inventory_data.json
 
 # Distribution / packaging
 .Python

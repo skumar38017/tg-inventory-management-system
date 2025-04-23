@@ -1,10 +1,15 @@
-import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
-import platform
-import logging
-
-logger = logging.getLogger(__name__)
+# frontend/app/assign_inventory.py
+from common_imports import *
+from api_request.assign_inventory_api_request import (
+    search_assigned_inventory_by_id,
+    load_submitted_assigned_inventory,
+    submit_assigned_inventory,
+    show_all_assigned_inventory_from_db,
+    update_assigned_inventory,
+    get_assigned_inventory_by_id,
+    delete_assigned_inventory
+)
+from widgets.inventory_combobox import InventoryComboBox
 
 class AssignInventoryWindow:
     def __init__(self, parent):
@@ -12,6 +17,16 @@ class AssignInventoryWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs's Inventory - Assign Inventory To Employee")
 
+        # Get status options from StatusEnum
+        self.status_options = [status.value for status in StatusEnum]
+
+        # Initialize inventory combo box data
+        self.inventory_combo_data = []
+
+        # Track edit state
+        self.currently_editing_id = None
+        self.edit_mode = False
+        
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
@@ -31,9 +46,14 @@ class AssignInventoryWindow:
         # Maximize window
         self.maximize_window()
         
+        # Load initial data
+        self.refresh_assigned_inventory_list()
+        self.load_recent_submissions()
+        
         logger.info("Assign Inventory window opened successfully")
 
     def maximize_window(self):
+        """Maximize the window based on platform"""
         try:
             self.window.state('zoomed')
         except tk.TclError:
@@ -50,201 +70,177 @@ class AssignInventoryWindow:
 
     def setup_ui(self):
         """Set up all UI elements"""
+        # Configure grid weights for the window
+        self.window.grid_rowconfigure(5, weight=1)  # Main content area
+        self.window.grid_columnconfigure(0, weight=1)
+        
         # Header section - Clock in row 0
         clock_frame = tk.Frame(self.window)
         clock_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)
-        clock_frame.grid_columnconfigure(0, weight=1)  # Left spacer
-        clock_frame.grid_columnconfigure(1, weight=0)  # Center for clock
-        clock_frame.grid_columnconfigure(2, weight=1)  # Right spacer
-
-        # Clock in absolute center at top
+        
+        # Clock in center
         self.clock_label = tk.Label(clock_frame, font=('Helvetica', 10))
-        self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
+        self.clock_label.pack()
         self.update_clock()
 
-        # Company info in row 1 (top-right corner)
+        # Company info in row 1 (right-aligned)
         company_frame = tk.Frame(self.window)
         company_frame.grid(row=1, column=0, columnspan=2, sticky="e", padx=10, pady=0)
-        company_frame.grid_columnconfigure(0, weight=1)  # Left spacer
-
+        
         company_info = """Tagglabs Experiential Pvt. Ltd.
 Sector 49, Gurugram, Haryana 122018
 201, Second Floor, Eros City Square Mall
 Eros City Square
 098214 43358"""
-
-        company_label = tk.Label(company_frame,
-                               text=company_info,
-                               font=('Helvetica', 8),
-                               justify=tk.RIGHT)
-        company_label.grid(row=0, column=1, sticky='ne', pady=(0,0))
+        
+        company_label = tk.Label(company_frame, text=company_info, 
+                               font=('Helvetica', 8), justify=tk.RIGHT)
+        company_label.pack()
 
         # Title section in row 2
         title_frame = tk.Frame(self.window)
         title_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
         
         # Centered company name
-        tk.Label(title_frame, 
-               text="Tagglabs Experiential Pvt. Ltd",
+        tk.Label(title_frame, text="Tagglabs Experiential Pvt. Ltd",
                font=('Helvetica', 16, 'bold')).pack()
         
         # Centered inventory list title
-        tk.Label(title_frame, 
-               text="ASSIGN INVENTORY TO EMPLOYEE",
+        tk.Label(title_frame, text="ASSIGN INVENTORY TO EMPLOYEE",
                font=('Helvetica', 14, 'bold')).pack()
-
-        # Information fields in row 3
-        info_frame = tk.Frame(self.window)
-        info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+#  ----------------------- Search Buttons Header Section -----------------------
+        # Search fields in row 3
+        search_frame = tk.Frame(self.window)
+        search_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # Search fields
-        tk.Label(info_frame, text="Inventory ID", font=('Helvetica', 10)).grid(row=0, column=0, sticky='e', padx=5)
-        self.inventory_id = tk.Entry(info_frame, font=('Helvetica', 10), width=20)
+        # Inventory ID
+        tk.Label(search_frame, text="Inventory ID:", font=('Helvetica', 10)).grid(row=0, column=0, sticky='e', padx=5)
+        self.inventory_id = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
         self.inventory_id.grid(row=0, column=1, sticky='w', padx=5)
         
-        tk.Label(info_frame, text="Project ID", font=('Helvetica', 10)).grid(row=0, column=2, sticky='e', padx=5)
-        self.project_id = tk.Entry(info_frame, font=('Helvetica', 10), width=20)
+        # Project ID
+        tk.Label(search_frame, text="Project ID:", font=('Helvetica', 10)).grid(row=0, column=2, sticky='e', padx=5)
+        self.project_id = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
         self.project_id.grid(row=0, column=3, sticky='w', padx=5)
         
-        tk.Label(info_frame, text="Product ID", font=('Helvetica', 10)).grid(row=0, column=4, sticky='e', padx=5)
-        self.product_id = tk.Entry(info_frame, font=('Helvetica', 10), width=20)
+        # Product ID
+        tk.Label(search_frame, text="Product ID:", font=('Helvetica', 10)).grid(row=0, column=4, sticky='e', padx=5)
+        self.product_id = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
         self.product_id.grid(row=0, column=5, sticky='w', padx=5)
-
-        tk.Label(info_frame, text="Employee Name", font=('Helvetica', 10)).grid(row=0, column=6, sticky='e', padx=5)
-        self.employee_name = tk.Entry(info_frame, font=('Helvetica', 10), width=20)
+        
+        # Employee Name
+        tk.Label(search_frame, text="Employee Name:", font=('Helvetica', 10)).grid(row=0, column=6, sticky='e', padx=5)
+        self.employee_name = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
         self.employee_name.grid(row=0, column=7, sticky='w', padx=5)
-
+        
         # Search button
-        search_btn = tk.Button(info_frame, text="Search", command=self.search_product, font=('Helvetica', 10))
+        search_btn = tk.Button(search_frame, text="Search", command=self.search_product, 
+                             font=('Helvetica', 10))
         search_btn.grid(row=0, column=8, sticky='e', padx=5)
+#  ----------------------- End of Search Buttons Header Section -----------------------
+
+        # New Entry button
+        new_entry_btn = tk.Button(search_frame, text="New Entry", command=self.new_entry,
+                                font=('Helvetica', 10))
+        new_entry_btn.grid(row=0, column=9, sticky='e', padx=5)
 
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
         separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
 
         # =============================================
-        # MAIN CONTENT AREA (2/3 for list, 1/3 for table)
+        # MAIN CONTENT AREA (row 5)
         # =============================================
         content_frame = tk.Frame(self.window)
         content_frame.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
-        
-        # Configure grid weights for the content frame
-        content_frame.grid_rowconfigure(0, weight=2)  # Search results (larger)
-        content_frame.grid_rowconfigure(1, weight=1)  # Table (smaller)
+        content_frame.grid_rowconfigure(2, weight=1)  # New Entry section
         content_frame.grid_columnconfigure(0, weight=1)
+
+        # ALL ASSIGNED INVENTORY section
+        assigned_frame = tk.LabelFrame(content_frame, text="ALL ASSIGNED INVENTORY", 
+                                     font=('Helvetica', 10, 'bold'))
+        assigned_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        assigned_frame.grid_columnconfigure(0, weight=1)
+        assigned_frame.grid_rowconfigure(0, weight=1)
+
         
-        # LIST BOX CONTAINER (2/3 of vertical space)
-        list_frame = tk.Frame(content_frame, bd=2, relief=tk.GROOVE)
-        list_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
-        list_frame.grid_rowconfigure(0, weight=1)
-        list_frame.grid_columnconfigure(0, weight=1)
-        
-        # Add label for the list box
-        tk.Label(list_frame, text="Search Results", font=('Helvetica', 10, 'bold')).pack(pady=5)
-        
-        # Create list box with scrollbar
-        self.list_box = tk.Listbox(list_frame, font=('Helvetica', 10))
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.list_box.yview)
-        self.list_box.configure(yscrollcommand=scrollbar.set)
-        
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.list_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        # TABLE CONTAINER (1/3 of vertical space)
-        table_container = tk.Frame(content_frame, bd=2, relief=tk.GROOVE)
-        table_container.grid(row=1, column=0, sticky="nsew", pady=(5, 0))
-        table_container.grid_rowconfigure(0, weight=1)
-        table_container.grid_columnconfigure(0, weight=1)
-        
-        # Create a frame to hold all table elements
-        self.table_holder = tk.Frame(table_container)
-        self.table_holder.pack(fill="both", expand=True)
-
-        # Create canvas for scrolling
-        self.horizontal_canvas = tk.Canvas(self.table_holder)
-        self.horizontal_canvas.pack(side="top", fill="both", expand=True)
-
-        # Create scrollable area
-        self.scrollable_area = tk.Frame(self.horizontal_canvas)
-        self.horizontal_canvas.create_window((0, 0), window=self.scrollable_area, anchor="nw")
-
-        # "Assigned To" label centered above headers
-        assigned_to_label_frame = tk.Frame(self.scrollable_area)
-        assigned_to_label_frame.pack(side="top", fill="x", pady=(5,0))
-        
-        # Center the label in its frame
-        tk.Label(assigned_to_label_frame, text="Assigned To", 
-                font=('Helvetica', 10, 'bold')).pack()
-
-        # Table headers frame
-        self.header_frame = tk.Frame(self.scrollable_area)
-        self.header_frame.pack(side="top", fill="x")
-
-        # Table headers
-        self.headers = [
-            "Assigned To", "Zone/Activity", "Sr. No.", "InventoryID", "ProductID", "ProjectID", 
-            "Description/Specifications", "Qty", "Status", "Purpose/Reason", 
-            "Assigned Date", "Submission Date", "Assigned By", "Comments", "Assignment Returned Date"
-        ]
-
-        # Store original column widths
-        self.original_column_widths = [15, 20, 10, 15, 15, 15, 25, 10, 15, 20, 15, 15, 15, 20, 20]
-        
-        # Create headers
-        for col, header in enumerate(self.headers):
-            tk.Label(self.header_frame, text=header, font=('Helvetica', 10, 'bold'),
-                   borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
-            self.header_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col]*10)
-
-        # Create vertical scrollable canvas for content
-        self.vertical_canvas = tk.Canvas(self.scrollable_area)
-        self.vertical_canvas.pack(side="top", fill="both", expand=True)
-
-        # Create scrollable frame for input fields
-        self.scrollable_frame = tk.Frame(self.vertical_canvas)
-        self.vertical_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-
-        # Scrollbars
-        self.v_scrollbar = ttk.Scrollbar(self.table_holder, orient="vertical", command=self.vertical_canvas.yview)
-        self.h_scrollbar = ttk.Scrollbar(table_container, orient="horizontal", command=self.horizontal_canvas.xview)
-        
-        self.v_scrollbar.pack(side="right", fill="y")
-        self.h_scrollbar.pack(side="bottom", fill="x")
-
-        # Configure scrolling
-        self.vertical_canvas.configure(yscrollcommand=self.v_scrollbar.set)
-        self.horizontal_canvas.configure(xscrollcommand=self.h_scrollbar.set)
-        
-        # Create input fields
-        self.table_entries = []
-        for row in range(1):  # Create 1 row for input fields
-            row_entries = []
-            for col, header in enumerate(self.headers):
-                entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 10),
-                               width=self.original_column_widths[col])
-                entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
-                self.scrollable_frame.grid_columnconfigure(col, minsize=self.original_column_widths[col]*10)
-                row_entries.append(entry)
-            self.table_entries.append(row_entries)
-
-        # Configure scroll regions
-        def update_scroll_region(event):
-            self.vertical_canvas.configure(scrollregion=self.vertical_canvas.bbox("all"))
-            self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
+        # Treeview for assigned inventory
+        self.assigned_tree = ttk.Treeview(assigned_frame)
+        self.assigned_tree.grid(row=0, column=0, sticky="nsew")
             
-            content_width = self.scrollable_frame.winfo_width()
-            header_width = self.header_frame.winfo_width()
-            if content_width > header_width:
-                self.header_frame.config(width=content_width)
+        # Scrollbars - Modified for proper left-to-right scrolling
+        assigned_vsb = ttk.Scrollbar(assigned_frame, orient="vertical", command=self.assigned_tree.yview)
+        assigned_hsb = ttk.Scrollbar(assigned_frame, orient="horizontal", command=self.assigned_tree.xview)
+        self.assigned_tree.configure(yscrollcommand=assigned_vsb.set, xscrollcommand=assigned_hsb.set)
+        
+        # Grid placement - ensure horizontal scrollbar is at the bottom
+        assigned_vsb.grid(row=0, column=1, sticky="ns")
+        assigned_hsb.grid(row=1, column=0, sticky="ew")
+
+        # RECENTLY SUBMITTED section
+        recent_frame = tk.LabelFrame(content_frame, text="RECENTLY SUBMITTED (current day)", 
+                                font=('Helvetica', 10, 'bold'))
+        recent_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        recent_frame.grid_columnconfigure(0, weight=1)
+        recent_frame.grid_rowconfigure(0, weight=1)
+        
+        # Treeview for recent submissions
+        self.recent_tree = ttk.Treeview(recent_frame)
+        self.recent_tree.grid(row=0, column=0, sticky="nsew")
+        
+        # Scrollbars - Modified for proper left-to-right scrolling
+        recent_vsb = ttk.Scrollbar(recent_frame, orient="vertical", command=self.recent_tree.yview)
+        recent_hsb = ttk.Scrollbar(recent_frame, orient="horizontal", command=self.recent_tree.xview)
+        self.recent_tree.configure(yscrollcommand=recent_vsb.set, xscrollcommand=recent_hsb.set)
+        
+        # Grid placement
+        recent_vsb.grid(row=0, column=1, sticky="ns")
+        recent_hsb.grid(row=1, column=0, sticky="ew")
+
+        # NEW ENTRY section
+        new_entry_frame = tk.LabelFrame(content_frame, text="NEW ENTRY", 
+                                    font=('Helvetica', 10, 'bold'))
+        new_entry_frame.grid(row=2, column=0, sticky="nsew")
+        new_entry_frame.grid_columnconfigure(0, weight=1)
+        new_entry_frame.grid_rowconfigure(0, weight=1)  # For the treeview
+        
+        # Treeview for new entries
+        self.new_entry_tree = ttk.Treeview(new_entry_frame)
+        self.new_entry_tree.grid(row=0, column=0, sticky="nsew")
+
+        # Scrollbars - Modified for proper left-to-right scrolling
+        new_entry_vsb = ttk.Scrollbar(new_entry_frame, orient="vertical", command=self.new_entry_tree.yview)
+        new_entry_hsb = ttk.Scrollbar(new_entry_frame, orient="horizontal", command=self.new_entry_tree.xview)
+        self.new_entry_tree.configure(yscrollcommand=new_entry_vsb.set, xscrollcommand=new_entry_hsb.set)
+        
+        # Grid placement
+        new_entry_vsb.grid(row=0, column=1, sticky="ns")
+        new_entry_hsb.grid(row=1, column=0, sticky="ew")
             
-        self.scrollable_frame.bind("<Configure>", update_scroll_region)
-        self.header_frame.bind("<Configure>", update_scroll_region)
+        # Action buttons frame for the new entry section
+        action_frame = tk.Frame(new_entry_frame)
+        action_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
+
+        # Edit button
+        edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_selected_entry,
+                            font=('Helvetica', 10))
+        edit_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Update button
+        update_btn = tk.Button(action_frame, text="Update", command=self.update_selected_entry,
+                            font=('Helvetica', 10))
+        update_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Delete button
+        delete_btn = tk.Button(action_frame, text="Delete", command=self.delete_selected_entry,
+                            font=('Helvetica', 10))
+        delete_btn.pack(side=tk.LEFT, padx=5)
 
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
         button_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=10)
 
-        # Wrap button to adjust columns (toggle)
+        # Wrap button
         self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
                                 font=('Helvetica', 12, 'bold'))
         self.wrap_btn.pack(side=tk.LEFT, padx=5)
@@ -259,173 +255,888 @@ Eros City Square
                               font=('Helvetica', 12, 'bold'))
         add_row_btn.pack(side=tk.LEFT, padx=5)
 
-        # Submit button
-        submit_btn = tk.Button(button_frame, text="Assign", command=self.submit_form,
+        # Clear button
+        clear_btn = tk.Button(button_frame, text="Clear", command=self.clear_form,
+                            font=('Helvetica', 12, 'bold'))
+        clear_btn.pack(side=tk.LEFT, padx=5)
+
+        # Refresh button
+        refresh_btn = tk.Button(button_frame, text="Refresh", command=self.refresh_all_data,
+                            font=('Helvetica', 12, 'bold'))
+        refresh_btn.pack(side=tk.LEFT, padx=5)
+
+        # Return button
+        return_btn = tk.Button(button_frame, text="Return to Main", command=self.on_close,
                              font=('Helvetica', 12, 'bold'))
-        submit_btn.pack(side=tk.LEFT, padx=5)
+        return_btn.pack(side=tk.RIGHT, padx=5)
 
-        # Return button on right
-        return_button = tk.Button(button_frame, 
-                                text="Return to Main", 
-                                command=self.on_close,
-                                font=('Helvetica', 12, 'bold'),
-                                width=15)
-        return_button.pack(side=tk.RIGHT, padx=5)
+        # Define headers for all sections
+        self.headers = [
+            "ID", "SNo.","Assigned To", "Employee Name", "Inventory ID", "Project ID", "Product ID",
+            "Inventory Name", "Description","Quantity", "Status", "Assigned Date", "Submission Date",
+            "Purpose/Reason", "Assigned By", "Comments", "Assignment Return Date", "Assignment Barcode" 
+        ]
+        
+        # Configure all treeviews
+        self.configure_treeviews()
+        
+        # Bind double-click events
+        self.assigned_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.assigned_tree))
+        self.recent_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.recent_tree))
 
-        # =============================================
-        # Grid configuration for window
-        # =============================================
-        self.window.grid_rowconfigure(0, weight=0)  # Clock
-        self.window.grid_rowconfigure(1, weight=0)  # Company info
-        self.window.grid_rowconfigure(2, weight=0)  # Title
-        self.window.grid_rowconfigure(3, weight=0)  # Info fields
-        self.window.grid_rowconfigure(4, weight=0)  # Separator
-        self.window.grid_rowconfigure(5, weight=1)  # Content area (list + table)
-        self.window.grid_rowconfigure(6, weight=0)  # Buttons
-        self.window.grid_columnconfigure(0, weight=1)
-        self.window.grid_columnconfigure(1, weight=1)
+    def configure_treeviews(self):
+        """Configure columns for all treeviews"""
+        default_font = font.nametofont("TkDefaultFont")
+        
+        # Configure all three treeviews
+        for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
+            tree['columns'] = self.headers
+            tree['show'] = 'headings'  # Remove empty first column
+            
+            for col, header in enumerate(self.headers):
+                tree.heading(col, text=header, anchor='w')
+                tree.column(col, width=default_font.measure(header) + 20, 
+                        stretch=False, anchor='w')  # Changed stretch to False for better control
+        
+        # Bind column resize events
+        for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
+            tree.bind("<Map>", lambda e: self.auto_size_columns(e.widget))
+
+    def load_selected_to_new_entry(self, source_tree):
+        """Load selected item from source tree into new entry tree"""
+        selected_item = source_tree.selection()
+        if not selected_item:
+            return
+            
+        try:
+            item = selected_item[0]
+            values = source_tree.item(item, 'values')
+            
+            # Clear existing entries in new entry tree
+            self.new_entry_tree.delete(*self.new_entry_tree.get_children())
+            
+            # Add the selected record to new entry tree
+            self.new_entry_tree.insert('', 'end', values=values)
+            
+            # Store the ID of the record being edited
+            self.currently_editing_id = values[0]
+            self.edit_mode = True
+            
+            # Update search fields
+            self.inventory_id.delete(0, tk.END)
+            self.inventory_id.insert(0, values[3])  # Inventory ID
+            
+            self.project_id.delete(0, tk.END)
+            self.project_id.insert(0, values[4])  # Project ID
+            
+            self.product_id.delete(0, tk.END)
+            self.product_id.insert(0, values[5])  # Product ID
+            
+            self.employee_name.delete(0, tk.END)
+            self.employee_name.insert(0, values[2])  # Employee Name
+                        
+        except Exception as e:
+            logger.error(f"Error loading record to new entry: {e}")
+            messagebox.showerror("Error", "Could not load record to new entry")
+
+# ---------------------------------------- Edit/Update section --------------------------------------------
+    def edit_selected_entry(self):
+        """Enable editing of the selected entry in new entry tree"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a record to edit")
+            return
+        
+        # Get all column values
+        item = selected_item[0]
+        values = self.new_entry_tree.item(item, 'values')
+        
+        # Create a top-level edit window
+        edit_window = tk.Toplevel(self.window)
+        edit_window.title("Edit Record")
+        
+        # List of read-only fields (these won't be editable)
+        read_only_fields = ['ID', 'Inventory ID', 'Inventory Name','Project ID', 'Product ID', 'Assigned Date', 'Assignment Return Date', 'Assignment Barcode', 'Employee Name', 'Assigned By']
+        
+        # Date fields that should use DateEntry widgets
+        date_fields = [ 'Submission Date']
+        
+        # Create entry fields for each column
+        entry_widgets = []
+        for i, (header, value) in enumerate(zip(self.headers, values)):
+            tk.Label(edit_window, text=header).grid(row=i, column=0, padx=5, pady=2)
+            
+            if header in read_only_fields:
+                # Create a label for read-only fields
+                label = tk.Label(edit_window, text=value, relief="sunken", bg="#f0f0f0")
+                label.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
+                entry_widgets.append(label)  # Still append to maintain order
+            elif header in date_fields:
+                # Create a frame to hold the date entry
+                date_frame = tk.Frame(edit_window)
+                date_frame.grid(row=i, column=1, sticky="ew", padx=5, pady=2)
+                
+                # Create DateEntry widget
+                date_entry = DateEntry(
+                    date_frame,
+                    width=18,
+                    background='darkblue',
+                    foreground='white',
+                    borderwidth=2,
+                    date_pattern='yyyy-mm-dd'
+                )
+                
+                # Set the date if available
+                try:
+                    if value and value.strip():
+                        date_entry.set_date(datetime.strptime(value, '%Y-%m-%d'))
+                except ValueError:
+                    pass
+                
+                date_entry.pack(fill=tk.X, expand=True)
+                entry_widgets.append(date_entry)
+            elif header == "Status":
+                # Create a Combobox for Status field
+                status_frame = tk.Frame(edit_window)
+                status_frame.grid(row=i, column=1, sticky="ew", padx=5, pady=2)
+                
+                status_var = tk.StringVar()
+                status_combo = ttk.Combobox(
+                    status_frame,
+                    textvariable=status_var,
+                    values=self.status_options,
+                    state="readonly"
+                )
+                status_combo.set(value if value else "Assigned")
+                status_combo.pack(fill=tk.X, expand=True)
+                entry_widgets.append(status_combo)
+            else:
+                # Create an entry widget for editable fields
+                entry = tk.Entry(edit_window)
+                entry.insert(0, value)
+                entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
+                entry_widgets.append(entry)
+        
+        # Save button
+        save_btn = tk.Button(edit_window, text="Save Changes",
+                            command=lambda: self.save_edited_entry(entry_widgets, edit_window))
+        save_btn.grid(row=len(self.headers), column=0, columnspan=2, pady=5)
+        
+        # Make the window resizable
+        edit_window.grid_columnconfigure(1, weight=1)
+
+    def save_edited_entry(self, entry_widgets, edit_window):
+        """Save the edited entry back to the new entry tree"""
+        try:
+            # Get all edited values
+            edited_values = []
+            for i, widget in enumerate(entry_widgets):
+                if isinstance(widget, tk.Label):  # Read-only field
+                    edited_values.append(widget.cget("text"))
+                elif isinstance(widget, DateEntry):  # DateEntry field
+                    edited_values.append(widget.get_date().strftime('%Y-%m-%d'))
+                elif isinstance(widget, ttk.Combobox):  # Combobox field (Status)
+                    edited_values.append(widget.get())
+                else:  # Regular Entry field
+                    edited_values.append(widget.get())
+            
+            # Update the record in new entry tree
+            selected_item = self.new_entry_tree.selection()
+            if selected_item:
+                self.new_entry_tree.item(selected_item[0], values=edited_values)
+            
+            # Close the edit window
+            edit_window.destroy()
+            
+        except Exception as e:
+            logger.error(f"Error saving edited entry: {e}")
+            messagebox.showerror("Error", "Failed to save edited entry")
+            
+    def update_selected_entry(self):
+        """Update the selected entry in the database using employee_name and inventory_id"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a record to update")
+            return
+        
+        try:
+            # Get the updated values
+            item = selected_item[0]
+            values = self.new_entry_tree.item(item, 'values')
+            
+            # Ensure we have enough values
+            if len(values) < 14:
+                messagebox.showerror("Error", "Incomplete record data")
+                return
+                
+            # Get the required identifiers from the treeview
+            employee_name = values[3]  # Employee Name is at index 3
+            inventory_id = values[4]   # Inventory ID is at index 4
+            
+            if not employee_name or not inventory_id:
+                messagebox.showerror("Error", "Employee Name and Inventory ID are required for update")
+                return
+                
+            # Prepare the update data according to API spec
+            update_data = {
+                'assign_to': values[2] or "",  # Assigned To
+                'sno': values[1] or "",  # SNo
+                'zone_activity': "",  # zone_activity
+                'description': values[8] or "",  # Description
+                'quantity': values[9] or "1",  # Quantity
+                'status': values[10].lower() if values[10].lower() in ["assigned", "returned"] else "assigned",  # Status
+                'purpose_reason': values[13] or "",  # Purpose/Reason
+                'comment': values[15] or "",  # Comments
+                'submission_date': self.format_api_date(values[12]) or datetime.now().isoformat(),
+                'assigned_date': self.format_api_date(values[11]) or datetime.now().strftime('%Y-%m-%d'),
+                'assignment_return_date': self.format_api_date(values[16]) or (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
+                'employee_name': employee_name,
+                'inventory_id': inventory_id
+            }
+            
+            # Call the API to update
+            success = update_assigned_inventory(employee_name, inventory_id, update_data)
+            if success:
+                messagebox.showinfo("Success", "Record updated successfully")
+                self.refresh_assigned_inventory_list()
+                self.load_recent_submissions()
+                self.clear_form()
+            else:
+                messagebox.showerror("Error", "Failed to update record. Check logs for details.")
+                
+        except Exception as e:
+            logger.error(f"Error updating record: {e}")
+            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
+
+# ---------------------------------------- End of Edit/Update section --------------------------------------------
+
+    def format_api_date(self, date_str: str) -> str:
+        """Format date string for API (convert empty to None)"""
+        if not date_str or date_str.strip() in ['', 'N/A', ' ']:
+            return None
+        try:
+            # Try to parse the date in various formats
+            for fmt in ('%Y-%m-%d', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f%z'):
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    if fmt.endswith('%z'):  # Contains timezone info
+                        return dt.isoformat()
+                    return dt.strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+            return None
+        except Exception:
+            return None
+
+    def delete_selected_entry(self):
+        """Delete the selected entry from the database"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a record to delete")
+            return
+        
+        if not self.currently_editing_id:
+            messagebox.showwarning("Warning", "No record selected for deletion")
+            return
+            
+        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this record?"):
+            try:
+                # Call the API to delete
+                success = delete_assigned_inventory(self.currently_editing_id)
+                if success:
+                    messagebox.showinfo("Success", "Record deleted successfully")
+                    self.new_entry_tree.delete(selected_item)
+                    self.refresh_assigned_inventory_list()
+                    self.load_recent_submissions()
+                    self.clear_form()
+                else:
+                    messagebox.showerror("Error", "Failed to delete record")
+                    
+            except Exception as e:
+                logger.error(f"Error deleting record: {e}")
+                messagebox.showerror("Error", f"Failed to delete record: {str(e)}")
+
+    def refresh_assigned_inventory_list(self):
+        """Refresh the list of all assigned inventory with proper column sizing"""
+        try:
+            # Clear existing items
+            self.assigned_tree.delete(*self.assigned_tree.get_children())
+            
+            # Load data from database
+            inventory_list = show_all_assigned_inventory_from_db()
+            
+            if not inventory_list:
+                return
+            
+            # Add items to treeview
+            for item in inventory_list:
+                values = [
+                    item.get('id', ''),
+                    item.get('sno', ''),
+                    item.get('assigned_to', ''),
+                    item.get('employee_name', ''),
+                    item.get('inventory_id', ''),
+                    item.get('project_id', ''),
+                    item.get('product_id', ''),
+                    item.get('inventory_name', ''),
+                    item.get('description', ''),
+                    item.get('quantity', ''),
+                    item.get('status', ''),
+                    self.format_date(item.get('assigned_date', '')),
+                    self.format_date(item.get('submission_date', '')),
+                    item.get('purpose_reason', ''),
+                    item.get('assigned_by', ''),
+                    item.get('comments', ''),
+                    self.format_date(item.get('assignment_return_date', '')),
+                    item.get('assignment_barcode', ''),
+                    item.get('zone_activity', ''),
+                    item.get('location', ''),
+                    item.get('client_name', '')
+                ]
+                self.assigned_tree.insert('', 'end', values=values)
+            
+            # Auto-size columns after loading data
+            self.auto_size_columns(self.assigned_tree)
+                
+        except Exception as e:
+            logger.error(f"Error refreshing assigned inventory list: {e}")
+            messagebox.showerror("Error", "Could not refresh assigned inventory list")
+
+    def auto_size_columns(self, tree):
+        """Automatically resize columns to fit content"""
+        default_font = font.nametofont("TkDefaultFont")
+        
+        for col in range(len(self.headers)):
+            # Get max width between header and content
+            max_width = default_font.measure(self.headers[col]) + 20
+            
+            # Check content width
+            for item in tree.get_children():
+                item_text = tree.set(item, col)
+                item_width = default_font.measure(item_text)
+                if item_width > max_width:
+                    max_width = item_width + 20
+            
+            # Set column width with bounds (100-300 pixels) and no stretching
+            tree.column(col, width=max(min(max_width, 300), 100), stretch=False)
+                             
+    def load_recent_submissions(self):
+        """Load recently submitted assignments (current day) with proper column sizing"""
+        try:
+            # Clear existing items
+            self.recent_tree.delete(*self.recent_tree.get_children())
+            
+            # Load data from API
+            recent_submissions = load_submitted_assigned_inventory()
+            current_day = datetime.now().date()
+            
+            if not recent_submissions:
+                return
+            
+            # Add items to treeview
+            for item in recent_submissions:
+                try:
+                    updated_at_str = item.get('updated_at', '')
+                    if updated_at_str:
+                        # Parse date and check if it's today
+                        updated_at = datetime.fromisoformat(updated_at_str.replace('Z', '+00:00'))
+                        if updated_at.date() == current_day:
+                            values = [
+                                item.get('id', ''),
+                                item.get('sno', ''),
+                                item.get('assigned_to', ''),
+                                item.get('employee_name', ''),
+                                item.get('inventory_id', ''),
+                                item.get('project_id', ''),
+                                item.get('product_id', ''),
+                                item.get('inventory_name', ''),
+                                item.get('description', ''),
+                                item.get('quantity', ''),
+                                item.get('status', ''),
+                                self.format_date(item.get('assigned_date', '')),
+                                self.format_date(item.get('submission_date', '')),
+                                item.get('purpose_reason', ''),
+                                item.get('assigned_by', ''),
+                                item.get('comments', ''),
+                                self.format_date(item.get('assignment_return_date', '')),
+                                item.get('assignment_barcode', '')
+                            ]
+                            self.recent_tree.insert('', 'end', values=values)
+                except Exception as e:
+                    logger.warning(f"Skipping record due to parsing error: {e}")
+                    continue
+            
+            # Auto-size columns after loading data
+            self.auto_size_columns(self.recent_tree)
+                    
+        except Exception as e:
+            logger.error(f"Error loading recent submissions: {e}")
+            messagebox.showerror("Error", "Could not load recent submissions")
+
+    def format_date(self, date_str: str) -> str:
+        """Format date string for display (handles multiple formats)"""
+        if not date_str or date_str == ' ':
+            return ' '
+        
+        try:
+            # Try ISO format with timezone first
+            try:
+                dt = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f%z')
+            except ValueError:
+                try:
+                    # Try ISO format without microseconds
+                    dt = datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S%z')
+                except ValueError:
+                    # Try simple date format
+                    dt = datetime.strptime(date_str, '%Y-%m-%d')
+            
+            return dt.strftime('%Y-%m-%d')
+        except Exception:
+            return date_str.split('T')[0] if 'T' in date_str else date_str
+
+# --------------------------- New Entry Popup ---------------------------
+    def new_entry(self):
+        """Create a centered form-style popup window with larger input boxes and date pickers"""
+        # Create popup window
+        popup = tk.Toplevel(self.window)
+        popup.title("Register New Assignment")
+        
+        # Make the popup modal
+        popup.grab_set()
+        
+        # Window dimensions (larger for better fit)
+        popup.geometry("800x800")  # Increased size to accommodate combo boxes
+        popup.minsize(700, 700)
+        
+        # Header
+        header_frame = tk.Frame(popup, bg="#f0f0f0")
+        header_frame.pack(fill=tk.X, pady=10)
+        tk.Label(header_frame, text="NEW INVENTORY ASSIGNMENT", 
+                font=('Helvetica', 14, 'bold'), bg="#f0f0f0").pack(pady=10)
+        
+        # Main content area with scrollbar
+        container = tk.Frame(popup)
+        container.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)
+        
+        canvas = tk.Canvas(container, borderwidth=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
+        
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="center")
+        
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            if scrollable_frame.winfo_reqwidth() < canvas.winfo_width():
+                canvas.itemconfig(1, width=canvas.winfo_width())
+        
+        scrollable_frame.bind("<Configure>", on_frame_configure)
+        
+        # Field definitions
+        fields = [
+            ("assign_to", "Assigned To:"),
+            ("employee_name", "Employee Name:"),
+            ("sno", "SNo:"),
+            ("zone_activity", "Zone Activity:"),
+            ("inventory_id", "Inventory ID:"),
+            ("project_id", "Project ID:"),
+            ("product_id", "Product ID:"),
+            ("inventory_name", "Inventory Name:"),
+            ("description", "Description:"),
+            ("quantity", "Quantity:"),
+            ("status", "Status:"),
+            ("purpose_reason", "Purpose/Reason:"),
+            ("assigned_date", "Assigned Date:"),
+            ("assign_by", "Assigned By:"),
+            ("assignment_return_date", "Return Date:"),
+            ("comment", "Comments:")
+        ]
+        
+        # Store all entry widgets for each row
+        all_entries = []
+# ---------------------------------------------- Create Form ----------------------------------------------------------    
+        def create_form_row(parent_frame):
+            entries = {}
+            for i, (field_name, label_text) in enumerate(fields):
+                # Label
+                lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5)
+                lbl.grid(row=i, column=0, sticky='e', pady=3)
+                
+                if field_name in ["assigned_date", "assignment_return_date"]:
+                    # DateEntry for date fields
+                    date_frame = tk.Frame(parent_frame)
+                    date_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    
+                    entry = DateEntry(
+                        date_frame,
+                        width=18,
+                        background='darkblue',
+                        foreground='white',
+                        borderwidth=2,
+                        date_pattern='yyyy-mm-dd'
+                    )
+                    entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                    
+                    if field_name == "assigned_date":
+                        entry.set_date(date.today())
+                    elif field_name == "assignment_return_date":
+                        entry.set_date(date.today() + timedelta(days=15))
+                elif field_name == "status":
+                    # Combobox for status
+                    status_frame = tk.Frame(parent_frame)
+                    status_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    
+                    status_combo = ttk.Combobox(
+                        status_frame,
+                        values=self.status_options,
+                        state="readonly"
+                    )
+                    status_combo.set("Assigned")
+                    status_combo.pack(fill=tk.X, expand=True)
+                    entries[field_name] = status_combo
+                elif field_name == "inventory_name":
+                    # InventoryComboBox for inventory name
+                    combo_frame = tk.Frame(parent_frame)
+                    combo_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    
+                    entry = InventoryComboBox(combo_frame)
+                    entry.pack(fill=tk.X, expand=True)
+                    
+                    # Bind selection to update related fields
+                    entry.bind('<<ComboboxSelected>>', 
+                            lambda e: self._update_inventory_fields(entries, e))
+                    entries[field_name] = entry
+                else:
+                    # Regular Entry for other fields
+                    entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", width=30)
+                    entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
+                    
+                    if field_name == "quantity":
+                        entry.insert(0, "1")
+                    
+                    entries[field_name] = entry
+            
+            return entries
+                    
+        # Create initial form (centered)
+        form_frame = tk.Frame(scrollable_frame)
+        form_frame.pack(pady=10)
+        all_entries.append(create_form_row(form_frame))
+        
+        # Button functions
+        def add_row():
+            new_form_frame = tk.Frame(scrollable_frame)
+            new_form_frame.pack(pady=10)
+            all_entries.append(create_form_row(new_form_frame))
+        
+        def remove_row():
+            if len(all_entries) > 1:
+                all_entries.pop()
+                scrollable_frame.winfo_children()[-1].destroy()
+        
+        def clear_form():
+            for entries in all_entries:
+                for field_name, entry in entries.items():
+                    if field_name in ["assigned_date", "assignment_return_date"]:
+                        if field_name == "assigned_date":
+                            entry.set_date(date.today())
+                        elif field_name == "assignment_return_date":
+                            entry.set_date(date.today() + timedelta(days=15))
+                    else:
+                        entry.delete(0, tk.END)
+                        # Restore defaults if needed
+                        if field_name == "quantity":
+                            entry.insert(0, "1")
+                        elif field_name == "status":
+                            entry.insert(0, "Assigned")
+
+        def validate_assignment(assignment):
+            required_fields = ['inventory_id', 'assign_to', 'employee_name']
+            missing = [field for field in required_fields if not assignment.get(field)]
+            if missing:
+                messagebox.showwarning("Validation Error", 
+                    f"Missing required fields: {', '.join(missing)}")
+                return False
+            return True
+        
+        def submit_data():
+            data = {'assignments': []}
+            
+            for entries in all_entries:
+                assignment = {}
+                for field_name, entry in entries.items():
+                    if field_name in ["assigned_date", "assignment_return_date"]:
+                        # Get date from DateEntry widget
+                        value = entry.get_date().strftime('%Y-%m-%d')
+                    else:
+                        value = entry.get()
+                    
+                    if value:
+                        assignment[field_name] = value
+                
+                if assignment:
+                    if not validate_assignment(assignment):
+                        return
+                    data['assignments'].append(assignment)
+            
+            if not data['assignments']:
+                messagebox.showwarning("Warning", "No data to submit")
+                return
+            
+            try:
+                popup.config(cursor="watch")
+                popup.update()
+                
+                success = submit_assigned_inventory(data)
+                if success:
+                    messagebox.showinfo("Success", f"{len(data['assignments'])} assignment(s) submitted")
+                    self.refresh_assigned_inventory_list()
+                    self.load_recent_submissions()
+                    clear_form()
+                else:
+                    messagebox.showerror("Error", "Failed to submit assignment(s)")
+            except Exception as e:
+                messagebox.showerror("Error", f"Submission failed: {str(e)}")
+            finally:
+                popup.config(cursor="")
+        
+        # Button frame (centered)
+        button_frame = tk.Frame(popup)
+        button_frame.pack(pady=10)
+        
+        buttons = [
+            ("Add Row", add_row),
+            ("Remove Row", remove_row),
+            ("Clear", clear_form),
+            ("Back", popup.destroy),
+            ("Submit", submit_data)
+        ]
+        
+        for text, command in buttons:
+            btn = tk.Button(button_frame, text=text, command=command, width=12)
+            btn.pack(side=tk.LEFT, padx=5)
+        
+        # Make submit button stand out
+        button_frame.winfo_children()[-1].config(bg="#e0e0e0")
+        
+    def _update_inventory_fields(self, entries, event):
+        """Update related fields when an inventory item is selected"""
+        # Get the combobox widget that triggered the event
+        combo_box = event.widget
+        
+        # Get the selected item data
+        selected_item = combo_box.get_selected_item()
+        if selected_item:
+            # Update all relevant fields from the selected inventory item
+            field_mappings = {
+                'sno': 'sno',
+                'inventory_id': 'inventory_id',
+                'product_id': 'product_id',
+                'project_id': 'project_id',
+            }
+            
+            for field_name, item_key in field_mappings.items():
+                if field_name in entries and item_key in selected_item:
+                    entries[field_name].delete(0, tk.END)
+                    entries[field_name].insert(0, str(selected_item[item_key]))
+    
+    #  ----------------------- End of New Entry Popup -----------------------
+    def add_table_row(self):
+        """Add a new row to the input table in the new entry tree with auto-generated ID"""
+        # Generate default values for a new row
+        default_values = [
+            ""  # Auto-generated short  ID
+            "",  # SNo
+            "",  # Assigned To
+            self.employee_name.get() or "",  # Employee Name
+            self.inventory_id.get() or "",  # Inventory ID
+            self.project_id.get() or "",  # Project ID
+            self.product_id.get() or "",  # Product ID
+            "",  # Inventory Name
+            "",  # Description
+            "1",  # Default quantity
+            "Assigned",  # Default status
+            datetime.now().strftime('%Y-%m-%d'),  # Assigned Date
+            datetime.now().strftime('%Y-%m-%d'),  # Submission Date
+            "",  # Purpose/Reason
+            "",  # Assigned By
+            "",  # Comments
+            (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
+            ""  # Assignment Barcode
+        ]
+        
+        # Add the new row to the treeview
+        self.new_entry_tree.insert('', 'end', values=default_values)
+
+    def remove_table_row(self):
+        """Remove the selected row from the input table"""
+        selected_item = self.new_entry_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("Warning", "Please select a row to remove")
+            return
+            
+        self.new_entry_tree.delete(selected_item)
 
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
         if not self.is_wrapped:
-            self.adjust_columns()
+            # Adjust columns to fit content
+            for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
+                for col in range(len(self.headers)):
+                    tree.column(col, width=0)  # Reset width
+                    tree.column(col, stretch=True)  # Allow stretching
             self.wrap_btn.config(text="Unwrap")
             self.is_wrapped = True
         else:
-            self.reset_columns()
+            # Reset to original column widths
+            for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
+                for col in range(len(self.headers)):
+                    tree.column(col, width=100, stretch=False)
             self.wrap_btn.config(text="Wrap")
             self.is_wrapped = False
 
-    def adjust_columns(self):
-        """Adjust column widths based on content for both header and entries"""
-        col_widths = [len(header) for header in self.headers]
-        
-        for row in self.table_entries:
-            for col, entry in enumerate(row):
-                content = entry.get()
-                if content:
-                    col_widths[col] = max(col_widths[col], len(content))
-        
-        for col, width in enumerate(col_widths):
-            adjusted_width = min(width + 5, 50) * 10  # Increased multiplier for better spacing
-            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width)
-            self.header_frame.grid_columnconfigure(col, minsize=adjusted_width)
-            
-        self.vertical_canvas.configure(scrollregion=self.vertical_canvas.bbox("all"))
-        self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
-        self.horizontal_canvas.xview_moveto(0)
-
-    def reset_columns(self):
-        """Reset columns to their original widths for both header and entries"""
-        for col, width in enumerate(self.original_column_widths):
-            adjusted_width = width * 10  # Increased multiplier for better spacing
-            self.scrollable_frame.grid_columnconfigure(col, minsize=adjusted_width)
-            self.header_frame.grid_columnconfigure(col, minsize=adjusted_width)
-            
-        self.vertical_canvas.configure(scrollregion=self.vertical_canvas.bbox("all"))
-        self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
-        self.horizontal_canvas.xview_moveto(0)
-
-    def add_table_row(self):
-        """Add a new row to the table"""
-        current_rows = len(self.table_entries)
-        row_entries = []
-        for col in range(len(self.headers)):
-            entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 10),
-                           width=self.original_column_widths[col])
-            entry.grid(row=current_rows, column=col, sticky="ew", padx=2, pady=2)
-            row_entries.append(entry)
-        self.table_entries.append(row_entries)
-        self.vertical_canvas.configure(scrollregion=self.vertical_canvas.bbox("all"))
-        self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
-
-    def remove_table_row(self):
-        """Remove the last row from the table"""
-        if len(self.table_entries) <= 1:
-            messagebox.showwarning("Warning", "Cannot remove the last row")
-            return
-            
-        last_row = self.table_entries.pop()
-        for entry in last_row:
-            entry.destroy()
-        
-        self.vertical_canvas.configure(scrollregion=self.vertical_canvas.bbox("all"))
-        self.horizontal_canvas.configure(scrollregion=self.horizontal_canvas.bbox("all"))
-
+#  ----------------------- Search by Inventory_ID  Popup -----------------------
     def search_product(self):
-        """Handle product search and display results in list box"""
-        inventory_id = self.inventory_id.get()
-        project_id = self.project_id.get()
-        product_id = self.product_id.get()
-        employee_name = self.employee_name.get()
-        
-        # Clear previous results
-        self.list_box.delete(0, tk.END)
-        
-        # Here you would typically implement your search logic
-        # For demonstration, we'll add some dummy data
-        if inventory_id or project_id or product_id or employee_name:
-            # Add some sample results (more items to fill the larger list box)
-            for i in range(1, 20):
-                result_text = f"Result {i}: "
-                if inventory_id:
-                    result_text += f"InvID: {inventory_id}-{i} "
-                if project_id:
-                    result_text += f"ProjID: {project_id}-{i} "
-                if product_id:
-                    result_text += f"ProdID: {product_id}-{i} "
-                if employee_name:
-                    result_text += f"Emp: {employee_name}-{i}"
+        """Handle product search with proper error handling"""
+        try:
+            inventory_id = self.inventory_id.get().strip()
+            project_id = self.project_id.get().strip()
+            product_id = self.product_id.get().strip()
+            employee_name = self.employee_name.get().strip()
+            
+            if not any([inventory_id, project_id, product_id, employee_name]):
+                messagebox.showwarning("Warning", "Please enter at least one search criteria")
+                return
+
+            results = search_assigned_inventory_by_id(
+                inventory_id=inventory_id,
+                project_id=project_id,
+                product_id=product_id,
+                employee_name=employee_name
+            )
+            
+            if results:
+                # Clear existing items
+                self.assigned_tree.delete(*self.assigned_tree.get_children())
                 
-                self.list_box.insert(tk.END, result_text.strip())
-        else:
-            messagebox.showwarning("Warning", "Please enter at least one search criteria")
+                # Add search results
+                for item in results:
+                    self.assigned_tree.insert('', 'end', values=[
+                        item.get('id', ''),
+                        item.get('sno', ''),
+                        item.get('assigned_to', ''),
+                        item.get('employee_name', ''),
+                        item.get('inventory_id', ''),
+                        item.get('project_id', ''),
+                        item.get('product_id', ''),
+                        item.get('inventory_name', ''),
+                        item.get('description', ''),
+                        item.get('quantity', ''),
+                        item.get('status', ''),
+                        self.format_date(item.get('assigned_date', '')),
+                        self.format_date(item.get('submission_date', '')),
+                        item.get('purpose_reason', ''),
+                        item.get('assigned_by', ''),
+                        item.get('comments', ''),
+                        self.format_date(item.get('assignment_return_date', '')),
+                        item.get('assignment_barcode', ''),
+                    ])
+            else:
+                messagebox.showinfo("Info", "No matching records found")
+                
+        except Exception as e:
+            logger.error(f"Search error: {e}")
+            messagebox.showerror("Error", str(e))
+#  ----------------------- End of Search by Inventory_ID  Popup -----------------------
 
     def submit_form(self):
-        """Handle form submission"""
-        # Validate required fields
-        required_fields = [
-            self.inventory_id.get(),
-            self.project_id.get(),
-            self.product_id.get()
-        ]
-        
-        if not all(required_fields):
-            messagebox.showwarning("Warning", "Please fill in all search fields")
+        """Handle form submission for new records - all fields are optional"""
+        # Get all items from the new entry tree
+        items = self.new_entry_tree.get_children()
+        if not items:
+            messagebox.showwarning("Warning", "No items to submit")
             return
             
-        # Process the data
+        # Prepare the data
         data = {
-            'inventory_id': self.inventory_id.get(),
-            'project_id': self.project_id.get(),
-            'product_id': self.product_id.get(),
+            'inventory_id': self.inventory_id.get() or " ",
+            'project_id': self.project_id.get() or " ",
+            'product_id': self.product_id.get() or " ",
+            'employee_name': self.employee_name.get() or " ",
             'assignments': []
         }
         
-        for row in self.table_entries:
-            item = {
-                'assigned_to': row[0].get(),
-                'zone_activity': row[1].get(),
-                'sr_no': row[2].get(),
-                'inventory_id': row[3].get(),
-                'product_id': row[4].get(),
-                'project_id': row[5].get(),
-                'description': row[6].get(),
-                'quantity': row[7].get(),
-                'status': row[8].get(),
-                'purpose': row[9].get(),
-                'assigned_date': row[10].get(),
-                'submission_date': row[11].get(),
-                'assigned_by': row[12].get(),
-                'comments': row[13].get(),
-                'assignment_returned_date': row[14].get()
+        for item in items:
+            values = list(self.new_entry_tree.item(item, 'values'))
+                            
+            assignment = {
+                'ID':  " ", # Default value if not provided
+                'sno': values[1] or " ",
+                'assigned_to': values[2] or "",
+                'employee_name': values[3] or "",
+                'inventory_id': values[4] or "",
+                'project_id': values[5] or " ",
+                'product_id': values[6] or " ",
+                'inventory_name': values[7] or " ",
+                'description': values[8] or " ",
+                'quantity': values[9] or "1",  # Default quantity
+                'status': values[10] or "Assigned",  # Default status
+                'assigned_date': values[11] or datetime.now().strftime('%Y-%m-%d'),
+                'submission_date': " ", # Default value if not provided
+                'purpose_reason': values[13] or " ",
+                'assigned_by': values[14] or " ",
+                'comments': values[15] or " ",
+                'assignment_return_date': values[16] or (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
+                'zone_activity': " "  # Default value if not provided
             }
-            data['assignments'].append(item)
+            data['assignments'].append(assignment)
         
-        messagebox.showinfo("Success", "Assignment submitted successfully")
-        logger.info(f"Form submitted: {data}")
+        try:
+            success = submit_assigned_inventory(data)
+            if success:
+                messagebox.showinfo("Success", "Assignment submitted successfully")
+                logger.info("New assignment submitted")
+                self.refresh_assigned_inventory_list()
+                self.load_recent_submissions()
+                self.clear_form()
+            else:
+                messagebox.showerror("Error", "Failed to submit assignment")
+        except Exception as e:
+            logger.error(f"Error submitting form: {e}")
+            messagebox.showerror("Error", f"Failed to submit assignment: {str(e)}")
+
+    def submit_selected_entry(self):
+        """Handle submission of selected entry (for edit mode)"""
+        if self.edit_mode:
+            self.update_selected_entry()
+        else:
+            self.submit_form()
+
+    def clear_form(self): 
+        """Clear all form fields"""
+        self.inventory_id.delete(0, tk.END)
+        self.project_id.delete(0, tk.END)
+        self.product_id.delete(0, tk.END)
+        self.employee_name.delete(0, tk.END)
+        self.new_entry_tree.delete(*self.new_entry_tree.get_children())
+        
+        self.currently_editing_id = None
+        self.edit_mode = False
+
+    def refresh_all_data(self):
+        """Refresh all data in the window"""
+        try:
+            self.refresh_assigned_inventory_list()
+            self.load_recent_submissions()
+            messagebox.showinfo("Success", "Data refreshed successfully")
+        except Exception as e:
+            logger.error(f"Error refreshing data: {e}")
+            messagebox.showerror("Error", "Failed to refresh data")
 
     def update_clock(self):
+        """Update the clock display"""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.clock_label.config(text=now)
         self.window.after(1000, self.update_clock)

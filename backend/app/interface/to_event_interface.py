@@ -108,17 +108,6 @@ class ToEventInventoryInterface:
         """
         pass
     
-    async def delete_entry(
-        self, 
-        db: AsyncSession, 
-        inventory_id: str  # Using inventory_id instead of UUID
-    ) -> bool:
-        """
-        Delete inventory entry by inventory_id.
-        Returns True if deleted successfully, False if not found.
-        """
-        pass
-
     async def search_entries(
         self,
         db: AsyncSession,
@@ -129,17 +118,6 @@ class ToEventInventoryInterface:
         Returns filtered list of ToEventRedisOut instances.
         """
         pass
-
-    # async def get_by_date_range(
-    #     self,
-    #     db: AsyncSession,
-    #     date_range_filter: DateRangeFilter
-    # ) -> List[DateRangeFilterOut]:
-    #     """
-    #     Get inventory items within a date range.
-    #     Returns list of DateRangeFilterOut instances filtered by date range.
-    #     """
-    #     pass
 
     async def store_project_in_redis(
         self, 
