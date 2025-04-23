@@ -5,7 +5,7 @@ import sys
 import tkinter
 from PyInstaller.utils.hooks import collect_data_files
 
-# Get the current working directory (alternative to __file__)
+# Get the absolute path to the current directory
 current_dir = os.path.abspath('.')
 
 # Create a dummy Tkinter root to get the real tcl/tk paths
@@ -20,17 +20,22 @@ block_cipher = None
 tcl_dir = os.path.dirname(tcl_dir)
 tk_dir = os.path.dirname(tk_dir)
 
-# Add the app directory to the path
-sys.path.append(current_dir)
-
-# Collect all necessary data files including .env
-datas = [
-    (os.path.join(current_dir, 'app/inventory_data.json'), 'app'),
-    (os.path.join(current_dir, 'app/logo.webp'), 'app'),
-    (os.path.join(current_dir, 'app/layout.txt'), 'app'),
-    (os.path.join(current_dir, 'app/required_layoyt.structure'), 'app'),
-    (os.path.join(current_dir, 'logo.ico'), '.'),
+# Verify and collect data files
+datas = []
+data_files = [
+    ('app/inventory_data.json', 'app'),
+    ('app/layout.txt', 'app'),
+    ('app/required_layoyt.structure', 'app'),
+    ('logo.ico', '.'),
 ]
+
+# Only include files that exist
+for src, dest in data_files:
+    src_path = os.path.join(current_dir, src)
+    if os.path.exists(src_path):
+        datas.append((src_path, dest))
+    else:
+        print(f"Warning: File not found - {src_path}")
 
 # Include all necessary modules 
 hiddenimports = [
@@ -77,7 +82,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="Tagglabs_Inventory",  # Changed space to underscore for better compatibility
+    name="Tagglabs_Inventory",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -90,6 +95,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=[os.path.join(current_dir, 'logo.ico')],
-    version=os.path.join(current_dir, 'version.txt')
+    icon=[os.path.join(current_dir, 'logo.ico')] if os.path.exists(os.path.join(current_dir, 'logo.ico')) else None,
+    version=os.path.join(current_dir, 'version.txt') if os.path.exists(os.path.join(current_dir, 'version.txt')) else None
 )
