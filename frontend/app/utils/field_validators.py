@@ -1,5 +1,6 @@
 # backend/app/utils/field_validators.py
 
+from enum import Enum
     # ---------------------------- Common Enums ----------------------------
 class StatusEnum(str, Enum):
     SCHEDULED = "Scheduled"
