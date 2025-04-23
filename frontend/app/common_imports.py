@@ -2,6 +2,7 @@
 
 # Standard library imports
 import os
+import sys
 import platform
 import logging
 import json
@@ -18,6 +19,8 @@ import threading
 import io
 import base64
 import traceback
+from pathlib import Path
+from dotenv import load_dotenv
 
 # Third-party imports
 import requests
