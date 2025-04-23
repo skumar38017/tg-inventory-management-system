@@ -1,305 +1,211 @@
 #  backend/app/schema/entry_inventory_schema.py
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, validator, ConfigDict, model_validator
 from datetime import datetime, date, timezone
-from typing import Optional
+from typing import Optional, Dict
 import re
-from pydantic import validator
 import json
- 
-class EntryInventoryBase(BaseModel):
-    product_id: str  
-    inventory_id: str  
+from typing import Union
+from enum import Enum
+from backend.app.utils.date_utils import UTCDateUtils
+from backend.app.utils.field_validators import BaseValidators
+
+class EntryInventoryBase(BaseValidators,BaseModel):
+    product_id: Optional[str] = None  
+    inventory_id: Optional[str] = None  
     sno: Optional[str] = None
-    name: str
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
-    purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
-    on_rent: str = "false"  # Changed to non-optional with default
+    purchase_date: Optional[Union[str, date]] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
+    on_rent: Optional[str] = "false"  # Changed to non-optional with default
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
-    rented_inventory_returned: str = "false"  # Changed to non-optional with default
-    returned_date: Optional[date] = None  # Added this missing field
-    on_event: str = "false"  # Changed to non-optional with default
-    in_office: str = "false"  # Changed to non-optional with default
-    in_warehouse: str = "false"  # Changed to non-optional with default
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
+    total_rent: Optional[Union[str, float, int]] = None
+    rented_inventory_returned: Optional[str] = "false"  # Changed to non-optional with default
+    returned_date: Optional[Union[str, date]] = None  # Added this missing field
+    on_event: Optional[str] = "false"  # Changed to non-optional with default
+    in_office: Optional[str] = "false"  # Changed to non-optional with default
+    in_warehouse: Optional[str] = "false"  # Changed to non-optional with default
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
 
-    # These should NOT be in the create schema
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-    # These fields shouldn't be in the create schema since they're auto-generated
-
-    class Config:
-        extra = "forbid"  # Strict validation
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat()
+    model_config = ConfigDict(
+        extra="forbid",
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
         }
-    
-    @field_validator('product_id', mode='before')
-    def format_product_id(cls, v):
-        if v is None:
-            raise ValueError("Product ID cannot be empty")
-        clean_id = re.sub(r'^PRD', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Product ID must contain only numbers after prefix")
-        return f"PRD{clean_id}"
-
-    @field_validator('inventory_id', mode='before')
-    def format_inventory_id(cls, v):
-        if v is None:
-            raise ValueError("Inventory ID cannot be empty")
-        clean_id = re.sub(r'^INV', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Inventory ID must contain only numbers after prefix")
-        return f"INV{clean_id}"
-    
-    @field_validator('created_at', 'updated_at', mode='before')
-    def set_timestamps(cls, v):
-        return datetime.now(timezone.utc)  # Auto-set if not provided
-    
-# Schema for creating or updating EntryInventory (without UUID and timestamps)
-class EntryInventoryCreate(EntryInventoryBase):
-    # Remove fields that should be auto-generated
-    class Config:
-        exclude = {'created_at', 'updated_at', 'uuid', 'bar_code'}
+    )
+    @field_validator('purchase_date', 'returned_date', mode='before')
+    def parse_date_fields(cls, value):
+        if value in [None, "", "null", "n/a", "N/A"]:
+            return None
+        if isinstance(value, date):
+            return value
+        try:
+            return UTCDateUtils.parse_date(value)
+        except ValueError:
+            raise ValueError("Date must be in YYYY-MM-DD format or null/n/a")
         
-    @validator('on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse', pre=True)
-    def validate_booleans(cls, v):
-        if isinstance(v, bool):
-            return "true" if v else "false"
-        if isinstance(v, str):
-            return v.lower()
-        return "false"
+# Schema for creating or updating EntryInventory (without id and timestamps)
+class EntryInventoryCreate(EntryInventoryBase):
+    model_config = ConfigDict(
+        exclude={'created_at', 'updated_at', 'id', 'bar_code'}
+    )
 
-# Schema for reading EntryInventory (includes inventory_id and timestamp fields)
 class EntryInventoryOut(EntryInventoryBase):
-    uuid: str
-    product_id: str  
-    inventory_id: str  
-    sno: Optional[str] = None
-    name: str
-    material: Optional[str] = None
-    total_quantity: str
-    manufacturer: Optional[str] = None
-    purchase_dealer: Optional[str] = None
-    purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
-    on_rent: Optional[str] = "false"  # Default value
-    vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = "false"  # Default value
-    on_event: Optional[str] = "false"  # Default value
-    in_office: Optional[str] = "false"  # Default value
-    in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    bar_code: str
-    barcode_image_url: Optional[str] = None  # Add this new field
+    id: Optional[str] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
 
-    @validator('barcode_image_url', pre=True)
-    def clean_barcode_url(cls, v):
-        return v.replace('\"', '')
-    
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat()  # For pure date fields
-        } # For Pydantic v2 compatibility
-   
-class EntryInventoryUpdate(BaseModel):
-    name: str
-    material: Optional[str] = None
-    total_quantity: str
-    manufacturer: Optional[str] = None
-    purchase_dealer: Optional[str] = None
-    purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
-    on_rent: Optional[str] = "false"  # Default value
-    vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = "false"  # Default value
-    on_event: Optional[str] = "false"  # Default value
-    in_office: Optional[str] = "false"  # Default value
-    in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    submitted_by: str
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils .format_date(v)
         }
-
-    @field_validator('updated_at', mode='before')
-    def set_updated_at(cls, v):
-        return datetime.now(timezone.utc)
+    )
     
-class EntryInventoryUpdateOut(EntryInventoryBase):
+class EntryInventoryUpdate(BaseValidators, BaseModel):
+    """Schema for updating inventory items"""
+    inventory_name: Optional[str] = None
+    material: Optional[str] = None
+    total_quantity: Optional[Union[str, float, int]] = None
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
+    purchase_date: Optional[Union[str, date]] = None 
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
+    on_rent: Optional[bool] = None
+    vendor_name: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
+    rented_inventory_returned: Optional[bool] = None
+    returned_date: Optional[Union[str, date]] = None 
+    on_event: Optional[bool] = None
+    in_office: Optional[bool] = None
+    in_warehouse: Optional[bool] = None
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
+        }
+    )
+    
+    @field_validator('purchase_date', 'returned_date', mode='before')
+    def parse_date_fields(cls, value):
+        if value in [None, "", "null", "n/a", "N/A"]:
+            return None
+        if isinstance(value, date):
+            return value
+        try:
+            return UTCDateUtils.parse_date(value)
+        except ValueError:
+            raise ValueError("Date must be in YYYY-MM-DD format or null/n/a")
+        
+class EntryInventoryUpdateOut(EntryInventoryOut):
     pass
-    
-class EntryInventoryOut(EntryInventoryBase):
-    uuid: str
-    product_id: str  
-    inventory_id: str  
-    sno: Optional[str] = None
-    name: str
-    material: Optional[str] = None
-    total_quantity: str
-    manufacturer: Optional[str] = None
-    purchase_dealer: Optional[str] = None
-    purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
-    on_rent: Optional[str] = "false"
-    vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = "false"
-    on_event: Optional[str] = "false"
-    in_office: Optional[str] = "false"
-    in_warehouse: Optional[str] = "false"
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    bar_code: str
-    barcode_image_url: Optional[str] = None  # Add this new field
-    
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat()
-        }
-
+        
 # Schema for Search EntryInventory (includes invetory_id and timestamp fields)
-class EntryInventorySearch(BaseModel):
+class EntryInventorySearch(BaseValidators, BaseModel):
     """Schema for searching inventory items"""
     inventory_id: Optional[str] = None
     product_id: Optional[str] = None
     project_id: Optional[str] = None
 
-
-    @field_validator('*')
-    def check_empty_strings(cls, v):
-        if v == "":
-            return None
-        return v
-
-    class Config:
-        extra = "forbid"  # Prevent extra fields
+    model_config = ConfigDict(
+        extra="forbid",
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v),
+        }
+    )
 
 # Schema for search date range filter
 class DateRangeFilter(BaseModel):
-    from_date: date
-    to_date: date
+    """Schema for date range filtering"""
+    from_date: Union[str, date]
+    to_date: Union[str, date]
 
-    @field_validator('to_date')
-    def validate_dates(cls, v: date, info) -> date:
-        if hasattr(info, 'data') and 'from_date' in info.data and v < info.data['from_date']:
+    @model_validator(mode='after')
+    def validate_date_range(self) -> 'DateRangeFilter':
+        if self.to_date < self.from_date:
             raise ValueError("To date must be after From date")
-        return v
+        return self
 
-    class Config:
-        json_encoders = {
-            date: lambda v: v.isoformat()
+    model_config = ConfigDict(
+        extra="forbid",
+        json_encoders={
+            date: lambda v: UTCDateUtils.format_date(v)
         }
+    )
 
-class DateRangeFilterOut(EntryInventoryBase):
+class DateRangeFilterOut(EntryInventoryOut):
     pass
 
 # Schema for sync inventory
-class SyncInventoryOut(EntryInventoryBase):
+class SyncInventoryOut(EntryInventoryOut):
     pass
 
 # Schema for Store record in Redis after clicking {sync} button
-class StoreInventoryRedis(BaseModel):
+class StoreInventoryRedis(BaseModel, BaseValidators):
     """Schema for storing inventory in Redis"""
-    uuid: str
+    id: Optional[str] = None
     sno: Optional[str] = None  # Changed to properly optional
-    inventory_id: str
-    product_id: str
-    name: str
+    inventory_id: Optional[str] = None
+    product_id: Optional[str] = None
+    inventory_name: Optional[str] = None
     material: Optional[str] = None
-    total_quantity: str
+    total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
     purchase_dealer: Optional[str] = None
     purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
+    purchase_amount: Optional[Union[str, float, int]] = None
+    repair_quantity: Optional[Union[str, float, int]] = None
+    repair_cost: Optional[Union[str, float, int]] = None
     on_rent: Optional[str] = "false"  # Default value
     vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
+    returned_date: Optional[date] = None
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    bar_code: str
-    barcode_image_url: Optional[str] = None  # Add this new field
+    issued_qty: Optional[Union[str, float, int]] = None
+    balance_qty: Optional[Union[str, float, int]] = None
+    submitted_by: Optional[str] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
         }
+    )
 
 # Schema to Show record from Redis after clicking {Show All} button
-class InventoryRedisOut(BaseModel):
-    """Schema for retrieving inventory from Redis"""
-
-    uuid: str
-    sno: Optional[str] = None  # Changed to properly optional
-    inventory_id: str
-    product_id: str
-    name: str
-    material: Optional[str] = None
-    total_quantity: str
-    manufacturer: Optional[str] = None
-    purchase_dealer: Optional[str] = None
-    purchase_date: Optional[date] = None
-    purchase_amount: Optional[str] = None
-    repair_quantity: Optional[str] = None
-    repair_cost: Optional[str] = None
-    on_rent: Optional[str] = "false"  # Default value
-    vendor_name: Optional[str] = None
-    total_rent: Optional[str] = None
-    rented_inventory_returned: Optional[str] = "false"  # Default value
-    on_event: Optional[str] = "false"  # Default value
-    in_office: Optional[str] = "false"  # Default value
-    in_warehouse: Optional[str] = "false"  # Default value
-    issued_qty: Optional[str] = None
-    balance_qty: Optional[str] = None
-    submitted_by: str
-    created_at: datetime
-    updated_at: datetime
-    barcode_image_url: Optional[str] = None  # Add this new field
-
+class InventoryRedisOut(StoreInventoryRedis):
+    """Redis output model"""
     @classmethod
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)

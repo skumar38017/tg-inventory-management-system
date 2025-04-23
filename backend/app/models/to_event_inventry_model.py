@@ -21,7 +21,7 @@ class ToEventInventory(Base):
     __tablename__ = "to_event_inventory"
     
     # Primary key
-    id = Column(UUID(as_uuid=True), primary_key=True,  unique=True, nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, unique=True, nullable=False)
     
     # Project information fields
     project_id = Column(String, unique=True, nullable=True)
@@ -34,10 +34,10 @@ class ToEventInventory(Base):
     submitted_by = Column(String, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
+    created_at = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
     
-    # Barcode fields
+    # Barcode   
     project_barcode = Column(String, nullable=True)
     project_barcode_unique_code = Column(String, nullable=True)
     project_barcode_image_url = Column(String, nullable=True)
@@ -47,7 +47,7 @@ class ToEventInventory(Base):
 
     __table_args__ = (
         Index('ix_to_event_inventory_created_at', 'created_at'),
-        Index('ix_to_event_inventory_updated_at', 'updated_at'),
+            Index('ix_to_event_inventory_updated_at', 'updated_at'),
         Index('ix_to_event_inventory_project_id', 'project_id'),
     )
 
@@ -65,8 +65,8 @@ class InventoryItem(Base):
     sno = Column(String, nullable=True)
     name = Column(String, nullable=True)  # Changed to match migration
     description = Column(String, nullable=True)
-    quantity = Column(Integer, nullable=True)
-    material = Column(String, nullable=True)
+    quantity = Column(String, nullable=True)
+    RecQty = Column(String, nullable=True)
     comments = Column(String, nullable=True)
     total = Column(String, nullable=True)
     unit = Column(String, nullable=True)
@@ -83,14 +83,14 @@ class InventoryItem(Base):
 
     def __repr__(self):
         return (
-            f"<InventoryItem(id={self.id}, name={self.inventory_name})>"  
+            f"<InventoryItem(id={self.id}, name={self.name})>"  # Changed to use self.name instead of self.inventory_name
             f"\n\tProject ID: {self.project_id}"
             f"\n\tZone Active: {self.zone_active}"
             f"\n\tSNO: {self.sno}"
-            f"\n\tInventory Name: {self.inventory_name}"
+            f"\n\tName: {self.name}"
             f"\n\tDescription: {self.description}"
             f"\n\tQuantity: {self.quantity}"
-            f"\n\tMaterial: {self.material}"
+            f"\n\tRecQty: {self.RecQty}"
             f"\n\tComments: {self.comments}"
             f"\n\tTotal: {self.total}"
             f"\n\tUnit: {self.unit}"

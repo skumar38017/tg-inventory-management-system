@@ -8,39 +8,10 @@ import re
 from typing import Union
 from enum import Enum
 from pydantic import ValidationError
-
 import logging
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-class StatusEnum(str, Enum):
-    SCHEDULED = "Scheduled"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
-    CANCELLED = "Cancelled"
-    INHOUSE = "In House"
-    OUTSIDE = "Outside"
-    PURCHASED = "Purchased"
-    RETURNED = "Returned"
-    REJECTED = "Rejected"
-    PENDING = "Pending"
-    FAILED = "Failed"
-    APPROVED = "Approved"
-    UNDER_REVIEW = "Under Review"
-    ON_HOLD = "On Hold"
-    DELIVERED = "Delivered"
-    SHIPPED = "Shipped"
-    IN_TRANSIT = "In Transit"
-    DELAYED = "Delayed"
-    CLOSED = "Closed"
-    OPEN = "Open"
-    EXPIRED = "Expired"
-    WITHDRAWN = "Withdrawn"
-    ACTIVE = "Active"
-    INACTIVE = "Inactive"
-    RESERVED = "Reserved"
-    WAITLISTED = "Waitlisted"
-    IN_HOUSE = "In House"
 
 class InventoryItemBase(BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")
@@ -48,7 +19,7 @@ class InventoryItemBase(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[str, float, int]] = None 
-    material: Optional[str] = None
+    RecQty: Optional[Union[str, float, int]] = None 
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None
@@ -63,7 +34,7 @@ class InventoryItemBase(BaseModel):
             return None
         return str(v) if not isinstance(v, str) else v
 
-    @field_validator('material', 'comments', mode='before')
+    @field_validator('RecQty', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
 
@@ -84,8 +55,8 @@ class InventoryItemOut(BaseModel):
     sno: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[Union[str, float, int]] = None
-    material: Optional[str] = None
+    quantity: Optional[Union[str, float, int]] = None 
+    RecQty: Optional[Union[str, float, int]] = None 
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
@@ -119,8 +90,15 @@ class InventoryItemOut(BaseModel):
             return int(float(v)) if v is not None else None
         except (ValueError, TypeError):
             return None
+        return str(v) if not isinstance(v, str) else v
+
+    @field_validator('quantity', mode='before')
+    def validate_quantity(cls, v):
+        if v == '':
+            return 0  # or return None, based on your preference
+        return v
         
-    @field_validator('material', 'comments', mode='before')
+    @field_validator('RecQty', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
 
@@ -137,13 +115,11 @@ class ToEventInventoryBase(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     inventory_items: List[InventoryItemBase]
-    cretaed_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -181,9 +157,9 @@ class ToEventInventoryUpdate(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
@@ -209,7 +185,7 @@ class ToEventInventoryOut(ToEventInventoryBase):
     client_name: Optional[str] = None
     setup_date: Optional[date] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
@@ -270,12 +246,12 @@ class ToEventRedis(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None  
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[Union[str, datetime]] = None  
+    updated_at: Optional[Union[str, datetime]] = None  
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
@@ -305,11 +281,11 @@ class ToEventRedisUpdateIn(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None  
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
-    inventory_items: Optional[List[Dict[str, Any]]] = None
+    inventory_items: Optional[List[InventoryItemBase]] = None
 
     @field_validator('setup_date', 'event_date', mode='before')
     def parse_dates(cls, v):
@@ -331,13 +307,13 @@ class ToEventRedisUpdateIn(BaseModel):
  
 # Update Output Schema (fields that should be returned)
 class ToEventRedisUpdateOut(BaseModel):
-    project_id: str
+    project_id: Optional[str] = None
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None  
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None  
     submitted_by: Optional[str] = None
     inventory_items: List[Dict[str, Any]] = Field(default_factory=list)
     id: Optional[str] = None
@@ -345,9 +321,8 @@ class ToEventRedisUpdateOut(BaseModel):
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-    cretaed_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None  
+    updated_at: Optional[Union[str, datetime]] = None  
 
     @model_validator(mode='before')
     def handle_timestamps(cls, values):
@@ -374,23 +349,25 @@ class ToEventRedisUpdateOut(BaseModel):
     )
     
 class ToEventRedisOut(ToEventInventoryOut):
-    """Schema for retrieving inventory from Redis"""
-    created_at: Optional [datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: Optional [datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    cretaed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
+    cretaed_at: Optional[datetime] = None  # Handle the typo field
 
     @model_validator(mode='before')
     def handle_timestamps(cls, values):
-        # First ensure values is a dictionary
         if not isinstance(values, dict):
             return values
             
-        # Ensure created_at is never null
-        if 'created_at' not in values or values['created_at'] is None:
-            if 'cretaed_at' in values and values['cretaed_at'] is not None:
+        # Handle the typo field
+        if 'cretaed_at' in values:
+            if values['cretaed_at'] == 'string' or values['cretaed_at'] is None:
+                values['cretaed_at'] = datetime.now(timezone.utc)
+            if 'created_at' not in values or values['created_at'] is None:
                 values['created_at'] = values['cretaed_at']
-            else:
-                values['created_at'] = datetime.now(timezone.utc)
+        
+        # Ensure created_at is set
+        if 'created_at' not in values or values['created_at'] is None:
+            values['created_at'] = datetime.now(timezone.utc)
         
         # Ensure updated_at is set
         if 'updated_at' not in values or values['updated_at'] is None:
@@ -404,12 +381,12 @@ class RedisInventoryItem(BaseModel):
     sno: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[int] = None
-    material: Optional[str] = None
+    quantity: Optional[Union[str, float, int]] = None 
+    RecQty: Optional[Union[str, float, int]] = None
     comments: Optional[str] = None
     total: Optional[Union[str, float, int]] = None
     unit: Optional[Union[str, float, int]] = None 
-    per_unit_power: Optional[str] = None
+    per_unit_power: Optional[Union[str, float, int]] = None
     total_power: Optional[Union[str, float, int]] = None 
     status: Optional[str] = None
     poc: Optional[str] = None
@@ -425,9 +402,15 @@ class RedisInventoryItem(BaseModel):
             raise ValueError("Project_id must contain only numbers after prefix")
         return f"PRJ{clean_id}"
 
-    @field_validator('material', 'comments', mode='before')
+    @field_validator('RecQty', 'comments', mode='before')
     def empty_to_none(cls, v):
         return None if v == '' else v
+    
+    @field_validator('quantity', mode='before')
+    def validate_quantity(cls, v):
+        if v == '':
+            return 0  # or return None, based on your preference
+        return v
     
     @field_validator('unit', mode='before')
     def convert_unit_to_string(cls, v):
@@ -442,13 +425,13 @@ class ToEventUploadSchema(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
-    setup_date: Optional[date] = None
+    setup_date: Optional[Union[str, date]] = None
     project_name: Optional[str] = None
-    event_date: Optional[date] = None
+    event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     inventory_items: List[RedisInventoryItem]=[]
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
     project_barcode: Optional[str] = None
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
@@ -496,9 +479,8 @@ class ToEventUploadResponse(BaseModel):
     message: str
     project_id: str
     inventory_items_count: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    cretaed_at: Optional[datetime] = None  # Keep for backward compatibility
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None   
 
     @model_validator(mode='before')
     def handle_timestamps(cls, data: dict) -> dict:

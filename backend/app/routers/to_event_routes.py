@@ -1,4 +1,7 @@
 #  backend/app/routers/to_event_routes.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 import re
 from typing import Optional, List
@@ -25,8 +28,10 @@ from backend.app.curd.to_event_inventry_curd import ToEventInventoryService
 from backend.app.interface.to_event_interface import ToEventInventoryInterface
 
 # Dependency to get the to_event service
-def get_to_event_service() -> ToEventInventoryService:
-    return ToEventInventoryService()
+def get_to_event_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> ToEventInventoryService:
+    return ToEventInventoryService(redis)
 
 # Set up the router
 router = APIRouter()
@@ -47,48 +52,74 @@ logger.setLevel(logging.INFO)
     status_code=200,
     summary="Upload all entries from Redis to database",
     description="Uploads all to_event_inventory entries from local Redis to the database",
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_to_event_data(
     db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
-):
+) -> List[ToEventUploadResponse]:
+    """
+    Upload all to_event_inventory entries from Redis to the database.
+    
+    Returns:
+        List of ToEventUploadResponse objects with upload status for each project
+    """
     try:
         logger.info("Starting Redis to database upload process")
         
         # Get data from service
-        inventory_items = await service.upload_to_event_inventory(db)
+        uploaded_items = await service.upload_to_event_inventory(db)
         
-        # Prepare response
+        if not uploaded_items:
+            logger.warning("No inventory items found in Redis for upload")
+            raise HTTPException(
+                status_code=404,
+                detail="No to_event inventory items found in Redis"
+            )
+        
+        # Convert service response to proper output format
         results = []
-        for item in inventory_items:
-            # Ensure we have proper timestamps
-            created_at = item.created_at if hasattr(item, 'created_at') else datetime.now(timezone.utc)
-            updated_at = item.updated_at if hasattr(item, 'updated_at') else datetime.now(timezone.utc)
+        for item in uploaded_items:
+            # Handle both direct objects and Pydantic models
+            if isinstance(item, dict):
+                item_data = item
+            else:
+                item_data = item.model_dump() if hasattr(item, 'model_dump') else dict(item)
             
-            # Handle both ToEventRedisOut and direct database models
-            project_id = getattr(item, 'project_id', None)
-            if not project_id and hasattr(item, 'id'):
-                project_id = item.id
+            # Ensure required fields are present
+            if 'project_id' not in item_data:
+                logger.warning(f"Skipping item missing project_id: {item_data}")
+                continue
                 
-            results.append({
-                "success": True,
-                "message": "Upload successful",
-                "project_id": project_id,
-                "inventory_items_count": len(getattr(item, 'inventory_items', [])),
-                "created_at": created_at,
-                "updated_at": updated_at,
-                # Explicitly omit cretaed_at unless present in data
-                **({'cretaed_at': item.cretaed_at} if hasattr(item, 'cretaed_at') else {})
-            })
-            
+            results.append(ToEventUploadResponse(
+                success=True,
+                message=item_data.get('message', 'Upload successful'),
+                project_id=item_data['project_id'],
+                inventory_items_count=item_data.get('inventory_items_count', 0),
+                created_at=item_data.get('created_at', datetime.now(timezone.utc)),
+                updated_at=item_data.get('updated_at', datetime.now(timezone.utc))
+            ))
+        
         logger.info(f"Successfully processed {len(results)} items")
         return results
         
     except ValidationError as ve:
-        logger.error(f"Data validation error: {ve}")
+        logger.error(f"Data validation error: {ve}", exc_info=True)
         raise HTTPException(
             status_code=422,
-            detail={"message": "Data validation failed", "errors": ve.errors()}
+            detail={
+                "message": "Data validation failed",
+                "errors": ve.errors()
+            }
+        )
+    except HTTPException:
+        # Re-raise existing HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during upload: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload to_event inventory data: {str(e)}"
         )
 
 # ----------------------------------------------------------------------------------------
@@ -100,7 +131,7 @@ async def upload_to_event_data(
     summary="Create a new inventory entry in Redis",
     description="Creates a new inventory entry stored directly in Redis. Returns the created entry with all fields.",
     response_model_exclude_none=True,  # Changed from exclude_unset to exclude_none
-    tags=["Inventory (Redis)"]
+    tags=["create Inventory (Redis)"]
 )
 async def create_inventory_item_route(
     item: ToEventInventoryCreate,
@@ -132,6 +163,7 @@ async def create_inventory_item_route(
     summary="Load submitted projects from Redis",
     description="This endpoint retrieves submitted projects directly from Redis with pagination support.",
     response_model_exclude_unset=True,
+    tags=["load Inventory (Redis)"]
 )
 async def load_submitted_project_from_redis(
     skip: int = Query(0, description="Number of items to skip for pagination"),
@@ -149,10 +181,11 @@ async def load_submitted_project_from_redis(
     
 # Search project data project directly in local Redis  via `project_id`
 @router.get("/to_event-search-entries-by-project-id/{project_id}/",
-    response_model=ToEventRedisOut,  # Changed from List[ToEventRedisOut]
+    response_model=ToEventRedisOut,  
     status_code=200,
     summary="Search project in local Redis by project_id",
     description="This endpoint searches for a project in local Redis by project_id and returns the complete project data.",
+    tags=["search Inventory (Redis)"]
 )
 async def search_by_project_id(
     project_id: str,
@@ -169,7 +202,8 @@ async def search_by_project_id(
                 status_code=404,
                 detail=f"No project found for project_id: {project_id}"
             )
-            
+        
+        logger.debug(f"Returning project data: {project_data.json()}")
         return project_data
         
     except HTTPException:
@@ -188,6 +222,7 @@ async def search_by_project_id(
     status_code=200,
     summary="Update all project fields in Redis",
     description="Update any field of an existing project in Redis including all inventory item fields",
+    tags=["update Inventory (Redis)"]
 )
 async def update_project_in_redis(
     project_id: str,

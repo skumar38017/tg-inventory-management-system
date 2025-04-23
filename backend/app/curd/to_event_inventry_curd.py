@@ -1,4 +1,7 @@
 #  backend/app/curd/to_event_inventry_curd.py
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, time, timedelta, timezone, date
@@ -29,7 +32,6 @@ from backend.app.interface.to_event_interface import ToEventInventoryInterface
 import logging
 from fastapi import HTTPException
 from typing import List, Optional, Dict, Any
-from backend.app.database.redisclient import redis_client
 from backend.app import config
 import uuid
 import redis.asyncio as redis
@@ -37,9 +39,11 @@ from typing import List, Optional
 from fastapi import HTTPException
 from pydantic import ValidationError
 import json
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update, insert
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
 
+from backend.app.database.redisclient import get_redis
+redis_client=get_redis()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -49,10 +53,10 @@ logger.setLevel(logging.INFO)
 # ------------------------ 
 
 class ToEventInventoryService(ToEventInventoryInterface):
-    def __init__(self, base_url: str = config.BASE_URL, redis_client = redis_client):
-        self.base_url = base_url
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
 
 # upload all to_event_inventory entries from local Redis to the database after click on upload data button
     async def upload_to_event_inventory(self, db: AsyncSession) -> List[ToEventUploadResponse]:
@@ -61,8 +65,8 @@ class ToEventInventoryService(ToEventInventoryInterface):
             await db.rollback()
             
             # Get both types of Redis keys
-            inventory_keys = await redis_client.keys("to_event_inventory:*")
-            item_keys = await redis_client.keys("inventory_item:*")
+            inventory_keys = await self.redis.keys("to_event_inventory:*")
+            item_keys = await self.redis.keys("inventory_item:*")
             
             logger.info(f"Starting upload with {len(inventory_keys)} inventory keys and {len(item_keys)} item keys")
             
@@ -81,7 +85,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     # Ensure fresh transaction for each key
                     await db.rollback()
                     
-                    redis_data = await redis_client.get(key)
+                    redis_data = await self.redis.get(key)
                     if not redis_data:
                         logger.debug(f"Empty data for key {key}")
                         continue
@@ -119,21 +123,32 @@ class ToEventInventoryService(ToEventInventoryInterface):
                             entry_dict = entry.model_dump(exclude={'inventory_items'})
 
                             if existing:
-                                # If the project already exists, delete the old entry
+                                # PATCH operation - update existing entry with all fields
+                                logger.info(f"Updating existing project with project_id: {entry.project_id}")
                                 await db.execute(
-                                    delete(ToEventInventory).where(ToEventInventory.project_id == entry.project_id)
+                                    update(ToEventInventory)
+                                    .where(ToEventInventory.project_id == entry.project_id)
+                                    .values(**entry_dict)
                                 )
-                                logger.info(f"Deleted existing project with project_id: {entry.project_id}")
-                                
-                            # Create new entry (whether it existed or not)
-                            new_entry = ToEventInventory(**entry_dict)
-                            db.add(new_entry)
-                            await db.flush()
-                            parent_id = new_entry.id
+                                parent_id = existing.id
+                            else:
+                                # PUT operation - create new entry
+                                logger.info(f"Creating new project with project_id: {entry.project_id}")
+                                new_entry = ToEventInventory(**entry_dict)
+                                db.add(new_entry)
+                                await db.flush()
+                                parent_id = new_entry.id
 
                             # Process inventory items from main entry
                             if entry.inventory_items:
                                 for item in entry.inventory_items:
+                                    item_data = item.model_dump(exclude={'project_id'})
+                                    item_data['project_id'] = parent_id
+                                    
+                                    # Convert numeric total to string if needed
+                                    if isinstance(item_data.get('total'), (int, float)):
+                                        item_data['total'] = str(item_data['total'])
+                                    
                                     # Check if item already exists
                                     existing_item = await db.execute(
                                         select(InventoryItem)
@@ -141,19 +156,16 @@ class ToEventInventoryService(ToEventInventoryInterface):
                                     )
                                     existing_item = existing_item.scalar_one_or_none()
 
-                                    item_data = item.model_dump(exclude={'project_id'})
-
                                     if existing_item:
-                                        # Update existing item if necessary
-                                        for field, value in item_data.items():
-                                            if hasattr(existing_item, field) and getattr(existing_item, field) != value:
-                                                setattr(existing_item, field, value)
-                                    else:
-                                        # Add new item
-                                        new_item = InventoryItem(
-                                            project_id=parent_id,
-                                            **item_data
+                                        # Update existing item with all fields
+                                        await db.execute(
+                                            update(InventoryItem)
+                                            .where(InventoryItem.id == item.id)
+                                            .values(**item_data)
                                         )
+                                    else:
+                                        # Create new item
+                                        new_item = InventoryItem(**item_data)
                                         db.add(new_item)
 
                             # Commit after each successful project
@@ -165,7 +177,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                                 message="Copied to database successfully",
                                 project_id=entry.project_id,
                                 inventory_items_count=len(entry.inventory_items),
-                                created_at=entry.created_at or datetime.now(timezone.utc)
+                                created_at=entry.created_at or datetime.now(timezone.utc).isoformat()
                             )
                             uploaded_entries.append(response)
                             success_count += 1
@@ -189,7 +201,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     # Fresh transaction for each item
                     await db.rollback()
                     
-                    redis_data = await redis_client.get(key)
+                    redis_data = await self.redis.get(key)
                     if not redis_data:
                         continue
 
@@ -215,6 +227,14 @@ class ToEventInventoryService(ToEventInventoryInterface):
                         logger.warning(f"No parent project found for item {item.id}")
                         continue
 
+                    # Prepare item data
+                    item_data = item.model_dump(exclude={'project_id'})
+                    item_data['project_id'] = parent.id
+                    
+                    # Convert numeric total to string if needed
+                    if isinstance(item_data.get('total'), (int, float)):
+                        item_data['total'] = str(item_data['total'])
+
                     # Check if item already exists
                     existing_item = await db.execute(
                         select(InventoryItem)
@@ -222,19 +242,16 @@ class ToEventInventoryService(ToEventInventoryInterface):
                     )
                     existing_item = existing_item.scalar_one_or_none()
 
-                    item_data = item.model_dump(exclude={'project_id'})
-
                     if existing_item:
-                        # Update existing item
-                        for field, value in item_data.items():
-                            if hasattr(existing_item, field) and getattr(existing_item, field) != value:
-                                setattr(existing_item, field, value)
-                    else:
-                        # Add new item
-                        new_item = InventoryItem(
-                            project_id=parent.id,
-                            **item_data
+                        # Update existing item with all fields
+                        await db.execute(
+                            update(InventoryItem)
+                            .where(InventoryItem.id == item.id)
+                            .values(**item_data)
                         )
+                    else:
+                        # Create new item
+                        new_item = InventoryItem(**item_data)
                         db.add(new_item)
                     
                     # Commit after each item
@@ -252,7 +269,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                             message="Copied item to database",
                             project_id=item.project_id,
                             inventory_items_count=1,
-                            created_at=datetime.now(timezone.utc)
+                            created_at=datetime.now(timezone.utc).isoformat()
                         )
                         uploaded_entries.append(response)
 
@@ -270,8 +287,8 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except Exception as e:
             await db.rollback()
             logger.error(f"Copy operation failed: {str(e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))    
-
+            raise HTTPException(status_code=500, detail=str(e))
+            
 # ------------------------------------------------------------------------------------------------
     #  Create new entry of inventory for to_event which is directly stored in redis
     async def create_to_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:
@@ -321,14 +338,14 @@ class ToEventInventoryService(ToEventInventoryInterface):
             }
     
             # Store main inventory in Redis
-            await redis_client.set(
+            await self.redis.set(
                 f"to_event_inventory:{inventory_data['project_id']}",
                 json.dumps(redis_data, default=str)
             )
     
             # Store individual items with their own keys (still without timestamps)
             for item in inventory_items:
-                await redis_client.set(
+                await self.redis.set(
                     f"inventory_item:{item['id']}",
                     json.dumps(item, default=str)
                 )
@@ -368,52 +385,40 @@ class ToEventInventoryService(ToEventInventoryInterface):
             projects.sort(key=lambda x: x.updated_at, reverse=True)
             
             # Apply pagination
-            paginated_projects = projects[skip:skip+10]  # Assuming page size of 10
+            paginated_projects = projects[skip:skip+250]  # Assuming page size of 100
             
             return paginated_projects
         except Exception as e:
             logger.error(f"Redis error fetching entries: {e}")
             raise HTTPException(status_code=500, detail="Redis error")
     
-    #  search project data via `project_id` directly in local Redis
-    async def get_project_data(self, project_id: str) -> ToEventRedisOut:
-        try:
-            redis_key = f"to_event_inventory:{project_id}"
-            redis_data = await redis_client.get(redis_key)
-    
-            if not redis_data:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"No data found in Redis for project_id: {project_id}"
-                )
-    
-            data = json.loads(redis_data)
-            return ToEventRedisOut(**data)
-    
-        except Exception as e:
-            logger.error(f"Error getting project data: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=500,
-                detail="Internal Server Error"
-            )
-    
     #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def get_project_data(self, project_id: str):
         try:
             redis_key = f"to_event_inventory:{project_id}"
-            existing_data = await redis_client.get(redis_key)
+            # Use get() instead of keys() to retrieve the actual value
+            existing_data = await self.redis.get(redis_key)
 
             if not existing_data:
                 return None
 
             # Parse the JSON data from Redis
             project_dict = json.loads(existing_data)
-
-            # Convert to your model (assuming ToEventRedisOut is your output model)
+            
+            # Ensure inventory_items is properly formatted
+            if 'inventory_items' in project_dict:
+                if isinstance(project_dict['inventory_items'], str):
+                    try:
+                        project_dict['inventory_items'] = json.loads(project_dict['inventory_items'])
+                    except json.JSONDecodeError:
+                        project_dict['inventory_items'] = []
+                elif not isinstance(project_dict['inventory_items'], list):
+                    project_dict['inventory_items'] = []
+                    
             return ToEventRedisOut(**project_dict)
         
         except Exception as e:
-            logger.error(f"Error fetching project {project_id} from Redis: {str(e)}")
+            logger.error(f"Error fetching project {project_id} from Redis: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
 
     async def update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
@@ -428,7 +433,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
             ]
 
             # Fetch existing project data from Redis
-            existing_data = await redis_client.get(redis_key)
+            existing_data = await self.redis.get(redis_key)  # Changed from keys() to get()
             if not existing_data:
                 raise HTTPException(status_code=404, detail="Project not found")
                 
@@ -479,7 +484,7 @@ class ToEventInventoryService(ToEventInventoryInterface):
                 raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
 
             # Save to Redis
-            await redis_client.set(
+            await self.redis.set(  # Changed from redis_client to self.redis
                 redis_key,
                 validated_data.model_dump_json()
             )
@@ -491,9 +496,4 @@ class ToEventInventoryService(ToEventInventoryInterface):
         except Exception as e:
             logger.error(f"Error updating project {project_id}: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error updating project: {str(e)}")
-
-    class CustomJSONEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, (datetime, date)):
-                return obj.isoformat()
-            return super().default(obj)
+        

@@ -1,18 +1,43 @@
 # frontend/app/app.py
 from flask import Flask
-from .entry_inventory import main as entry_inventory_main
+import subprocess
+import sys
 
 app = Flask(__name__)
 
-# Home Route
 @app.route('/')
 def home():
     try:
-        entry_inventory_main()  # Example call to a function from entry_inventory.py
-        return "Inventory System Running!"
+        subprocess.Popen([sys.executable, "-m", "app.entry_inventory"])
+        return "Tkinter GUI launched in background!"
     except Exception as e:
-        return f"Error occurred: {str(e)}"
+        return f"Error: {str(e)}"
 
-# Run the Flask Application on port 5555
 if __name__ == '__main__':
-    app.run(debug=True, port=5555)  # Specify port 5555
+    app.run(port=5555)
+
+
+# from flask import Flask
+# import subprocess
+# import os
+
+# app = Flask(__name__)
+
+# @app.route('/')
+# def home():
+#     try:
+#         # Set DISPLAY environment variable
+#         env = os.environ.copy()
+#         env['DISPLAY'] = os.getenv('DISPLAY', ':0')
+        
+#         # Launch Tkinter app
+#         subprocess.Popen(
+#             ['python', '/app/entry_inventory.py'],
+#             env=env
+#         )
+#         return "Tkinter GUI launched in background!"
+#     except Exception as e:
+#         return f"Error: {str(e)}"
+
+# if __name__ == '__main__':
+#     app.run(host='0.0.0.0', port=5555)

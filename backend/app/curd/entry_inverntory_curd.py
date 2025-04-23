@@ -1,5 +1,10 @@
 # backend/app/routers/entry_inventory_curd.py
 
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
+from redis import asyncio as aioredis
+import redis.asyncio as redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from datetime import datetime, time, timedelta, timezone
@@ -13,13 +18,36 @@ from backend.app.schema.entry_inventory_schema import (
     StoreInventoryRedis,
     DateRangeFilter
 )
+# Google Sheets API
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import os.path
+import pickle
+import gspread
+import requests
+from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
+
+
 from sqlalchemy.exc import SQLAlchemyError
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
 import logging
+from sqlalchemy import insert, update 
+import uuid
 from fastapi import HTTPException
 from typing import List, Optional
-from backend.app.database.redisclient import redis_client
 from backend.app import config
+from backend.app.utils.barcode_generator import BarcodeGenerator
+from pydantic import ValidationError
+import random
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+from typing import Union
+import json
+from backend.app.utils.date_utils import UTCDateUtils
+from backend.app.utils.field_validators import BaseValidators
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -30,237 +58,510 @@ logger.setLevel(logging.INFO)
 
 class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
-    def __init__(self, base_url: str = config.BASE_URL):
-        self.base_url = base_url  # Your server's base URL
+    def __init__(self, redis_client: aioredis.Redis):
+        self.redis = redis_client
+        self.barcode_generator = BarcodeGenerator()
+        self.base_url = config.BASE_URL
 
-    #  Create new entry
-    async def create_entry_inventory(self, db: AsyncSession, entry_data: dict) -> EntryInventory:
-        if db is None:
-            raise ValueError("Database session is None")
 
+# Upload/update all inventory entries from local Redis to the database after click on upload data button
+    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+        """Upload all inventory entries from Redis to the database with proper PUT/PATCH handling."""
         try:
-            # Convert boolean fields to string "true"/"false"
-            for field in ['on_rent', 'rented_inventory_returned', 'on_event', 'in_office', 'in_warehouse']:
-                if field in entry_data:
-                    val = entry_data[field]
-                    if isinstance(val, bool):
-                        entry_data[field] = "true" if val else "false"
-                    elif isinstance(val, str):
-                        entry_data[field] = val.lower()
-                    else:
-                        entry_data[field] = "false"
+            await db.rollback()  # Start fresh
+            
+            # Combine both key patterns
+            inventory_keys = await self.redis.keys("inventory:*")
+            all_keys = inventory_keys 
 
-            # Remove auto-generated fields if present
-            for field in ['bar_code', 'unique_code', 'created_at', 'updated_at', 'uuid']:
-                entry_data.pop(field, None)
+            if not all_keys:
+                logger.warning("No inventory keys found in Redis")
+                raise HTTPException(status_code=404, detail="No inventory items found in Redis")
 
-            # Create new instance
-            new_entry = EntryInventory(**entry_data)
+            uploaded_entries = []
+            processed_ids = set()
+            new_entries = []
+            updates = []
+            
+            IMMUTABLE_FIELDS = {
+                'id', 'sno', 'inventory_id', 'product_id', 
+                'created_at', 'inventory_barcode', 
+                'inventory_unique_code', 'inventory_barcode_url'
+            }
 
-            db.add(new_entry)
-            await db.commit()
-            await db.refresh(new_entry)
-
-            return new_entry
-
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error: {str(e)}")
-            raise HTTPException(status_code=500, detail="Database operation failed")
+            for key in all_keys:
+                try:
+                    redis_data = await self.redis.get(key)
+                    if not redis_data:
+                        continue
+                    
+                    try:
+                        data = json.loads(redis_data)
+                        if isinstance(data, dict):
+                            data = [data]  # Normalize to list
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON for key {key}: {str(e)}")
+                        continue
+                    
+                    for entry_data in data:
+                        try:
+                            if not entry_data.get('id'):
+                                logger.warning(f"Entry missing ID in key {key}")
+                                continue
+                            
+                            entry_id = entry_data["id"]
+                            if entry_id in processed_ids:
+                                logger.debug(f"Skipping duplicate ID {entry_id}")
+                                continue
+                                
+                            processed_ids.add(entry_id)
+                            
+                            # Validate the data
+                            try:
+                                validated_data = StoreInventoryRedis(**entry_data).model_dump()
+                            except ValidationError as ve:
+                                logger.error(f"Validation error for entry {entry_id}: {ve}")
+                                continue
+                            
+                            # Check if entry exists in DB
+                            existing_entry = await db.get(EntryInventory, entry_id)
+                            
+                            if existing_entry:
+                                # Prepare PATCH update (only mutable fields)
+                                update_data = {
+                                    k: v for k, v in validated_data.items() 
+                                    if k not in IMMUTABLE_FIELDS and v is not None
+                                }
+                                
+                                if update_data:
+                                    updates.append({
+                                        "id": entry_id,
+                                        "data": update_data
+                                    })
+                            else:
+                                # Prepare PUT (full data)
+                                new_entries.append(validated_data)
+                            
+                            # Keep for response
+                            uploaded_entries.append(InventoryRedisOut(**validated_data))
+                        
+                        except Exception as e:
+                            logger.error(f"Error processing entry {entry_id}: {e}")
+                            continue
+                
+                except Exception as e:
+                    logger.error(f"Error processing key {key}: {e}")
+                    continue
+            
+            if not uploaded_entries:
+                raise HTTPException(status_code=404, detail="No valid inventory items found in Redis")
+            
+            try:
+                # Bulk insert new entries (PUT)
+                if new_entries:
+                    stmt = insert(EntryInventory).values(new_entries)
+                    await db.execute(stmt)
+                
+                # Bulk update existing entries (PATCH)
+                for update_item in updates:
+                    stmt = (
+                        update(EntryInventory)
+                        .where(EntryInventory.id == update_item["id"])
+                        .values(**update_item["data"])
+                    )
+                    await db.execute(stmt)
+                
+                await db.commit()
+                            
+            except Exception as e:
+                await db.rollback()
+                logger.error(f"Database operation failed: {e}")
+                raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
+            
+            return uploaded_entries
+        
+        except HTTPException:
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
-            raise HTTPException(status_code=400, detail=str(e))
+            await db.rollback()
+            logger.error(f"Upload operation failed: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Upload operation failed: {str(e)}")
+        
+# ------------------------------------------------------------------------------------------------------------------------------------------------
+#  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
-    #  Filter inventory by date range without any `IDs`
+# Create new entry of inventory for to_event which is directly stored in redis
+    async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
+        """
+        Create a new inventory entry stored permanently in Redis (no database storage).
+        """
+        try:
+            # Convert input data to dictionary
+            if isinstance(entry_data, EntryInventoryCreate):
+                inventory_data = entry_data.model_dump(exclude_unset=True)
+            else:
+                inventory_data = entry_data
+
+            # Handle null/empty date fields
+            for date_field in ['purchase_date', 'returned_date']:
+                if date_field in inventory_data and inventory_data[date_field] in [None, "", "null", "n/a"]:
+                    inventory_data[date_field] = None
+
+            # Generate ID if not provided
+            if not inventory_data.get('id'):
+                inventory_id = str(uuid.uuid4())
+                inventory_data['id'] = inventory_id
+
+            # Set timestamps (server-side only)
+            current_time = UTCDateUtils.get_current_datetime()
+            inventory_data['updated_at'] = current_time
+            inventory_data['created_at'] = current_time 
+
+            # Process and validate boolean fields
+            boolean_fields = {
+                'on_rent': False,
+                'rented_inventory_returned': False,
+                'on_event': False,
+                'in_office': False,
+                'in_warehouse': False
+            }
+
+            for field, default_value in boolean_fields.items():
+                val = inventory_data.get(field, default_value)
+                inventory_data[field] = BaseValidators.validate_boolean_fields(val)
+
+            # Generate barcode if not provided
+            if not inventory_data.get('inventory_barcode'):
+                barcode_data = {
+                    'inventory_name': inventory_data['inventory_name'],
+                    'inventory_id': inventory_data['inventory_id'],
+                    'id': inventory_id 
+                }
+                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
+                inventory_data.update({
+                    'inventory_barcode': barcode,
+                    'inventory_unique_code': unique_code,
+                    'inventory_barcode_url': inventory_data.get('inventory_barcode_url', "")
+                })
+
+            # Permanent Redis storage (no expiration)
+            redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"
+            await self.redis.set(
+                redis_key,
+                json.dumps(inventory_data, default=str)
+            )
+            return EntryInventory(**inventory_data)
+
+        except KeyError as ke:
+            logger.error(f"Missing required field: {str(ke)}")
+            raise HTTPException(status_code=400, detail=f"Missing required field: {str(ke)}")
+        except (TypeError, ValueError) as e:
+            logger.error(f"JSON encoding error: {str(e)}")
+            raise HTTPException(status_code=400, detail="Invalid inventory data format")
+        except Exception as e:
+            logger.error(f"Redis storage failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create inventory assignment: {str(e)}"
+            )
+
+#  Filter inventory by date range without any `IDs`
     async def get_by_date_range(
         self,
         db: AsyncSession,
-        date_range_filter: DateRangeFilter
+        date_range_filter: DateRangeFilter,
+        skip: int = 0
     ) -> List[EntryInventory]:
         try:
-            # Convert dates to datetime at start/end of day
-            start_datetime = datetime.combine(date_range_filter.from_date, time.min)
-            end_datetime = datetime.combine(date_range_filter.to_date, time.max)
-
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.updated_at.between(start_datetime, end_datetime))
-                .order_by(EntryInventory.updated_at)
+            # Handle both string and date inputs
+            start_date = (
+                UTCDateUtils.parse_date(date_range_filter.from_date)
+                if isinstance(date_range_filter.from_date, str)
+                else date_range_filter.from_date
             )
-            entries = result.scalars().all()
-              # Convert to Pydantic models with proper null handling
-            return [EntryInventoryOut.from_orm(entry) for entry in entries]
-        except SQLAlchemyError as e:
-            logger.error(f"Database error filtering by date: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            end_date = (
+                UTCDateUtils.parse_date(date_range_filter.to_date)
+                if isinstance(date_range_filter.to_date, str)
+                else date_range_filter.to_date
+            )
+            
+            if not start_date or not end_date:
+                raise ValueError("Invalid date range provided")
+            
+            # Get all inventory keys
+            keys = await self.redis.keys("inventory:*")
+            filtered_items = []
+            
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        item_data = json.loads(data)
+                        created_at_str = item_data.get('created_at')
+                        if not created_at_str:
+                            continue
+                            
+                        created_at = UTCDateUtils.parse_datetime(created_at_str)
+                        if not created_at:
+                            continue
+                            
+                        # Check if within date range
+                        if start_date <= created_at.date() <= end_date:
+                            # Convert timestamps using UTCDateUtils
+                            item_data['created_at'] = UTCDateUtils.validate_datetime_field(item_data.get('created_at'))
+                            item_data['updated_at'] = UTCDateUtils.validate_datetime_field(item_data.get('updated_at'))
+                            filtered_items.append(EntryInventoryOut(**item_data))
+                    except (KeyError, ValueError) as e:
+                        logger.warning(f"Skipping invalid inventory item {key}: {str(e)}")
+                        continue
+            
+            # Sort by created_at (newest first)
+            filtered_items.sort(key=lambda x: x.created_at, reverse=True)
+            
+            # Apply pagination
+            return filtered_items[skip : skip + 1000]
 
-    # READ ALL: Get all inventory entries
-    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[EntryInventoryOut]:
+        except Exception as e:
+            logger.error(f"Date range filter failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error fetching inventory by date range: {str(e)}"
+            )
+
+    # READ ALL: Get all inventory entries directly from redis
+    async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[InventoryRedisOut]:
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .order_by(EntryInventory.name)  # Alphabetical order
-                .offset(skip)
-            )
-            return result.scalars().all()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching entries: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            # Get all keys matching your project pattern
+            keys = await self.redis.keys("inventory:*")
+            
+            projects = []
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        assigned_data = json.loads(data)
+                        # Handle the 'cretaed_at' typo if present
+                        if 'cretaed_at' in assigned_data and assigned_data['cretaed_at'] is not None:
+                            assigned_data['created_at'] = assigned_data['cretaed_at']
+                        # Validate the data against your schema
+                        validated_project = InventoryRedisOut.model_validate(assigned_data)
+                        projects.append(validated_project)
+                    except ValidationError as ve:
+                        logger.warning(f"Validation error for project {key}: {ve}")
+                        continue
+            
+            # Sort by updated_at (descending)
+            projects.sort(key=lambda x: x.updated_at, reverse=True)
+            
+            # Apply pagination
+            paginated_projects = projects[skip:skip+1000]  # Assuming page size of 100
+            
+            return paginated_projects
+        except Exception as e:
+            logger.error(f"Redis error fetching entries: {e}")
 
     # READ: Get an inventory entry by its inventry_id
     async def get_by_inventory_id(self, db: AsyncSession, inventory_id: str) -> Optional[EntryInventoryOut]:
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.inventory_id == inventory_id)
-            )
-            return result.scalar_one_or_none()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error fetching entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            # Search all inventory keys in Redis
+            keys = await self.redis.keys("inventory:*")
+            
+            for key in keys:
+                # Get the inventory data from Redis
+                inventory_data = await self.redis.get(key)
+                if inventory_data:
+                    data = json.loads(inventory_data)
+                    # Check if this is the inventory we're looking for
+                    if data.get('inventory_id') == inventory_id:
+                        # Convert string timestamps back to datetime objects
+                        if 'updated_at' in data:
+                            data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+                        return EntryInventoryOut(**data)
+            
+            return None  # Return None if not found
 
-    # UPDATE: Update an existing inventory entry {} {Inventory ID}
+        except json.JSONDecodeError as je:
+            logger.error(f"Error decoding Redis data: {str(je)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error decoding inventory data"
+            )
+        except Exception as e:
+            logger.error(f"Redis error fetching inventory: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error fetching inventory from Redis"
+            )
+
+# UPDATE: Update an existing inventory entry {} {Inventory ID}
     async def update_entry(self, db: AsyncSession, inventory_id: str, update_data: EntryInventoryUpdate):
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.inventory_id == inventory_id)
-            )
-            entry = result.scalar_one_or_none()
+            # Format inventory_id if needed
+            if not inventory_id.startswith('INV'):
+                inventory_id = f"INV{inventory_id}"
 
-            if not entry:
-                return None
+            # Search all inventory keys to find matching inventory_id
+            keys = await self.redis.keys("inventory:*")
+            redis_key = None
+            
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    item_data = json.loads(data)
+                    if item_data.get('inventory_id') == inventory_id:
+                        redis_key = key
+                        break
 
+            if not redis_key:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Inventory not found with ID: {inventory_id}"
+                )
+
+            # Get existing record from Redis
+            existing_data = await self.redis.get(redis_key)
+            if not existing_data:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Inventory data not found in Redis"
+                )
+
+            existing_dict = json.loads(existing_data)
+            
+            # Convert update_data to dict and exclude unset fields
             update_dict = update_data.model_dump(exclude_unset=True)
-            IMMUTABLE_FIELDS = ['uuid', 'sno', 'inventory_id', 'product_id', 'created_at']
+            
+            # Define immutable fields that shouldn't be updated
+            IMMUTABLE_FIELDS = {
+                'id', 'sno', 'inventory_id', 'product_id', 
+                'created_at', 'inventory_barcode', 
+                'inventory_unique_code', 'inventory_barcode_url'
+            }
 
-            # Update mutable fields
+            # Apply updates while preserving immutable fields
+            updated_dict = existing_dict.copy()
             for field, value in update_dict.items():
                 if field not in IMMUTABLE_FIELDS:
-                    setattr(entry, field, value)
+                    updated_dict[field] = value
 
-            # Always update timestamp
-            entry.updated_at = datetime.now(timezone.utc)
+            # Always update the timestamp with UTC timezone
+            updated_dict['updated_at'] = UTCDateUtils.get_current_datetime().isoformat()
 
-            await db.commit()
-            await db.refresh(entry)
-            return entry
+            # Save back to Redis
+            await self.redis.set(
+                redis_key,
+                json.dumps(updated_dict, default=str)
+            )
 
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error updating entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
+            return EntryInventoryOut(**updated_dict)
 
+        except HTTPException:
+            raise
+        except json.JSONDecodeError as je:
+            logger.error(f"JSON decode error: {str(je)}")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid inventory data format in Redis"
+            )
+        except Exception as e:
+            logger.error(f"Redis update failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to update inventory: {str(e)}"
+            )
+    
     # DELETE: Delete an inventory entry by  {Inventory ID}
     async def delete_entry(self, db: AsyncSession, inventory_id: str) -> bool:
         try:
-            result = await db.execute(
-                select(EntryInventory)
-                .where(EntryInventory.inventory_id == inventory_id)
-            )
-            entry = result.scalar_one_or_none()
+            # Format inventory_id if needed
+            if not inventory_id.startswith('INV'):
+                inventory_id = f"INV{inventory_id}"
+
+            # Search all inventory keys to find matching inventory_id
+            keys = await self.redis.keys("inventory:*")
+            redis_key = None
             
-            if not entry:
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    item_data = json.loads(data)
+                    if item_data.get('inventory_id') == inventory_id:
+                        redis_key = key
+                        break
+
+            if not redis_key:
                 return False
-                
-            await db.delete(entry)
-            await db.commit()
+
+            # Delete the key from Redis
+            await self.redis.delete(redis_key)
+            
+            # Also delete from secondary index if you have one
+            await self.redis.delete(f"inventory_index:{inventory_id}")
+            
             return True
-        except SQLAlchemyError as e:
-            await db.rollback()
-            logger.error(f"Database error deleting entry: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
-        
-    # Search inventory items by various criteria {Product ID, Inventory ID, Project ID}
+
+        except Exception as e:
+            logger.error(f"Redis delete failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete inventory: {str(e)}"
+            )
+            
+# Search inventory items by various criteria {Product ID, Inventory ID} from redis
     async def search_entries(
         self, 
-        db: AsyncSession, 
-        search_filter: EntryInventorySearch
+        db: AsyncSession,
+        inventory_id: Optional[str] = None,
+        product_id: Optional[str] = None,
+        project_id: Optional[str] = None
     ) -> List[EntryInventoryOut]:
         """
         Search inventory entries by exactly one of:
         - inventory_id
         - product_id
         - project_id
-        """
+        """,
+        keys = await self.redis.keys("inventory:*")
         try:
-            query = select(EntryInventory)
+            # Get all inventory keys from Redis
+            keys = await self.redis.keys("inventory:*")
+            matching_items = []
+            
+            for key in keys:
+                data = await self.redis.get(key)
+                if data:
+                    try:
+                        item_data = json.loads(data)
+                        
+                        # Check search criteria
+                        match = False
+                        if inventory_id and item_data.get('inventory_id') == inventory_id:
+                            match = True
+                        elif product_id and item_data.get('product_id') == product_id:
+                            match = True
+                        elif project_id and item_data.get('project_id') == project_id:
+                            match = True
+                        
+                        if match:
+                            # Clean the item data before creating the model
+                            clean_item_data = {
+                                k: v for k, v in item_data.items()
+                                if k in EntryInventoryOut.model_fields
+                            }
+                            matching_items.append(EntryInventoryOut(**clean_item_data))
+                            
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
+                        continue
+            
+            return matching_items
 
-            if search_filter.inventory_id:
-                query = query.where(EntryInventory.inventory_id == search_filter.inventory_id)
-            elif search_filter.product_id:
-                query = query.where(EntryInventory.product_id == search_filter.product_id)
-            else:  # project_id
-                query = query.where(EntryInventory.project_id == search_filter.project_id)
-
-            result = await db.execute(query)
-            entries = result.scalars().all()
-
-            return [EntryInventoryOut.from_orm(entry) for entry in entries]
-
-        except SQLAlchemyError as e:
-            logger.error(f"Database error searching entries: {str(e)}", exc_info=True)
+        except Exception as e:
+            logger.error(f"Redis search failed: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail="Database error while searching inventory items"
-            )
-        
-# ------------------------------------------------------------------------------------------------------------------------------------------------
-#  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
-# ------------------------------------------------------------------------------------------------------------------------------------------------
-
-    #  Store all recored in Redis after clicking {sync} button
-    async def store_inventory_in_redis(self, db: AsyncSession) -> bool:
-        """Store all inventory entries in Redis"""
-        try:
-            # Get all entries from database
-            entries = await db.execute(select(EntryInventory))
-            entries = entries.scalars().all()
-            
-            # Convert to Redis storage format and store
-            for entry in entries:
-                redis_entry = StoreInventoryRedis(
-                    uuid=entry.uuid,
-                    sno=entry.sno,
-                    inventory_id=entry.inventory_id,
-                    product_id=entry.product_id,
-                    name=entry.name,
-                    material=entry.material,
-                    total_quantity=entry.total_quantity,
-                    manufacturer=entry.manufacturer,
-                    purchase_dealer=entry.purchase_dealer,
-                    purchase_date=entry.purchase_date,
-                    purchase_amount=entry.purchase_amount,
-                    repair_quantity=entry.repair_quantity,
-                    repair_cost=entry.repair_cost,
-                    on_rent=entry.on_rent,
-                    vendor_name=entry.vendor_name,
-                    total_rent=entry.total_rent,
-                    rented_inventory_returned=entry.rented_inventory_returned,
-                    on_event=entry.on_event,
-                    in_office=entry.in_office,
-                    in_warehouse=entry.in_warehouse,
-                    issued_qty=entry.issued_qty,
-                    balance_qty=entry.balance_qty,
-                    submitted_by=entry.submitted_by,
-                    bar_code=entry.bar_code,
-                    barcode_image_url=entry.barcode_image_url,
-                    created_at=entry.created_at,
-                    updated_at=entry.updated_at
-                )
-            
-                await redis_client.set(
-                    f"inventory:{entry.inventory_id}", 
-                    redis_entry.json()
-                )
-            
-            logger.info(f"Stored {len(entries)} entries in Redis")
-            return True
-        except Exception as e:
-            logger.error(f"Redis storage error: {e}")
-            raise HTTPException(
-                status_code=500, 
-                detail="Failed to sync with Redis"
+                detail=f"Error searching inventory items: {str(e)}"
             )
 
     #  Show all inventory entries directly from local Redis after clicking {Show All} button
@@ -268,34 +569,63 @@ class EntryInventoryService(EntryInventoryInterface):
         """Retrieve all inventory entries from Redis"""
         try:
             # Get all inventory keys from Redis
-            keys = await redis_client.keys("inventory:*")
+            keys = await self.redis.keys("inventory:*")
 
             # Retrieve and parse all entries
             entries = []
             for key in keys:
-                data = await redis_client.get(key)
+                data = await self.redis.get(key)
                 if data:
-                    entries.append(InventoryRedisOut.from_redis(data))
+                    try:
+                        entry_data = json.loads(data)
+                        entries.append(InventoryRedisOut(**entry_data))
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
+                        continue
 
-            # Sort by name (alphabetical)
-            entries.sort(key=lambda x: x.name)
+            # Sort by inventory_name (alphabetical)
+            entries.sort(key=lambda x: x.inventory_name.lower())
             return entries
 
         except Exception as e:
-            logger.error(f"Redis retrieval error: {e}")
+            logger.error(f"Redis retrieval error: {e}", exc_info=True)
             raise HTTPException(
                 status_code=500, 
-                detail="Failed to load from Redis"
+                detail="Failed to load inventory from Redis"
             )
 
     # List all inventory entries function
     async def list_entry_inventories_curd(self, db: AsyncSession):
         try:
-            # Execute query to fetch all entries
-            result = await db.execute(select(EntryInventory))
-            # Retrieve all rows as a list
-            entry_inventory_list = result.scalars().all()
-            return entry_inventory_list
-        except SQLAlchemyError as e:
-            logger.error(f"Error listing entry inventories: {e}")
-            raise e
+            # Get all inventory keys from Redis
+            keys = await self.redis.keys("inventory:*")
+            all_entries = []
+            
+            for key in keys:
+                inventory_data = await self.redis.get(key)
+                if inventory_data:
+                    try:
+                        data = json.loads(inventory_data)
+                        # Convert timestamps if they exist
+                        if 'created_at' in data:
+                            data['created_at'] = datetime.fromisoformat(data['created_at'])
+                        if 'updated_at' in data:
+                            data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+                        # Validate against schema
+                        entry = EntryInventoryOut(**data)
+                        all_entries.append(entry)
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
+                        continue
+            
+            # Sort by created_at (newest first)
+            all_entries.sort(key=lambda x: x.created_at, reverse=True)
+            
+            return all_entries
+
+        except Exception as e:
+            logger.error(f"Redis list failed: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail="Error listing inventory items"
+            )

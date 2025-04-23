@@ -1,22 +1,13 @@
-#  frontend/app/to_event.py
+# frontend/app/to_event.py
 
-import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
-import platform
-import logging
-import random
-import string
-import json
-import os
-from .api_request.to_event_inventory_request import (
+from common_imports import *
+from api_request.to_event_inventory_request import (
     create_to_event_inventory_list, 
     load_submitted_project_from_db,
     update_submitted_project_in_db,
     search_project_details_by_id
-                            )
-
-logger = logging.getLogger(__name__)
+)
+from widgets.inventory_combobox import InventoryComboBox
 
 class ToEventWindow:
     def __init__(self, parent):
@@ -27,9 +18,15 @@ class ToEventWindow:
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
+
+        # Get status options from StatusEnum
+        self.status_options = [status.value for status in StatusEnum]
         
         # Database file
         self.db_file = "inventory_data.json"
+
+        # Initialize inventory combo box data
+        self.inventory_combo_data = []
         
         # Initialize database
         self.initialize_db()
@@ -65,9 +62,8 @@ class ToEventWindow:
         if not os.path.exists(self.db_file):
             with open(self.db_file, 'w') as f:
                 json.dump([], f)
-
-    # Save data to the database via API
-    def save_to_db(self, data):
+ 
+    def save_to_db(self, data, work_id=None):
         """Save data to the database via API"""
         try:
             work_id = data['work_id']
@@ -76,7 +72,7 @@ class ToEventWindow:
             try:
                 existing_records = search_project_details_by_id(work_id)
                 if existing_records:
-                    # Update existing record
+                    # Update existing recordsave_to_db
                     if not update_submitted_project_in_db(work_id, data):
                         raise Exception("Failed to update record via API")
                     return True
@@ -92,7 +88,6 @@ class ToEventWindow:
             logger.error(f"Failed to save to database: {str(e)}")
             return False
 
-    # Load data from API only
     def load_from_db(self, work_id=None):
         """Load data from API only"""
         try:
@@ -101,8 +96,12 @@ class ToEventWindow:
                 records = search_project_details_by_id(work_id)
                 return records[0] if records else None
             else:
-                # Load all records
-                return load_submitted_project_from_db()
+                # Load all records sorted by updated_at in descending order
+                records = load_submitted_project_from_db()
+                if records:
+                    # Sort by updated_at in descending order
+                    return sorted(records, key=lambda x: x.get('updated_at', ''), reverse=True)
+                return []
 
         except Exception as e:
             logger.error(f"Failed to load from database: {str(e)}")
@@ -135,8 +134,14 @@ class ToEventWindow:
         
         # Table entries
         for row in self.table_entries:
-            for entry in row:
-                entry.config(state=state)
+            for col, entry in enumerate(row):
+                if col == 12:  # RecQty column (index 12)
+                    entry.config(state='readonly')  # Always readonly
+                elif col == 2:  # Inventory column (InventoryComboBox)
+                    entry.config(state='readonly' if readonly else 'normal')
+                else:
+                    entry.config(state=state)
+
 
     def maximize_window(self):
         try:
@@ -192,7 +197,7 @@ class ToEventWindow:
                font=('Helvetica', 14, 'bold')).pack()
         
         tk.Label(title_frame, 
-               text="INVENTORY LIST",
+               text="To Create Event Inventory List",
                font=('Helvetica', 12, 'bold')).pack()
 
         # Information fields
@@ -216,35 +221,66 @@ class ToEventWindow:
                                   font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
         self.update_btn.grid(row=0, column=4, padx=5)
 
+        # Add new entry button on the same row (column 5)
+        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
+                                font=('Helvetica', 9, 'bold'))
+        self.add_btn.grid(row=0, column=5, padx=5)
+
+        # Add clear button on the same row (column 6)
+        self.clear_btn = tk.Button(info_frame, text="Clear", command=self.clear_form,
+                                font=('Helvetica', 9, 'bold'))
+        self.clear_btn.grid(row=0, column=6, padx=5)
+
+        # Add refresh button on the same row (column 7)
+        self.refresh_btn = tk.Button(info_frame, text="Refresh", command=self.refresh_data,
+                                   font=('Helvetica', 9, 'bold'))
+        self.refresh_btn.grid(row=0, column=7, padx=5)
+
         # Second row - all fields (added Work ID at the end)
         tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
         self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.employee_name.grid(row=1, column=1, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Location:", font=('Helvetica', 9)).grid(row=1, column=2, sticky='e', padx=2)
         self.location = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.location.grid(row=1, column=3, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Client Name:", font=('Helvetica', 9)).grid(row=1, column=4, sticky='e', padx=2)
         self.client_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.client_name.grid(row=1, column=5, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=1, column=6, sticky='e', padx=2)
-        self.setup_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.setup_date = DateEntry(
+            info_frame, 
+            font=('Helvetica', 9), 
+            width=15,
+            date_pattern='yyyy-mm-dd',  # Changed format
+            background='darkblue',
+            foreground='white',
+            borderwidth=2
+        )
         self.setup_date.grid(row=1, column=7, sticky='w', padx=2)
-        
+
+
         tk.Label(info_frame, text="Project Name:", font=('Helvetica', 9)).grid(row=1, column=8, sticky='e', padx=2)
         self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
         self.project_name.grid(row=1, column=9, sticky='w', padx=2)
-        
+
         tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=1, column=10, sticky='e', padx=2)
-        self.event_date = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        self.event_date = DateEntry(info_frame, 
+                                font=('Helvetica', 9), 
+                                width=15,
+                                date_pattern='yyyy-mm-dd',
+                                background='darkblue',
+                                foreground='white',
+                                borderwidth=2)
         self.event_date.grid(row=1, column=11, sticky='w', padx=2)
-        
+
         # Current Work ID display
         tk.Label(info_frame, text="Current Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
         self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
         self.work_id.grid(row=1, column=13, sticky='w', padx=2)
+
 
         # Separator line
         separator = ttk.Separator(self.window, orient='horizontal')
@@ -279,7 +315,7 @@ class ToEventWindow:
         self.headers = [
             "Zone/Activity", "Sr. No.", "Inventory", "Description",
             "Quantity", "Comments", "Total", "Units", "Per Unit Power (W)",
-            "Total Power (W)", "Status", "POC", "Material"
+            "Total Power (W)", "Status", "POC", "RecQty"
         ]
 
         self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
@@ -290,22 +326,51 @@ class ToEventWindow:
 
         # Create entry fields
         self.table_entries = []
-        for row in range(1, 2):  # 2 empty rows
+        for row in range(1, 1):  # 2 empty rows
             row_entries = []
             for col in range(len(self.headers)):
-                entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
-                               width=self.original_column_widths[col])
-                entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
-                row_entries.append(entry)
+                if col == 2:  # Inventory column - use InventoryComboBox
+                    combo_frame = tk.Frame(self.scrollable_frame)
+                    combo_frame.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    
+                    combo = InventoryComboBox(combo_frame)
+                    combo.pack(fill=tk.X, expand=True)
+                    
+                    # Bind selection to update related fields
+                    combo.bind('<<ComboboxSelected>>', 
+                            lambda e, r=row_entries: self._update_inventory_fields(r, e))
+                    row_entries.append(combo)
+                elif col == 10:  # Status column
+                    # Create Combobox for Status
+                    status_var = tk.StringVar()
+                    combo = ttk.Combobox(
+                        self.scrollable_frame,
+                        textvariable=status_var,
+                        values=self.status_options,
+                        state="state",
+                        font=('Helvetica', 9)
+                    )
+                    combo.set(self.status_options[0])  # Set default status
+                    combo.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    row_entries.append(combo)
+                else:
+                    # Regular Entry for other columns
+                    entry = tk.Entry(self.scrollable_frame, 
+                                font=('Helvetica', 9), 
+                                width=self.original_column_widths[col])
+                    if col == 12:  # RecQty column (index 12) RecQty is readonly
+                        entry.config(state='readonly')
+                    entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
+                    row_entries.append(entry)
             self.table_entries.append(row_entries)
 
         # Create Notebook for tabs
         self.tab_control = ttk.Notebook(self.window)
         self.tab_control.grid(row=6, column=0, columnspan=2, sticky="nsew", padx=10, pady=(5,0))
 
-        # Tab 1: Submitted Forms
+        # Tab 1: Submitted Projects
         self.submitted_tab = ttk.Frame(self.tab_control)
-        self.tab_control.add(self.submitted_tab, text="Submitted Forms")
+        self.tab_control.add(self.submitted_tab, text="Submitted Projects")
         self.setup_submitted_tab()
 
         # Tab 2: Search Results
@@ -351,15 +416,43 @@ class ToEventWindow:
         self.window.grid_rowconfigure(7, weight=0)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=1)
+        self.add_table_row() 
+
+    def _update_inventory_fields(self, row_entries, event):
+        """Update related fields when an inventory item is selected"""
+        # Get the combobox widget that triggered the event
+        combo_box = event.widget
+        
+        # Get the selected item data
+        selected_item = combo_box.get_selected_item()
+        if selected_item:
+            # Update all relevant fields from the selected inventory item
+            if len(row_entries) > 1:  # Ensure we have at least the sno field
+                # Update sno field (column 1)
+                row_entries[1].delete(0, tk.END)
+                row_entries[1].insert(0, str(selected_item.get('sno', '')))
+                
+                # Update description field (column 3) if it exists
+                if len(row_entries) > 3:
+                    row_entries[3].delete(0, tk.END)
+                    row_entries[3].insert(0, str(selected_item.get('description', '')))
+
+    def new_button_click(self):
+        """Handle New Entry button click - clears the form and generates new Work ID"""
+        self.clear_form()
+        self.generate_work_id()
+        self.set_fields_readonly(False)
+        messagebox.showinfo("New Entry", "Ready to create a new entry")
 
     def setup_submitted_tab(self):
-        """Setup the tab for submitted forms"""
+        """Setup the tab for submitted projects"""
         frame = tk.Frame(self.submitted_tab)
         frame.pack(fill="both", expand=True)
 
-        # Treeview for submitted forms
+        # Treeview for submitted projects
         self.submitted_tree = ttk.Treeview(frame, height=10,
-                                         columns=("WorkID", "Employee", "Location", "ProjectName", "Client", "SetupDate", "EventDate"),
+                                         columns=("WorkID", "Employee", "Location", "ProjectName", 
+                                                 "Client", "SetupDate", "EventDate", "LastUpdated"),
                                          show="headings")
         
         # Configure columns
@@ -370,14 +463,16 @@ class ToEventWindow:
         self.submitted_tree.heading("Client", text="Client Name")
         self.submitted_tree.heading("SetupDate", text="Setup Date")
         self.submitted_tree.heading("EventDate", text="Event Date")
+        self.submitted_tree.heading("LastUpdated", text="Last Updated")
         
         self.submitted_tree.column("WorkID", width=100)
         self.submitted_tree.column("Employee", width=150)
         self.submitted_tree.column("Location", width=100)
-        self.submitted_tree.column("ProjectName", width=100)
-        self.submitted_tree.column("Client", width=100)
+        self.submitted_tree.column("ProjectName", width=150)
+        self.submitted_tree.column("Client", width=150)
         self.submitted_tree.column("SetupDate", width=100)
         self.submitted_tree.column("EventDate", width=100)
+        self.submitted_tree.column("LastUpdated", width=150)
 
         # Scrollbars
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.submitted_tree.yview)
@@ -397,7 +492,8 @@ class ToEventWindow:
 
         # Treeview for search results
         self.search_tree = ttk.Treeview(frame, height=10,
-                                      columns=("WorkID", "ProjectName", "Employee", "Location", "Client", "SetupDate", "EventDate"),
+                                      columns=("WorkID", "ProjectName", "Employee", "Location", 
+                                              "Client", "SetupDate", "EventDate", "LastUpdated"),
                                       show="headings")
         
         # Configure columns
@@ -408,14 +504,16 @@ class ToEventWindow:
         self.search_tree.heading("Client", text="Client")
         self.search_tree.heading("SetupDate", text="Setup Date")
         self.search_tree.heading("EventDate", text="Event Date")
+        self.search_tree.heading("LastUpdated", text="Last Updated")
         
         self.search_tree.column("WorkID", width=100)
-        self.search_tree.column("ProjectName", width=100)
+        self.search_tree.column("ProjectName", width=150)
         self.search_tree.column("Employee", width=150)
         self.search_tree.column("Location", width=100)
         self.search_tree.column("Client", width=150)
         self.search_tree.column("SetupDate", width=100)
         self.search_tree.column("EventDate", width=100)
+        self.search_tree.column("LastUpdated", width=150)
 
         # Scrollbars
         y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.search_tree.yview)
@@ -429,7 +527,7 @@ class ToEventWindow:
         self.search_tree.bind("<Double-1>", self.load_search_result)
 
     def load_submitted_forms(self):
-        """Load all submitted forms into the submitted tab"""
+        """Load all submitted forms into the submitted tab sorted by updated_at"""
         # Clear existing items
         for item in self.submitted_tree.get_children():
             self.submitted_tree.delete(item)
@@ -440,6 +538,18 @@ class ToEventWindow:
             return
         
         for record in records:
+            # Format the updated_at timestamp for display
+            updated_at = record.get('updated_at', '')
+            if updated_at:
+                try:
+                    # Convert to datetime object and format
+                    dt = datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    formatted_date = dt.strftime("%Y-%m-%d %I:%M %p")
+                except:
+                    formatted_date = updated_at
+            else:
+                formatted_date = 'Not available'
+            
             self.submitted_tree.insert("", "end", values=(
                 record['work_id'],
                 record['employee_name'],
@@ -447,7 +557,8 @@ class ToEventWindow:
                 record['project_name'],
                 record['client_name'],
                 record['setup_date'],
-                record['event_date']
+                record['event_date'],
+                formatted_date  # Make sure this is included
             ))
 
     def load_submitted_project(self, event):
@@ -460,7 +571,7 @@ class ToEventWindow:
 
     def fetch_record(self):
         """Search records by Work ID and display in Search Results tab"""
-        work_id = self.project_id.get().strip()  # Using project_id field to input work_id for search
+        work_id = self.project_id.get().strip()
         if not work_id:
             messagebox.showwarning("Warning", "Please enter a Work ID to search")
             return
@@ -475,6 +586,18 @@ class ToEventWindow:
         for item in self.search_tree.get_children():
             self.search_tree.delete(item)
             
+        # Format the updated_at timestamp for display
+        updated_at = record.get('updated_at', '')
+        if updated_at:
+            try:
+                # Convert to datetime object and format
+                dt = datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                formatted_date = dt.strftime("%Y-%m-%d %I:%M %p")
+            except:
+                formatted_date = updated_at
+        else:
+            formatted_date = 'Not available'
+            
         # Populate search tab with the found record
         self.search_tree.insert("", "end", values=(
             record['work_id'],
@@ -483,7 +606,8 @@ class ToEventWindow:
             record['location'],
             record['client_name'],
             record['setup_date'],
-            record['event_date']
+            record['event_date'],
+            formatted_date
         ))
         
         # Switch to search results tab
@@ -501,7 +625,7 @@ class ToEventWindow:
         """Load project data into the form"""
         record = self.load_from_db(work_id)
         if not record:
-            messagebox.showerror("Error", f"Record with Work ID {work_id} not found")
+            messagebox.showwarning("Error", f"Record with Work ID {work_id} not found")
             return
         
         # Populate form fields
@@ -519,45 +643,79 @@ class ToEventWindow:
         self.client_name.delete(0, tk.END)
         self.client_name.insert(0, record['client_name'])
         
-        self.setup_date.delete(0, tk.END)
-        self.setup_date.insert(0, record['setup_date'])
+        # Handle setup_date - use set_date() for DateEntry widget
+        if record.get('setup_date'):
+            try:
+                # Parse the date string into datetime object
+                if isinstance(record['setup_date'], str):
+                    try:
+                        dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
+                    except ValueError:
+                        dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
+                    self.setup_date.set_date(dt)
+                else:
+                    self.setup_date.set_date(record['setup_date'])
+            except Exception as e:
+                logger.error(f"Error setting setup date: {str(e)}")
+                self.setup_date.set_date(datetime.now())
+        else:
+            self.setup_date.set_date(datetime.now())  # Set to current date if null
         
         self.project_name.delete(0, tk.END)
         self.project_name.insert(0, record['project_name'])
         
-        self.event_date.delete(0, tk.END)
-        self.event_date.insert(0, record['event_date'])
+        # Handle event_date - use set_date() for DateEntry widget
+        if record.get('event_date'):
+            try:
+                if isinstance(record['event_date'], str):
+                    try:
+                        dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
+                    except ValueError:
+                        dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
+                    self.event_date.set_date(dt)
+                else:
+                    self.event_date.set_date(record['event_date'])
+            except Exception as e:
+                logger.error(f"Error setting event date: {str(e)}")
+                self.event_date.set_date(datetime.now())
+        else:
+            self.event_date.set_date(datetime.now())  # Set to current date if null
         
-        # Clear existing table entries
-        for row in self.table_entries:
-            for entry in row:
-                entry.delete(0, tk.END)
+        # Clear existing table entries and add enough rows
+        self.clear_table()
         
-        # Add enough rows for all inventory items
-        while len(self.table_entries) < len(record['inventory_items']):
+        # Add rows for all inventory items
+        for _ in range(len(record.get('inventory_items', [])) - len(self.table_entries)):
             self.add_table_row()
         
         # Fill in the inventory items
-        for i, item in enumerate(record['inventory_items']):
+        for i, item in enumerate(record.get('inventory_items', [])):
             if i >= len(self.table_entries):
                 break
                 
             row = self.table_entries[i]
-            row[0].insert(0, item.get('zone_active', ''))
-            row[1].insert(0, item.get('sno', ''))
-            row[2].insert(0, item.get('name', ''))
-            row[3].insert(0, item.get('description', ''))
-            row[4].insert(0, str(item.get('quantity', '')))
-            row[5].insert(0, item.get('comments', ''))
-            row[6].insert(0, str(item.get('total', '')))
-            row[7].insert(0, item.get('unit', ''))
-            row[8].insert(0, str(item.get('per_unit_power', '')))
-            row[9].insert(0, str(item.get('total_power', '')))
-            row[10].insert(0, item.get('status', ''))
-            row[11].insert(0, item.get('poc', ''))  
-            if len(row) > 12:
-                row[12].insert(0, item.get('material', ''))
-        
+            # Ensure we have all the fields we need
+            fields = [
+                'zone_active', 'sno', 'name', 'description', 
+                'quantity', 'comments', 'total', 'unit', 
+                'per_unit_power', 'total_power', 'status', 'poc', 'RecQty'
+            ]
+            
+            for col, field in enumerate(fields):
+                if col < len(row):  # Make sure we don't exceed row length
+                    value = str(item.get(field, ''))
+                    if col == 2:  # Inventory column (InventoryComboBox)
+                        row[col].set(value)  # Set the inventory name
+                    elif col == 10:  # Status column (Combobox)
+                        try:
+                            row[col].set(value if value in self.status_options else self.status_options[0])
+                        except Exception as e:
+                            logger.error(f"Error setting status for row {i}: {str(e)}")
+                            row[col].set(self.status_options[0])
+                    else:  # Regular Entry
+                        row[col].delete(0, tk.END)
+                        row[col].insert(0, value)
+            
         # Switch back to form view
         self.tab_control.select(0)
         
@@ -565,6 +723,17 @@ class ToEventWindow:
         self.set_fields_readonly(True)
         self.edit_btn.config(state=tk.NORMAL)
         self.update_btn.config(state=tk.DISABLED)
+
+    def clear_table(self):
+        """Clear all table entries except the first row"""
+        # Remove all rows except first one
+        while len(self.table_entries) > 1:
+            self.remove_table_row()
+        
+        # Clear the first row
+        if self.table_entries:
+            for entry in self.table_entries[0]:
+                entry.delete(0, tk.END)
 
     def edit_record(self):
         """Enable editing of the record"""
@@ -577,62 +746,137 @@ class ToEventWindow:
         self.update_btn.config(state=tk.NORMAL)
         logger.info("Editing record")
 
-    # Update record in database
     def update_record(self):
-        """Update the record in database via API"""
+        """Update the record in database via API with multiple rows"""
         try:
             work_id = self.work_id.get()
             if not work_id:
                 messagebox.showwarning("Warning", "Work ID is required for update")
                 return
                 
-            # Prepare the data to be saved
+            # Prepare the complete data package
             data = {
                 'work_id': work_id,
-                'employee_name': self.employee_name.get(),
-                'location': self.location.get(),
-                'client_name': self.client_name.get(),
-                'setup_date': self.setup_date.get(),
-                'project_name': self.project_name.get(),
-                'event_date': self.event_date.get(),
+                'employee_name': self.employee_name.get() or '',
+                'location': self.location.get() or '',
+                'client_name': self.client_name.get() or '',
+                'setup_date': self.setup_date.get() or '',
+                'project_name': self.project_name.get() or '',
+                'event_date': self.event_date.get() or '',
                 'inventory_items': []
             }
             
-            for row in self.table_entries:
-                item = {
-                    'zone_active': row[0].get(),
-                    'sno': row[1].get(),
-                    'name': row[2].get(),
-                    'description': row[3].get(),
-                    'quantity': row[4].get(),
-                    'comments': row[5].get(),
-                    'total': row[6].get(),
-                    'unit': row[7].get(),
-                    'per_unit_power': row[8].get(),
-                    'total_power': row[9].get(),
-                    'status': row[10].get(),
-                    'poc': row[11].get(),
-                    'material': row[12].get()
-                }
-                data['inventory_items'].append(item)
-
-            if not self.save_to_db(data):
-                raise Exception("Failed to save to database")
+            # Process all rows - no limit
+            for row_idx, row in enumerate(self.table_entries, start=1):
+                # Only process rows with inventory name (skip empty rows)
+                if not row[2].get().strip():
+                    continue
+                    
+                try:
+                    item = {
+                        'zone_active': row[0].get() or 'General',
+                        'sno': row[1].get() or str(row_idx),
+                        'name': row[2].get(),
+                        'description': row[3].get() or '',
+                        'quantity': self._validate_number(row[4].get(), default=1),
+                        'comments': row[5].get() or '',
+                        'total': self._validate_number(row[6].get(), default=0),
+                        'unit': row[7].get() or 'pcs',
+                        'per_unit_power': self._validate_number(row[8].get(), default=0),
+                        'total_power': self._validate_number(row[9].get(), default=0),
+                        'status': row[10].get(),  # Simplified - just get the Combobox value
+                        'poc': row[11].get() or '',
+                        'RecQty': row[12].get() if len(row) > 12 else ''
+                    }
+                    data['inventory_items'].append(item)
+                except Exception as e:
+                    logger.error(f"Error processing row {row_idx}: {str(e)}")
+                    continue
+                        
+            if not data['inventory_items']:
+                messagebox.showwarning("Warning", "No valid inventory items to update")
+                return
+                
+            logger.debug(f"Prepared update data for {work_id} with {len(data['inventory_items'])} items")
             
-            messagebox.showinfo("Success", "Record updated successfully")
-            logger.info(f"Record updated: {data}")
+            # Save and verify
+            if not self.save_to_db(data):
+                raise Exception("Failed to persist changes to database")
+                
+            # Force complete refresh
+            self._complete_refresh(work_id)
+            
+            messagebox.showinfo("Success", f"Updated {len(data['inventory_items'])} items successfully")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Update failed: {str(e)}")
+            logger.error(f"Update error: {str(e)}", exc_info=True)
 
-            # Set fields back to readonly
+    def _validate_number(self, value, default=0):
+        """Ensure numeric fields are valid"""
+        try:
+            if not value:
+                return default
+            return float(value) if '.' in value else int(value)
+        except:
+            return default
+
+    def _complete_refresh(self, work_id):
+        """Complete refresh after update"""
+        try:
+            # Reload all data
+            self.load_submitted_forms()
+            
+            # Reload this specific project
+            self.load_project_data(work_id)
+            
+            # Reset UI state
             self.set_fields_readonly(True)
             self.edit_btn.config(state=tk.NORMAL)
             self.update_btn.config(state=tk.DISABLED)
-
-            # Refresh submitted forms tab
-            self.load_submitted_forms()
+            
+            # Ensure visibility in UI
+            self.tab_control.select(self.submitted_tab)
+            self._scroll_to_project(work_id)
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to update record: {str(e)}")
-            logger.error(f"Update failed: {str(e)}")
+            logger.error(f"Refresh error: {str(e)}", exc_info=True)
+
+    def _scroll_to_project(self, work_id):
+        """Scroll to the updated project in the treeview"""
+        for item in self.submitted_tree.get_children():
+            if self.submitted_tree.item(item)['values'][0] == work_id:
+                self.submitted_tree.selection_set(item)
+                self.submitted_tree.see(item)
+                break
+
+
+    def refresh_after_update(self, work_id):
+        """Refresh the form after successful update"""
+        try:
+            # Clear and reload the submitted forms list
+            self.load_submitted_forms()
+            
+            # Reload the current project data
+            self.load_project_data(work_id)
+            
+            # Switch to readonly mode
+            self.set_fields_readonly(True)
+            self.edit_btn.config(state=tk.NORMAL)
+            self.update_btn.config(state=tk.DISABLED)
+            
+            # Ensure the updated project is visible in the list
+            self.tab_control.select(self.submitted_tab)
+            
+            # Scroll to the updated project in the treeview
+            for item in self.submitted_tree.get_children():
+                if self.submitted_tree.item(item)['values'][0] == work_id:
+                    self.submitted_tree.selection_set(item)
+                    self.submitted_tree.see(item)
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Refresh after update failed: {str(e)}", exc_info=True)
 
     def toggle_wrap(self):
         """Toggle between wrapped and original column sizes"""
@@ -676,10 +920,37 @@ class ToEventWindow:
         
         row_entries = []
         for col in range(len(self.headers)):
-            entry = tk.Entry(self.scrollable_frame, font=('Helvetica', 9), 
-                           width=self.original_column_widths[col])
-            entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
-            row_entries.append(entry)
+            if col == 2:  # Inventory column - use InventoryComboBox
+                combo_frame = tk.Frame(self.scrollable_frame)
+                combo_frame.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                
+                combo = InventoryComboBox(combo_frame)
+                combo.pack(fill=tk.X, expand=True)
+                
+                # Bind selection to update related fields
+                combo.bind('<<ComboboxSelected>>', 
+                        lambda e, r=row_entries: self._update_inventory_fields(r, e))
+                row_entries.append(combo)
+            elif col == 10:  # Status column
+                status_var = tk.StringVar()
+                combo = ttk.Combobox(
+                    self.scrollable_frame,
+                    textvariable=status_var,
+                    values=self.status_options,
+                    state="state",
+                    font=('Helvetica', 9)
+                )
+                combo.set(self.status_options[0])  # Set default status
+                combo.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                row_entries.append(combo)
+            else:
+                entry = tk.Entry(self.scrollable_frame, 
+                            font=('Helvetica', 9), 
+                            width=self.original_column_widths[col])
+                if col == 12:  # RecQty column (index 12) - make it readonly
+                    entry.config(state='readonly')
+                entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
+                row_entries.append(entry)
         self.table_entries.append(row_entries)
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -696,7 +967,6 @@ class ToEventWindow:
         
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
     
-    # Submit form to API
     def submit_form(self):
         """Handle form submission with multiple inventory items"""
         try:
@@ -740,9 +1010,9 @@ class ToEventWindow:
                         'unit': row[7].get() or "pcs",  # Provide default if empty
                         'per_unit_power': float(row[8].get()) if row[8].get() and row[8].get().replace('.','',1).isdigit() else 0.0,
                         'total_power': float(row[9].get()) if row[9].get() and row[9].get().replace('.','',1).isdigit() else 0.0,
-                        'status': row[10].get() or "active",  # Provide default if empty
+                        'status': row[10].get(),
                         'poc': row[11].get() or "",  # Optional field
-                        'material': row[12].get() if len(row) > 12 else ""  # Handle optional material field
+                        'RecQty': row[12].get() if len(row) > 12 else ""  # Handle optional RecQty field
                     }
                     data['inventory_items'].append(item)
 
@@ -772,19 +1042,47 @@ class ToEventWindow:
             logger.error(f"Submit failed: {str(e)}")
 
     def clear_form(self):
-        """Clear all form fields"""
-        self.project_id.delete(0, tk.END)
-        self.employee_name.delete(0, tk.END)
-        self.location.delete(0, tk.END)
-        self.client_name.delete(0, tk.END)
-        self.setup_date.delete(0, tk.END)
-        self.project_name.delete(0, tk.END)
-        self.event_date.delete(0, tk.END)
-        
-        # Clear table entries
-        for row in self.table_entries:
-            for entry in row:
-                entry.delete(0, tk.END)
+        """Clear all form fields and generate new Work ID"""
+        try:
+            self.project_id.delete(0, tk.END)
+            self.employee_name.delete(0, tk.END)
+            self.location.delete(0, tk.END)
+            self.client_name.delete(0, tk.END)
+            
+            # Clear DateEntry widgets properly
+            self.setup_date.set_date(datetime.now().strftime('%Y-%m-%d'))
+            self.project_name.delete(0, tk.END)
+            self.event_date.set_date(datetime.now().strftime('%Y-%m-%d'))
+            
+            # Clear table entries
+            for row in self.table_entries:
+                for entry in row:
+                    entry.delete(0, tk.END)
+            
+            # Generate new Work ID
+            self.generate_work_id()
+            
+            # Set fields to editable state
+            self.set_fields_readonly(False)
+            
+            messagebox.showinfo("Cleared", "Form has been cleared")
+            logger.info("Form cleared successfully")
+        except Exception as e:
+            messagebox.showerror("Clear Error", f"Failed to clear form: {str(e)}")
+            logger.error(f"Clear failed: {str(e)}")
+
+    def refresh_data(self):
+        """Refresh the form and data lists"""
+        try:
+            # Clear existing items
+            self.clear_form()
+            # If we have a work_id loaded, refresh that specific record
+            current_work_id = self.work_id.get()              
+            messagebox.showinfo("Refreshed", "Data has been refreshed")
+            logger.info("Data refreshed successfully")
+        except Exception as e:
+            messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
+            logger.error(f"Refresh failed: {str(e)}")
 
     def update_clock(self):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
