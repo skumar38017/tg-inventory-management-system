@@ -21,6 +21,7 @@ authorized_user.json
 staticfiles/
 /static/barcodes/*
 static/barcodes/*
+static
 backend.zip
 postgres_data
 inventory_data.json
