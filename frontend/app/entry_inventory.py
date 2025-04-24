@@ -39,16 +39,6 @@ search_product_id_entry = None
 entries = {}
 checkbox_vars = {}
 
-def generate_inventory_id():
-    """Generate inventory ID starting with INV followed by 6 random digits"""
-    random_number = random.randint(100000, 999999)
-    return f"INV{random_number}"
-
-def generate_product_id():
-    """Generate product ID starting with PRD followed by 6 random digits"""
-    random_number = random.randint(100000, 999999)
-    return f"PRD{random_number}"
-
 def refresh_form(scrollable_frame, header_labels):
     """Refresh the form by clearing fields and regenerating IDs"""
     clear_fields()
@@ -572,12 +562,6 @@ def remove_last_row(scrollable_frame):
                 if key.endswith(f"_{max_row}"):
                     del checkbox_vars[key]
 
-def update_clock():
-    """Update the clock label with current time"""
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    clock_label.config(text=now)
-    root.after(1000, update_clock)
-
 def quit_application():
     """Confirm and quit the application"""
     if messagebox.askokcancel("Quit", "Do you really want to quit?"):
@@ -643,23 +627,12 @@ def setup_main_window():
     global root
     root = tk.Tk()
     root.title("Tagglabs's Inventory")
-
-    # Window maximization
-    try:
-        root.state('zoomed')
-    except tk.TclError:
-        try:
-            if platform.system() == 'Linux':
-                root.attributes('-zoomed', True)
-            else:
-                root.attributes('-fullscreen', True)
-        except:
-            root.geometry("{0}x{1}+0+0".format(
-                root.winfo_screenwidth(),
-                root.winfo_screenheight()
-            ))
-
+    
+    # Use the imported maximize_window function
+    maximize_window(root)
+    
     return root
+
 
 #  Create and configure the header frame with clock and company info
 def create_header_frame(root):
@@ -1155,10 +1128,13 @@ def main():
     # Initialize other components
     configure_responsive_grid()
     root.bind('<Configure>', lambda e: configure_responsive_grid())
-    update_clock()
 
-    root.protocol("WM_DELETE_WINDOW", quit_application)
+    # Setup clock update using the imported function
+    setup_clock_update(root, clock_label)
     
+    # Setup window closing handler using the imported function
+    setup_window_closing(root)
+
     root.mainloop()
 
 if __name__ == "__main__":

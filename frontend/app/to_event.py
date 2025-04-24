@@ -15,6 +15,9 @@ class ToEventWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs - To Event")
 
+        # Maximize window
+        maximize_window(self.window)
+
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
@@ -42,10 +45,7 @@ class ToEventWindow:
         
         # Focus on this window
         self.window.focus_set()
-        
-        # Maximize window
-        self.maximize_window()
-        
+                
         # Set initial state
         self.set_fields_readonly(False)
         
@@ -56,6 +56,9 @@ class ToEventWindow:
         self.load_submitted_forms()
         
         logger.info("To Event window opened successfully")
+
+    def maximize_window(self):
+        maximize_window(self.window)
 
     def initialize_db(self):
         """Initialize the JSON database file if it doesn't exist"""

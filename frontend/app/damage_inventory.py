@@ -17,7 +17,10 @@ class DamageWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Inventory Damage/Waste Management")
         
+        # Maximize window
+        self.maximize_window()
         # Get status options from StatusEnum
+        
         self.status_options = [status.value for status in StatusEnum]
         
         # Define the fields based on API schema
@@ -52,10 +55,7 @@ class DamageWindow:
 
         # Setup the UI
         self.setup_ui()
-                
-        # Maximize window
-        self.maximize_window()
-        
+            
         # Load initial data
         self.refresh_data()
 
@@ -65,19 +65,7 @@ class DamageWindow:
         logger.info("Damage/Waste Management window opened successfully")
 
     def maximize_window(self):
-        try:
-            self.window.state('zoomed')
-        except tk.TclError:
-            try:
-                if platform.system() == 'Linux':
-                    self.window.attributes('-zoomed', True)
-                else:
-                    self.window.attributes('-fullscreen', True)
-            except:
-                self.window.geometry("{0}x{1}+0+0".format(
-                    self.window.winfo_screenwidth(),
-                    self.window.winfo_screenheight()
-                ))
+        maximize_window(self.window)
 
     def setup_ui(self):
         """Set up all UI elements"""

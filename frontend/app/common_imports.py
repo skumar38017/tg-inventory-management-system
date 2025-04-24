@@ -33,6 +33,8 @@ from PIL import Image, ImageTk
 # Local imports
 from config import *
 from utils.field_validators import StatusEnum
+from utils.window_utils import maximize_window, setup_clock_update, setup_window_closing
+from widgets.generate_id import generate_inventory_id, generate_product_id
 
 # Configure logging
 logger = logging.getLogger(__name__)

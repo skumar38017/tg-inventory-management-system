@@ -17,6 +17,9 @@ class AssignInventoryWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs's Inventory - Assign Inventory To Employee")
 
+        # Maximize window
+        self.maximize_window()
+        
         # Get status options from StatusEnum
         self.status_options = [status.value for status in StatusEnum]
 
@@ -42,10 +45,7 @@ class AssignInventoryWindow:
         
         # Focus on this window
         self.window.focus_set()
-        
-        # Maximize window
-        self.maximize_window()
-        
+                
         # Load initial data
         self.refresh_assigned_inventory_list()
         self.load_recent_submissions()
@@ -53,20 +53,7 @@ class AssignInventoryWindow:
         logger.info("Assign Inventory window opened successfully")
 
     def maximize_window(self):
-        """Maximize the window based on platform"""
-        try:
-            self.window.state('zoomed')
-        except tk.TclError:
-            try:
-                if platform.system() == 'Linux':
-                    self.window.attributes('-zoomed', True)
-                else:
-                    self.window.attributes('-fullscreen', True)
-            except:
-                self.window.geometry("{0}x{1}+0+0".format(
-                    self.window.winfo_screenwidth(),
-                    self.window.winfo_screenheight()
-                ))
+        maximize_window(self.window)
 
     def setup_ui(self):
         """Set up all UI elements"""

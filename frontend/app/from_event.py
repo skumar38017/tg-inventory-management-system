@@ -15,6 +15,9 @@ class FromEventWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs - Return From Event")
 
+        # Maximize window
+        self.maximize_window()
+        
         # Track wrap state
         self.is_wrapped = False
         self.original_column_widths = []
@@ -39,10 +42,7 @@ class FromEventWindow:
         
         # Focus on this window
         self.window.focus_set()
-        
-        # Maximize window
-        self.maximize_window()
-        
+                
         # Set initial state
         self.set_fields_readonly(False)
         
@@ -135,19 +135,8 @@ class FromEventWindow:
                 entry.config(state=state)
 
     def maximize_window(self):
-        try:
-            self.window.state('zoomed')
-        except tk.TclError:
-            try:
-                if platform.system() == 'Linux':
-                    self.window.attributes('-zoomed', True)
-                else:
-                    self.window.attributes('-fullscreen', True)
-            except:
-                self.window.geometry("{0}x{1}+0+0".format(
-                    self.window.winfo_screenwidth(),
-                    self.window.winfo_screenheight()
-                ))
+        maximize_window(self.window)
+
 
     def setup_ui(self):
         """Set up all UI elements"""
