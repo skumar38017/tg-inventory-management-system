@@ -48,7 +48,7 @@
     # Copy from builder
     COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
     COPY --from=builder /usr/local/bin /usr/local/bin
-    COPY . .
+    COPY --from=builder /app /app
     
     # Set the working directory to the app location    
     CMD ["python", "entry_inventory.py"]
