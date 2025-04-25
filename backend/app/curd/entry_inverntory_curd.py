@@ -64,7 +64,6 @@ class EntryInventoryService(EntryInventoryInterface):
         self.base_url = config.BASE_URL
 
 
-# Upload/update all inventory entries from local Redis to the database after click on upload data button
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
         """Upload all inventory entries from Redis to the database with proper PUT/PATCH handling."""
         try:
@@ -88,6 +87,20 @@ class EntryInventoryService(EntryInventoryInterface):
                 'created_at', 'inventory_barcode', 
                 'inventory_unique_code', 'inventory_barcode_url'
             }
+
+            # Fields that should be converted to string
+            STRING_FIELDS = {
+                'total_quantity', 'purchase_amount', 'repair_quantity',
+                'repair_cost', 'total_rent', 'issued_qty', 'balance_qty'
+            }
+
+            # Fields that should be converted to lowercase string
+            BOOLEAN_FIELDS = {
+                'on_rent', 'rented_inventory_returned',
+                'on_event', 'in_office', 'in_warehouse'
+            }
+
+            BATCH_SIZE = 1000  # Process records in batches to avoid parameter limits
 
             for key in all_keys:
                 try:
@@ -116,9 +129,26 @@ class EntryInventoryService(EntryInventoryInterface):
                                 
                             processed_ids.add(entry_id)
                             
+                            # Convert fields to proper types
+                            processed_data = {}
+                            for k, v in entry_data.items():
+                                if v is None:
+                                    processed_data[k] = None
+                                elif k in STRING_FIELDS:
+                                    processed_data[k] = str(v) if v is not None else None
+                                elif k in BOOLEAN_FIELDS:
+                                    if isinstance(v, bool):
+                                        processed_data[k] = str(v).lower()
+                                    elif isinstance(v, str):
+                                        processed_data[k] = v.lower()
+                                    else:
+                                        processed_data[k] = 'false'
+                                else:
+                                    processed_data[k] = v
+                            
                             # Validate the data
                             try:
-                                validated_data = StoreInventoryRedis(**entry_data).model_dump()
+                                validated_data = StoreInventoryRedis(**processed_data).model_dump()
                             except ValidationError as ve:
                                 logger.error(f"Validation error for entry {entry_id}: {ve}")
                                 continue
@@ -157,28 +187,51 @@ class EntryInventoryService(EntryInventoryInterface):
                 raise HTTPException(status_code=404, detail="No valid inventory items found in Redis")
             
             try:
-                # Bulk insert new entries (PUT)
+                # Process new entries in batches (PUT)
                 if new_entries:
-                    stmt = insert(EntryInventory).values(new_entries)
-                    await db.execute(stmt)
+                    for i in range(0, len(new_entries), BATCH_SIZE):
+                        batch = new_entries[i:i + BATCH_SIZE]
+                        try:
+                            stmt = insert(EntryInventory).values(batch)
+                            await db.execute(stmt)
+                            await db.commit()
+                        except Exception as batch_error:
+                            await db.rollback()
+                            logger.error(f"Batch insert failed for batch {i}-{i+BATCH_SIZE}: {batch_error}")
+                            raise HTTPException(
+                                status_code=500,
+                                detail=f"Batch insert failed: {str(batch_error)}"
+                            )
                 
-                # Bulk update existing entries (PATCH)
-                for update_item in updates:
-                    stmt = (
-                        update(EntryInventory)
-                        .where(EntryInventory.id == update_item["id"])
-                        .values(**update_item["data"])
-                    )
-                    await db.execute(stmt)
+                # Process updates in batches (PATCH)
+                if updates:
+                    for i in range(0, len(updates), BATCH_SIZE):
+                        batch = updates[i:i + BATCH_SIZE]
+                        try:
+                            for update_item in batch:
+                                stmt = (
+                                    update(EntryInventory)
+                                    .where(EntryInventory.id == update_item["id"])
+                                    .values(**update_item["data"])
+                                )
+                                await db.execute(stmt)
+                            await db.commit()
+                        except Exception as batch_error:
+                            await db.rollback()
+                            logger.error(f"Batch update failed for batch {i}-{i+BATCH_SIZE}: {batch_error}")
+                            raise HTTPException(
+                                status_code=500,
+                                detail=f"Batch update failed: {str(batch_error)}"
+                            )
                 
-                await db.commit()
-                            
+                return uploaded_entries
+            
+            except HTTPException:
+                raise
             except Exception as e:
                 await db.rollback()
                 logger.error(f"Database operation failed: {e}")
                 raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
-            
-            return uploaded_entries
         
         except HTTPException:
             raise
@@ -186,7 +239,7 @@ class EntryInventoryService(EntryInventoryInterface):
             await db.rollback()
             logger.error(f"Upload operation failed: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Upload operation failed: {str(e)}")
-        
+                
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 #  inventory entries directly from local databases  (no search) according in sequence alphabetical order after clicking `Show All` button
 # ------------------------------------------------------------------------------------------------------------------------------------------------

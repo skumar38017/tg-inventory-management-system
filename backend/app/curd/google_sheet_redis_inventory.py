@@ -316,8 +316,7 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
         redis_key = f"inventory:{inventory_dict['inventory_name']}{inventory_dict['inventory_id']}"
         await self.redis.set(
             redis_key,
-            json.dumps(inventory_dict, default=str),
-            ex=100
+            json.dumps(inventory_dict, default=str)
         )
         logger.debug(f"Created new inventory: {inventory_dict['inventory_name']}")
 

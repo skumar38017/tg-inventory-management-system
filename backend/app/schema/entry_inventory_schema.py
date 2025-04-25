@@ -166,16 +166,16 @@ class SyncInventoryOut(EntryInventoryOut):
 # Schema for Store record in Redis after clicking {sync} button
 class StoreInventoryRedis(BaseModel, BaseValidators):
     """Schema for storing inventory in Redis"""
-    id: Optional[str] = None
-    sno: Optional[str] = None  # Changed to properly optional
+    id: Optional[Union[str, int]] = None
+    sno: Optional[Union[str, int]] = None  # Changed to properly optional
     inventory_id: Optional[str] = None
     product_id: Optional[str] = None
     inventory_name: Optional[str] = None
-    material: Optional[str] = None
+    material: Optional[Union[str, int]] = None
     total_quantity: Optional[Union[str, float, int]] = None
-    manufacturer: Optional[str] = None
+    manufacturer: Optional[Union[str, int]] = None
     purchase_dealer: Optional[str] = None
-    purchase_date: Optional[date] = None
+    purchase_date: Optional[Union[str, date]] = None
     purchase_amount: Optional[Union[str, float, int]] = None
     repair_quantity: Optional[Union[str, float, int]] = None
     repair_cost: Optional[Union[str, float, int]] = None
@@ -183,7 +183,7 @@ class StoreInventoryRedis(BaseModel, BaseValidators):
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
     rented_inventory_returned: Optional[str] = "false"  # Default value
-    returned_date: Optional[date] = None
+    returned_date: Optional[Union[str, date]] = None
     on_event: Optional[str] = "false"  # Default value
     in_office: Optional[str] = "false"  # Default value
     in_warehouse: Optional[str] = "false"  # Default value
@@ -192,7 +192,7 @@ class StoreInventoryRedis(BaseModel, BaseValidators):
     submitted_by: Optional[str] = None
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None
-    inventory_barcode: Optional[str] = None
+    inventory_barcode: Optional[Union[str, int]] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
 
