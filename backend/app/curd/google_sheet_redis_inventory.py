@@ -78,7 +78,7 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
             )
 
     async def _fetch_sheet_data(self):
-        """Fetch data from Google Sheets"""
+        """Fetch data from Google Sheets, only getting expected columns"""
         try:
             gc = await self._get_google_sheets_client()
             spreadsheet = gc.open_by_url(self.spreadsheet_url)
@@ -87,37 +87,40 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
             # Get all values first
             all_values = worksheet.get_all_values()
             
-            # Verify we have at least one row (header)
             if not all_values:
                 raise HTTPException(
                     status_code=400,
                     detail="Empty worksheet - no data found"
                 )
             
-            # Validate headers
-            actual_headers = all_values[0]
-            if len(actual_headers) != len(self.expected_headers):
-                logger.error(f"Header count mismatch. Expected {len(self.expected_headers)} columns, got {len(actual_headers)}")
+            # Get actual headers from first row
+            actual_headers = [h.strip().lower() for h in all_values[0]]
+            
+            # Find which expected headers exist in the sheet
+            valid_headers = []
+            for expected in self.expected_headers:
+                if expected in actual_headers:
+                    valid_headers.append(expected)
+                else:
+                    logger.warning(f"Expected column '{expected}' not found in sheet")
+            
+            if not valid_headers:
                 raise HTTPException(
                     status_code=400,
-                    detail="Column count mismatch with expected headers"
+                    detail="No matching columns found between sheet and expected headers"
                 )
             
-            # Log header mismatch without failing (adjust if strict matching needed)
-            if actual_headers != self.expected_headers:
-                logger.warning(f"Header mismatch. Expected: {self.expected_headers}, Got: {actual_headers}")
-                
-            # Use our expected headers to get records
+            # Get only the valid columns we care about
             records = worksheet.get_all_records(
-                expected_headers=self.expected_headers,
-                head=1  # Skip header row since we're providing our own
+                expected_headers=valid_headers,
+                head=1  # Skip header row
             )
             
             logger.info(f"Fetched {len(records)} records from Google Sheets")
             return records
             
         except HTTPException:
-            raise  # Re-raise our own HTTP exceptions
+            raise
         except Exception as e:
             logger.error(f"Failed to fetch data from Google Sheets: {str(e)}", exc_info=True)
             raise HTTPException(
