@@ -245,16 +245,56 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                     # Convert to dict and force include date fields
                     inventory_dict = inventory_data.model_dump(exclude_unset=False)
 
-                    redis_key = f"inventory:{inventory_data.inventory_name}{inventory_data.inventory_id}"
+                    # Create a search pattern for existing inventory
+                    search_pattern = f"inventory:*{inventory_data.inventory_name}*"
                     
-                    await self.redis.set(
-                        redis_key,
-                        json.dumps(inventory_dict, default=str),
-                        ex=200
-                    )
+                    # Scan Redis for existing inventory with this name
+                    existing_keys = []
+                    async for key in self.redis.scan_iter(match=search_pattern):
+                        existing_keys.append(key)
                     
-                    synced_items.append(InventoryRedisOut(**inventory_dict))
-                    logger.debug(f"Successfully processed row {idx}")
+                    if existing_keys:
+                        # If found, update existing record
+                        if len(existing_keys) > 1:
+                            logger.warning(f"Multiple entries found for {inventory_data.inventory_name}, updating first match")
+                        
+                        existing_key = existing_keys[0]
+                        existing_data = await self.redis.get(existing_key)
+                        
+                        if existing_data:
+                            existing_dict = json.loads(existing_data)
+                            
+                            # Update only the allowed fields
+                            update_fields = [
+                                "sno", "total_quantity", "manufacturer",
+                                "repair_quantity", "repair_cost", "issued_qty", 
+                                "balance_qty"
+                            ]
+                            
+                            for field in update_fields:
+                                if field in inventory_dict:
+                                    existing_dict[field] = inventory_dict[field]
+                            
+                            # Update timestamps
+                            existing_dict['updated_at'] = UTCDateUtils.get_current_datetime()
+                            
+                            # Save back to Redis
+                            await self.redis.set(
+                                existing_key,
+                                json.dumps(existing_dict, default=str),
+                                ex=200
+                            )
+                            
+                            synced_items.append(InventoryRedisOut(**existing_dict))
+                            logger.debug(f"Updated existing inventory: {inventory_data.inventory_name}")
+                        else:
+                            # If existing key but no data, treat as new
+                            await self._create_new_inventory(inventory_dict)
+                            synced_items.append(InventoryRedisOut(**inventory_dict))
+                    else:
+                        # If not found, create new record
+                        await self._create_new_inventory(inventory_dict)
+                        synced_items.append(InventoryRedisOut(**inventory_dict))
 
                 except Exception as e:
                     logger.error(f"Error processing row {idx}: {str(e)}", exc_info=True)
@@ -269,7 +309,18 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                 status_code=500,
                 detail=f"Sync failed: {str(e)}"
             )
-    
+
+    async def _create_new_inventory(self, inventory_dict: dict):
+        """Helper method to create new inventory in Redis"""
+        # redis_key = f"inventory:{inventory_dict['inventory_name']}{inventory_dict['inventory_id']}"
+        redis_key = f"inventory:{inventory_dict['inventory_name']}{inventory_dict['inventory_id']}"
+        await self.redis.set(
+            redis_key,
+            json.dumps(inventory_dict, default=str),
+            ex=100
+        )
+        logger.debug(f"Created new inventory: {inventory_dict['inventory_name']}")
+
 # import asyncio
 # from backend.app.config import REDIS_URL
 # if __name__ == "__main__":
