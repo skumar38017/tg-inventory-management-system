@@ -1,0 +1,9 @@
+# redis.conf.template
+
+requirepass ${REDIS_PASSWORD}
+appendonly yes
+save ""
+io-threads 4
+io-threads-do-reads yes
+appendfsync no
+activerehashing no
