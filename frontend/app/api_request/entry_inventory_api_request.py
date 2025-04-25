@@ -63,7 +63,7 @@ def handle_api_error(error: Exception, action: str, show_error: bool = True) -> 
 def sync_inventory() -> List[Dict[str, str]]:
     """Fetch inventory data from the API and return formatted data"""
     try:
-        response = make_api_request("POST", "/sync-from-sheets/")
+        response = make_api_request("POST", "sync-from-sheets/")
         response.raise_for_status()
         return format_inventory_response(response.json())
     except requests.RequestException as e:

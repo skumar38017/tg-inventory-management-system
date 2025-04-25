@@ -1,4 +1,3 @@
-#  frontend/app/widgets/inventory_combobox.py
 from common_imports import *
 from config import make_api_request
 from utils.inventory_utils import format_wastage_inventory_item
@@ -8,11 +7,35 @@ class InventoryComboBox(ttk.Combobox):
         super().__init__(master, **kwargs)
         self.bind('<KeyRelease>', self._on_keyrelease)
         self.bind('<<ComboboxSelected>>', self._on_select)
+        self.bind('<Button-1>', self._on_click)  # Bind left mouse click
         self._inventory_data = []
         self._last_search = ""
         self._typing = False
-        self._all_inventory_data = []  # Store all inventory data for project filtering
+        self._all_inventory_data = []
         
+    def _on_click(self, event):
+        """Handle click event to show all inventory names"""
+        if not self._typing:
+            self._load_all_inventory_names()
+            
+    def _load_all_inventory_names(self):
+        """Load all inventory names into the dropdown"""
+        try:
+            items = self._fetch_inventory_items()
+            self._inventory_data = items
+            self._all_inventory_data = items
+            names = [item['inventory_name'] for item in items if item['inventory_name']]
+            
+            # Update dropdown values
+            self['values'] = names
+            
+            # Show dropdown
+            self.event_generate('<Down>')
+            
+        except Exception as e:
+            logging.error(f"Error loading inventory names: {e}")
+            messagebox.showerror("Error", f"Failed to load inventory names: {e}")
+                
     def _on_keyrelease(self, event):
         """Handle key releases while maintaining natural typing flow"""
         if event.keysym in ('BackSpace', 'Delete') or len(event.keysym) == 1:
@@ -32,7 +55,7 @@ class InventoryComboBox(ttk.Combobox):
         try:
             items = self._fetch_inventory_items(search_term)
             self._inventory_data = items
-            self._all_inventory_data = items  # Store all data for project filtering
+            self._all_inventory_data = items
             names = [item['inventory_name'] for item in items if item['inventory_name']]
             
             # Update dropdown values
@@ -68,6 +91,14 @@ class InventoryComboBox(ttk.Combobox):
             if 0 <= selected_index < len(self._inventory_data):
                 selected_item = self._inventory_data[selected_index]
                 print(f"Selected: {selected_item['inventory_name']} (ID: {selected_item['inventory_id']})")
+                # Here you can add code to load the full data for the selected item
+                self._load_selected_item_data(selected_item)
+    
+    def _load_selected_item_data(self, item: Dict):
+        """Load data for the selected item"""
+        # Implement your data loading logic here
+        # For example, you might want to update other widgets or make an API call
+        print("Loading data for:", item)
             
     def get_selected_item(self) -> Dict:
         """Get the full data for the currently selected item"""
@@ -93,7 +124,6 @@ class InventoryComboBox(ttk.Combobox):
             response.raise_for_status()
             
             data = response.json()
-            # Extract items from response and ensure proper formatting
             items = data.get('items', [])
             return [self._format_combobox_item(item) for item in items]
                 
@@ -110,7 +140,6 @@ class InventoryComboBox(ttk.Combobox):
 
     def _format_combobox_item(self, item: Dict) -> Dict:
         """Format combobox item to ensure consistent structure"""
-        # Handle different key types in the response
         formatted = {
             "id": item.get("id") or "",
             "sno": item.get("sno") or "",
@@ -139,7 +168,6 @@ class InventoryComboBox(ttk.Combobox):
             "wastage_barcode_image_url": item.get("wastage_barcode_image_url") or ""
         }
         
-        # Handle date formatting if needed
         for date_field in ["event_date", "receive_date", "wastage_date"]:
             if formatted[date_field]:
                 try:
@@ -148,33 +176,3 @@ class InventoryComboBox(ttk.Combobox):
                     pass
         
         return formatted
-
-
-    
-# Drop Down search list option ComboBox Widget for damage inventory
-def inventory_ComboBox(search_term: str = None) -> List[Dict]:
-    """Search damage inventory from API by inventory name"""
-    try:
-        params = {'inventory_name': search_term, 'skip': 0} if search_term else {}
-        response = make_api_request(
-            "GET", 
-            "inventory-combobox/",
-            params=params,
-            timeout=5
-        )
-        response.raise_for_status()
-        
-        data = response.json()
-        items = data.get('items', [])
-        return [format_wastage_inventory_item(item) for item in items]
-            
-    except requests.exceptions.Timeout:
-        error_msg = "Search timed out. Please try again later."
-        logger.error(error_msg)
-        messagebox.showerror("Timeout Error", error_msg)
-        return []
-    except requests.exceptions.RequestException as e:
-        error_msg = f"Failed to search inventory: {e}"
-        logger.error(error_msg)
-        messagebox.showerror("API Error", error_msg)
-        return []
