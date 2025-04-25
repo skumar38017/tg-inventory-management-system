@@ -23,34 +23,32 @@ services:
   redis:
     container_name: ${REDIS_CONTAINER_NAME}
     image: ${REDIS_IMAGE}
+    network_mode: host
     ports:
       - "${REDIS_PORT}:${REDIS_HTTP_PORT}"
-    command: 
-      - sh
-      - -c 
-      - |
-        # Replace environment variables in config
-        sed -i "s/\${REDIS_PORT}/${REDIS_PORT}/g" /etc/redis_data/redis.conf
-        sed -i "s/\${REDIS_BIND_IP}/${REDIS_BIND_IP}/g" /etc/redis_data/redis.conf
-        sed -i "s/\${REDIS_USER}/${REDIS_USERNAME}/g" /etc/redis_data/redis.conf
-        sed -i "s/\${REDIS_PASSWORD}/${REDIS_PASSWORD}/g" /etc/redis_data/redis.conf
-        # Start Redis
-        exec redis-server /etc/redis/redis.conf
     volumes:
-      - ./redis_data:/data
-      - ./redis_data/redis.conf:/etc/redis/redis.conf
-      - ./redis_data/redis.log:/var/log/redis/redis.log
+      - ${PWD}redis_data/redis_data:/data
+      - ${PWD}/redis_data/redis_data/redis.conf:/etc/redis/redis.conf
+    
     environment:
       - REDIS_USERNAME=${REDIS_USERNAME}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REDIS_USER=${REDIS_USERNAME}  # For healthcheck
+      - sysctl vm.overcommit_memory=1
     restart: unless-stopped
+    sysctls:
+      - net.core.somaxconn=65535
+      - vm.overcommit_memory=1
     healthcheck:
       test: ["CMD", "redis-cli", "--user", "${REDIS_USER}", "--pass", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
 
   frontend:
     container_name: ${FRONTEND_CONTAINER_NAME:-frontend}

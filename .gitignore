@@ -25,6 +25,7 @@ static/barcodes/*
 static
 backend.zip
 postgres_data
+redis_data/redis_data
 inventory_data.json
 Project Structure.txt
 sumit_accessKeys.csv
