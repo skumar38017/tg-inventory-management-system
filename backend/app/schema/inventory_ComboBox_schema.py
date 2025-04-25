@@ -22,21 +22,21 @@ class InventoryComboBoxItem(BaseModel):
     uuid: Optional[str] = None
     id: Optional[Union[str, int]] = None
     sno: Optional[Union[str, int]] = None
-    inventory_id: Optional[str] = None
-    product_id: Optional[str] = None
-    project_id: Optional[str] = None
-    name: Optional[str] = None
-    inventory_name: Optional[str] = None
-    description: Optional[str] = None
+    inventory_id: Optional[Union[str, int]] = None
+    product_id: Optional[Union[str, int]] = None
+    project_id: Optional[Union[str, int]] = None
+    name: Optional[Union[str, int]] = None
+    inventory_name: Optional[Union[str, int]] = None
+    description: Optional[Union[str, int]] = None
     quantity: Optional[Union[str, int]] = None
-    status: Optional[str] = None
+    status: Optional[Union[str, int]] = None
     location: Optional[str] = None
     project_name: Optional[str] = None
     event_date: Optional[Union[str, int, date]] = None
     comment: Optional[str] = None
     comments: Optional[str] = None
-    zone_activity: Optional[str] = None
-    zone_active: Optional[str] = None
+    zone_activity: Optional[Union[str, int]] = None
+    zone_active: Optional[Union[str, int]] = None
     submitted_by: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -59,7 +59,7 @@ class InventoryComboBoxItem(BaseModel):
     wastage_reason: Optional[str] = None
     wastage_date: Optional[Union[str, int, date]] = None
     wastage_approved_by: Optional[str] = None
-    wastage_status: Optional[str] = None
+    wastage_status: Optional[Union[str, int]] = None
     wastage_barcode: Optional[Union[str, int]] = None
     wastage_barcode_image_url: Optional[str] = None
     
@@ -71,7 +71,7 @@ class InventoryComboBoxItem(BaseModel):
     unit: Optional[Union[str, int]] = None
     per_unit_power: Optional[Union[str, int]] = None
     total_power: Optional[Union[str, int]] = None
-    poc: Optional[str] = None
+    poc: Optional[Union[str, int]] = None
     
     # Inventory item specific fields
     total_quantity: Optional[Union[str, int]] = None
