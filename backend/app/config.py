@@ -10,6 +10,9 @@ from sqlalchemy.ext.declarative import declarative_base
 load_dotenv() 
 Base = declarative_base() 
 
+# Google Sheets Configuration
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
@@ -54,3 +57,21 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 SYNC_DB_URL=f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 ASYNC_DB_URL=f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+
+
+# Build the full path to credentials file
+credentials_path = os.getenv("GOOGLE_SERVICE_ACCOUNT", "app/credentials/office-inventory-457815-1b466ac001f7.json")
+SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, credentials_path)
+
+# Verify the file exists at startup
+if not os.path.exists(SERVICE_ACCOUNT_FILE):
+    raise ValueError(f"Google credentials file not found at: {SERVICE_ACCOUNT_FILE}")
+
+SPREADSHEET_URL = os.getenv("SPREADSHEET_URL")
+SHEET_NAME = os.getenv("SHEET_NAME", "testing")
+
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]

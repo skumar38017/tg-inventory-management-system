@@ -39,35 +39,35 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
-        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1Zfz3R89APsXWb87P4aF5iH0jaFoxr7Lll8_raRkaJD8"
-        
-        # Load environment variables
+        self.spreadsheet_url = config.SPREADSHEET_URL
+        self.sheet_name = config.SHEET_NAME
+        self.scopes = config.SCOPES
         load_dotenv()
         
-        # Define expected headers (must match and be unique)
+        # Verify credentials file exists on initialization
+        if not os.path.exists(config.SERVICE_ACCOUNT_FILE):
+            logger.error(f"Google credentials file not found at: {config.SERVICE_ACCOUNT_FILE}")
+            raise ValueError("Google service account credentials file not found")
+        
+        # Updated to match actual Google Sheet columns (10 columns)
         self.expected_headers = [
-            "sno", "material", "total_quantity", "manufacturer", 
-            "repair_quantity", "repair_cost", "issued_qty", "balance_qty"
+            "sno", 
+            "material", 
+            "total_quantity", 
+            "manufacturer",
+            "repair_quantity", 
+            "repair_cost", 
+            "issued_qty", 
+            "balance_qty",
         ]
 
     async def _get_google_sheets_client(self):
         """Authenticate with Google Sheets API using service account"""
         try:
-            # Get credentials path from environment or use default
-            SERVICE_ACCOUNT_FILE = os.getenv(
-                "GOOGLE_SERVICE_ACCOUNT",
-                os.path.join(os.path.dirname(__file__), "..", "credentials", "office-inventory-457815-1b466ac001f7.json")
-            )
-            
-            # Define scopes and create credentials object
             creds = Credentials.from_service_account_file(
-                SERVICE_ACCOUNT_FILE, 
-                scopes=[
-                    "https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive"
-                ]
+                config.SERVICE_ACCOUNT_FILE, 
+                scopes=self.scopes
             )
-            
             return gspread.authorize(creds)
             
         except Exception as e:
@@ -81,13 +81,45 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
         """Fetch data from Google Sheets"""
         try:
             gc = await self._get_google_sheets_client()
-            sheet = gc.open_by_url(self.spreadsheet_url).sheet1
-            records = sheet.get_all_records(expected_headers=self.expected_headers)
+            spreadsheet = gc.open_by_url(self.spreadsheet_url)
+            worksheet = spreadsheet.worksheet(self.sheet_name)
+            
+            # Get all values first
+            all_values = worksheet.get_all_values()
+            
+            # Verify we have at least one row (header)
+            if not all_values:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Empty worksheet - no data found"
+                )
+            
+            # Validate headers
+            actual_headers = all_values[0]
+            if len(actual_headers) != len(self.expected_headers):
+                logger.error(f"Header count mismatch. Expected {len(self.expected_headers)} columns, got {len(actual_headers)}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Column count mismatch with expected headers"
+                )
+            
+            # Log header mismatch without failing (adjust if strict matching needed)
+            if actual_headers != self.expected_headers:
+                logger.warning(f"Header mismatch. Expected: {self.expected_headers}, Got: {actual_headers}")
+                
+            # Use our expected headers to get records
+            records = worksheet.get_all_records(
+                expected_headers=self.expected_headers,
+                head=1  # Skip header row since we're providing our own
+            )
+            
             logger.info(f"Fetched {len(records)} records from Google Sheets")
             return records
             
+        except HTTPException:
+            raise  # Re-raise our own HTTP exceptions
         except Exception as e:
-            logger.error(f"Failed to fetch data from Google Sheets: {str(e)}")
+            logger.error(f"Failed to fetch data from Google Sheets: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail="Failed to fetch data from Google Sheets"
