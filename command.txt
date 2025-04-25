@@ -53,7 +53,7 @@ docker tag tg/inventory:latest 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/
 docker push 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
 
 4. pull the image from ECR
-docker pull 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory/ims-frontend:latest
+docker pull 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
 
 
 5. Run the image
