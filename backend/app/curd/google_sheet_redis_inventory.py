@@ -8,52 +8,67 @@ from typing import List, Optional
 import json
 import random
 import logging
+from typing import List, Optional, Dict, Any, Union
+from fastapi import Request
+from starlette.requests import Request as StarletteRequest
+
 import uuid
-import csv
 from datetime import datetime
 from pydantic import BaseModel
 from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryBase,
-    EntryInventoryCreate,
+    GoogleSyncInventoryCreate,
     InventoryRedisOut
 )
-import httpx 
 import os
 from backend.app.utils.field_validators import BaseValidators
-from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
-from io import StringIO
+from backend.app.interface.entry_inverntory_interface import GoogleSyncInventoryInterface
 import redis.asyncio as redis
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
 from google.oauth2 import service_account
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-class GoogleSheetsToRedisSync(EntryInventoryInterface):
-    """Implementation of EntryInventoryInterface with async operations"""
+class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
+    """Implementation of GoogleSyncInventoryInterface with async operations"""
 
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
-        self.spreadsheet_key = "1GCtZ7pcFsqcIvbkhq9q-b3YmBZxEQ120UCIU_X5CuP8"
-        self.SHEET_NAME = "Main sheet"
+        self.spreadsheet_url = "https://docs.google.com/spreadsheets/d/1Zfz3R89APsXWb87P4aF5iH0jaFoxr7Lll8_raRkaJD8"
         
+        # Load environment variables
+        load_dotenv()
+        
+        # Define expected headers (must match and be unique)
+        self.expected_headers = [
+            "sno", "material", "total_quantity", "manufacturer", 
+            "repair_quantity", "repair_cost", "issued_qty", "balance_qty"
+        ]
+
     async def _get_google_sheets_client(self):
         """Authenticate with Google Sheets API using service account"""
         try:
-            # Path to your service account credentials file
-            creds = service_account.Credentials.from_service_account_file(
-                'credentials.json',
-                scopes=['https://www.googleapis.com/auth/spreadsheets']
+            # Get credentials path from environment or use default
+            SERVICE_ACCOUNT_FILE = os.getenv(
+                "GOOGLE_SERVICE_ACCOUNT",
+                os.path.join(os.path.dirname(__file__), "..", "credentials", "office-inventory-457815-1b466ac001f7.json")
             )
             
+            # Define scopes and create credentials object
+            creds = Credentials.from_service_account_file(
+                SERVICE_ACCOUNT_FILE, 
+                scopes=[
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+            )
             
-            # Delegate access to the specific email
-            delegated_creds = creds.with_subject('sumitkumar@tagglabs.in')
-            
-            return gspread.authorize(delegated_creds)
+            return gspread.authorize(creds)
             
         except Exception as e:
             logger.error(f"Google Sheets authentication failed: {str(e)}")
@@ -63,36 +78,20 @@ class GoogleSheetsToRedisSync(EntryInventoryInterface):
             )
 
     async def _fetch_sheet_data(self):
-        """Fetch data from Google Sheets with fallback to CSV"""
+        """Fetch data from Google Sheets"""
         try:
-            # First try the API method
             gc = await self._get_google_sheets_client()
-            spreadsheet = gc.open_by_key(self.SPREADSHEET_KEY)
-            worksheet = spreadsheet.worksheet(self.SHEET_NAME)
-            records = worksheet.get_all_records()
-            logger.info(f"Fetched {len(records)} records via API")
+            sheet = gc.open_by_url(self.spreadsheet_url).sheet1
+            records = sheet.get_all_records(expected_headers=self.expected_headers)
+            logger.info(f"Fetched {len(records)} records from Google Sheets")
             return records
             
-        except Exception as api_error:
-            logger.warning(f"API access failed, trying CSV fallback: {str(api_error)}")
-            
-            # Fallback to CSV export
-            CSV_URL = f"https://docs.google.com/spreadsheets/d/{self.SPREADSHEET_KEY}/export?format=csv&gid=0"
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.get(CSV_URL)
-                response.raise_for_status()
-                csv_data = response.text
-
-            # Parse CSV to list of dicts
-            records = []
-            reader = csv.DictReader(StringIO(csv_data))
-            for row in reader:
-                # Clean empty values
-                records.append({k: v for k, v in row.items() if v})
-                
-            logger.info(f"Fetched {len(records)} records via CSV")
-            return records
+        except Exception as e:
+            logger.error(f"Failed to fetch data from Google Sheets: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to fetch data from Google Sheets"
+            )
 
     def _convert_quantity(self, value):
         """Convert quantity values to integers safely"""
@@ -105,36 +104,54 @@ class GoogleSheetsToRedisSync(EntryInventoryInterface):
                 return 0
         return 0
 
-    async def _process_sheet_row(self, record: dict, idx: int) -> Optional[EntryInventoryCreate]:
-        """Process a single row from Google Sheets into EntryInventoryCreate"""
+    async def _process_sheet_row(self, record: dict, idx: int) -> Optional[GoogleSyncInventoryCreate]:
+        """Process a single row from Google Sheets into GoogleSyncInventoryCreate"""
         try:
-            if not record.get('Material'):
+            # Skip if no material name
+            if not record.get('material'):
+                logger.warning(f"Row {idx} skipped - no material name")
                 return None
 
-            # Generate IDs
-            inventory_id = f"INV{random.randint(100000, 999999)}"
-            product_id = f"PRD{random.randint(100000, 999999)}"
-            id = str(uuid.uuid4())
+            # Convert all quantities to integers with proper defaults
+            quantities = ['total_quantity', 'repair_quantity', 'issued_qty', 'balance_qty']
+            for qty in quantities:
+                try:
+                    record[qty] = int(float(record.get(qty, 0)))
+                except (ValueError, TypeError):
+                    record[qty] = 0
+                    logger.warning(f"Row {idx} - invalid {qty} value: {record.get(qty)}")
 
-            # Create base inventory data
-            inventory_data = EntryInventoryCreate(
+            # Generate IDs if not provided
+            inventory_id = record.get('inventory_id') or f"INV{random.randint(100000, 999999)}"
+            product_id = record.get('product_id') or f"PRD{random.randint(100000, 999999)}"
+            id = record.get('id') or str(uuid.uuid4())
+
+            # Create base inventory data with explicit empty strings for dates
+            inventory_data = GoogleSyncInventoryCreate(
                 id=id,
                 product_id=product_id,
                 inventory_id=inventory_id,
-                sno=f"SN{idx:04d}",
-                inventory_name=record['Material'],
-                material=record.get('Material', ''),
-                total_quantity=self._convert_quantity(record.get('Total Quantity', 0)),
-                manufacturer=record.get('Manufacturer', ''),
-                repair_quantity=self._convert_quantity(record.get('Repair Quantity', 0)),
-                repair_cost=self._convert_quantity(record.get('Repair Cost', 0)),
-                issued_qty=self._convert_quantity(record.get('Issued Qty', 0)),
-                balance_qty=self._convert_quantity(record.get('Balance Qty', 0)),
+                sno=record.get('sno', f"SN{idx:04d}"),
+                inventory_name=record['material'],
+                material=record.get('material', ''),
+                total_quantity=record.get('total_quantity', 0),
+                manufacturer=record.get('manufacturer', 'Unknown'),
+                purchase_dealer=record.get('purchase_dealer', 'Unknown'),
+                purchase_date=record.get('purchase_date'),  # Let validator handle None
+                purchase_amount=record.get('purchase_amount', 0),
+                repair_quantity=record.get('repair_quantity', 0),
+                repair_cost=record.get('repair_cost', 0),
+                vendor_name=record.get('vendor_name', 'Unknown'),
+                total_rent=record.get('total_rent', 0),
+                rented_inventory_returned=record.get('rented_inventory_returned', False),
+                returned_date=record.get('returned_date'),  # Let validator handle None
+                issued_qty=record.get('issued_qty', 0),
+                balance_qty=record.get('balance_qty', 0),
                 submitted_by="System Sync",
                 updated_at=UTCDateUtils.get_current_datetime(),
                 created_at=UTCDateUtils.get_current_datetime()
             )
-           
+        
             # Process and validate boolean fields
             boolean_fields = {
                 'on_rent': False,
@@ -162,90 +179,81 @@ class GoogleSheetsToRedisSync(EntryInventoryInterface):
             return inventory_data
 
         except Exception as e:
-            logger.error(f"Error processing row {idx}: {str(e)}")
+            logger.error(f"Error processing row {idx}: {str(e)}", exc_info=True)
             return None
 
     async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
-        """
-        Sync inventory data from Google Sheets to Redis with enhanced error handling
-        """
         try:
-            # First try the API method with OAuth
-            try:
-                gc = await self._get_google_sheets_client()
-                worksheet = gc.open_by_key(self.spreadsheet_key).self.SHEET_NAME 
-                records = worksheet.get_all_records()
-                
-                logger.info(f"Successfully fetched {len(records)} records via Sheets API")
-                
-            except Exception as api_error:
-                logger.warning(f"API access failed, trying CSV fallback: {str(api_error)}")
-                
-                # Fallback to CSV export if API fails
-                CSV_URL = f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_key}/export?format=csv"
-                
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(CSV_URL)
-                    response.raise_for_status()
-                    csv_data = response.text
-
-                # Parse CSV to list of dicts
-                from io import StringIO
-                import csv
-                records = []
-                reader = csv.DictReader(StringIO(csv_data))
-                records = list(reader)
-                logger.info(f"Successfully fetched {len(records)} records via CSV")
-
-            # Process records
-            synced_items = []
-            success_count = 0
-            error_count = 0
+            logger.info("Starting Google Sheets sync")
+            records = await self._fetch_sheet_data()
+            logger.info(f"Total records fetched from Google Sheets: {len(records)}")
             
+            if not records:
+                logger.warning("No records found in Google Sheets")
+                return []
+
+            synced_items = []
             for idx, record in enumerate(records, start=1):
                 try:
-                    # Debug: Log first record
-                    if idx == 1:
-                        logger.debug(f"First record sample: {dict(list(record.items())[:3])}")
+                    logger.debug(f"Processing row {idx}: {record.get('material')}")
                     
+                    # Skip if essential data is missing
+                    if not record.get('material'):
+                        logger.warning(f"Skipping row {idx} - missing material name")
+                        continue
+
                     inventory_data = await self._process_sheet_row(record, idx)
                     if not inventory_data:
+                        logger.warning(f"Skipping row {idx} - failed to process")
                         continue
-                    
-                    # Convert to dictionary for Redis storage
-                    inventory_dict = inventory_data.dict(
-                        exclude_unset=True,
-                        exclude_none=True
-                    )
-                    
-                    # Create unique Redis key
+
+                    # Convert to dict and force include date fields
+                    inventory_dict = inventory_data.model_dump(exclude_unset=False)
+
                     redis_key = f"inventory:{inventory_data.inventory_name}{inventory_data.inventory_id}"
+                    
                     await self.redis.set(
                         redis_key,
                         json.dumps(inventory_dict, default=str),
-                        ex=86400  # Optional: Set expiration (1 day)
+                        ex=200
                     )
                     
                     synced_items.append(InventoryRedisOut(**inventory_dict))
-                    success_count += 1
-                    
+                    logger.debug(f"Successfully processed row {idx}")
+
                 except Exception as e:
-                    error_count += 1
-                    logger.error(f"Row {idx} failed: {str(e)}", exc_info=True)
+                    logger.error(f"Error processing row {idx}: {str(e)}", exc_info=True)
                     continue
-            
-            logger.info(f"Sync completed: {success_count} items, {error_count} errors")
+
+            logger.info(f"Sync completed. Success: {len(synced_items)}/{len(records)}")
             return synced_items
-            
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error accessing Google Sheets: {str(e)}")
-            raise HTTPException(
-                status_code=502,
-                detail="Failed to connect to Google Sheets"
-            )
+
         except Exception as e:
             logger.error(f"Critical sync error: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail=f"Sync failed: {str(e)}"
             )
+    
+# import asyncio
+# from backend.app.config import REDIS_URL
+# if __name__ == "__main__":
+#     from fastapi import Request
+#     from starlette.requests import Request as StarletteRequest  # or mock one
+
+#     async def main():
+#         # Connect to Redis (ensure Redis is running)
+#         redis = await aioredis.from_url(REDIS_URL)
+
+#         # Create the sync instance
+#         syncer = GoogleSheetsToRedisSyncService(redis)
+
+#         # Create a fake Request object if needed (depends on FastAPI setup)
+#         request = StarletteRequest(scope={"type": "http"})
+
+#         # Run sync
+#         result = await syncer.sync_inventory_from_google_sheets(request)
+#         print(f"Synced {len(result)} items.")
+
+#     asyncio.run(main())
+

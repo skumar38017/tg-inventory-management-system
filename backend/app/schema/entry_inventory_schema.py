@@ -1,5 +1,5 @@
 #  backend/app/schema/entry_inventory_schema.py
-from pydantic import BaseModel, field_validator, validator, ConfigDict, model_validator
+from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
 from datetime import datetime, date, timezone
 from typing import Optional, Dict
 import re
@@ -210,3 +210,66 @@ class InventoryRedisOut(StoreInventoryRedis):
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)
         return cls(**data)
+
+
+class GoogleSyncInventoryBase(BaseValidators, BaseModel):
+    id: Optional[str] = None  # Allow id in base model
+    product_id: Optional[str] = None  
+    inventory_id: Optional[str] = None  
+    sno: Optional[Union[str, int]] = None  # Accept both string and int
+    inventory_name: Optional[str] = None
+    material: Optional[str] = None
+    total_quantity: Optional[Union[str, float, int]] = 0  # Default to 0
+    manufacturer: Optional[str] = None
+    purchase_dealer: Optional[str] = None
+    purchase_date: Optional[Union[str, date]] = Field(default=None, description="Purchase date in YYYY-MM-DD format")
+    purchase_amount: Optional[Union[str, float, int]] = 0
+    repair_quantity: Optional[Union[str, float, int]] = 0  # Default to 0
+    repair_cost: Optional[Union[str, float, int]] = 0
+    on_rent: Optional[Union[str, bool]] = False
+    vendor_name: Optional[str] = None
+    total_rent: Optional[Union[str, float, int]] = 0
+    rented_inventory_returned: Optional[Union[str, bool]] = False
+    returned_date: Optional[Union[str, date]] = Field(default=None, description="Return date in YYYY-MM-DD format")
+    on_event: Optional[Union[str, bool]] = False
+    in_office: Optional[Union[str, bool]] = False
+    in_warehouse: Optional[Union[str, bool]] = False
+    issued_qty: Optional[Union[str, float, int]] = 0
+    balance_qty: Optional[Union[str, float, int]] = 0
+    submitted_by: Optional[str] = "System Sync"
+    created_at: Optional[Union[str, datetime]] = None  # Allow updated_at
+    updated_at: Optional[Union[str, datetime]] = None  # Allow updated_at
+    inventory_barcode: Optional[str] = None
+    inventory_unique_code: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
+
+    model_config = ConfigDict(
+        extra="ignore",
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
+        }
+    )
+
+    @field_validator('sno', mode='before')
+    def convert_sno_to_string(cls, v):
+        if v is None:
+            return None
+        return str(v)
+
+    @field_validator('purchase_date', 'returned_date', mode='before')
+    def parse_date_fields(cls, value):
+        if value in [None, "", "null", "n/a", "N/A", "yyyy-mm-dd", "YYYY-MM-DD"]:
+            return None  # Return None instead of string
+        if isinstance(value, date):
+            return value
+        try:
+            return UTCDateUtils.parse_date(value)
+        except ValueError:
+            return None  # Return None on parse failure
+
+class GoogleSyncInventoryCreate(GoogleSyncInventoryBase):
+    model_config = ConfigDict(
+        # No longer excluding fields since we want to allow them
+        extra="ignore"
+    )

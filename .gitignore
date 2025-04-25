@@ -18,6 +18,7 @@ media
 backend/app/.env
 credentials.json
 authorized_user.json
+tg-inventory-457812-7ee6b89d05b2.json
 staticfiles/
 /static/barcodes/*
 static/barcodes/*
@@ -28,7 +29,7 @@ inventory_data.json
 Project Structure.txt
 sumit_accessKeys.csv
 sumit_credentials.csv
-
+credentials
 
 
 

@@ -23,7 +23,7 @@ import requests
 from fastapi import Depends, Request
 from fastapi import Request
 from backend.app.curd.entry_inverntory_curd import EntryInventoryService
-from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSync
+from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSyncService
 from backend.app.interface.entry_inverntory_interface import (
     EntryInventoryInterface
 )
@@ -33,6 +33,14 @@ def get_entry_inventory_service(
     redis: aioredis.Redis = Depends(get_redis_dependency)
 ) -> EntryInventoryService:
     return EntryInventoryService(redis)
+
+# Dependency to get the entry inventory service
+def get_entryget_inventory_from_google_sheet(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> GoogleSheetsToRedisSyncService:
+    return GoogleSheetsToRedisSyncService(redis)
+
+
 
 # Set up the router
 router = APIRouter()
@@ -61,7 +69,7 @@ logger.setLevel(logging.INFO)
 )
 async def sync_from_sheets(
     request: Request,
-    service: GoogleSheetsToRedisSync = Depends(get_entry_inventory_service)
+    service: GoogleSheetsToRedisSyncService = Depends(get_entryget_inventory_from_google_sheet)
 ):
     """
     Synchronize inventory data from Google Sheets to Redis cache.

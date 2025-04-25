@@ -19,6 +19,11 @@ from pydantic import BaseModel
 from datetime import date
 import requests
 
+class GoogleSyncInventoryInterface:
+    async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
+        pass
+
+
 class EntryInventoryInterface:
     #  Upload all inventory entries from local Redis to the database after click on upload data button
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
