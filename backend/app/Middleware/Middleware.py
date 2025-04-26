@@ -1,5 +1,10 @@
 #  backend/app/Middleware/Middleware.py
 
+from fastapi import Request
+from fastapi import FastAPI
+
+app = FastAPI()
+
 # Middleware to detect public scans (add to FastAPI app)
 @app.middleware("http")
 async def public_scan_detector(request: Request, call_next):
