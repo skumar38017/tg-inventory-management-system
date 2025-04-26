@@ -30,7 +30,7 @@ inventory_data.json
 Project Structure.txt
 sumit_accessKeys.csv
 sumit_credentials.csv
-credentials/users/
+credentials/users/*
 alembic/versions/*
 
 

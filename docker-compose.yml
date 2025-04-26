@@ -51,29 +51,30 @@ services:
         soft: 100032
         hard: 100032
 
-  # frontend:
-  #   container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
-  #   image: ${IMAGE}:latest
-  #   environment:
-  #     - DISPLAY=${DISPLAY:-host.docker.internal:0}  # Works for both Linux and Windows
-  #     - PYTHONPATH=/app
-  #     - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
-  #     - POSTGRES_HOST=postgres
-  #     - REDIS_HOST=redis
-  #   volumes:
-  #     - /tmp/.X11-unix:/tmp/.X11-unix  # For Linuxok 
-  #     - ./frontend/app:/app
-  #   # Windows compatibility requires host.docker.internal
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-  #   # Use network_mode: host for Linux, bridge for Windows
-  #   network_mode: ${NETWORK_MODE:-bridge}
-  #   stdin_open: true
-  #   tty: true
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   restart: unless-stopped        # Allocate pseudo-TTY (-t)
+  frontend:
+    container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
+    image: ${IMAGE}:latest
+    environment:
+      - DISPLAY=${DISPLAY:-host.docker.internal:0}
+      - PYTHONPATH=/app
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000/api/v1/}
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api/v1/}
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix  # For Linuxok 
+      - ./frontend/app:/app
+    # Windows compatibility requires host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Use network_mode: host for Linux, bridge for Windows
+    network_mode: ${NETWORK_MODE:-bridge}
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
 
 volumes:
   postgres_data:
