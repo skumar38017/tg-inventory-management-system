@@ -90,8 +90,9 @@ class InventoryComboBoxItem(BaseModel):
     in_warehouse: Optional[Union[str, bool]] = None
     issued_qty: Optional[Union[str, int]] = None
     balance_qty: Optional[Union[str, int]] = None
-    bar_code: Optional[Union[str, int]] = None
-    barcode_image_url: Optional[str] = None
+    inventory_barcode: Optional[Union[str, int]] = None
+    inventory_unique_code: Optional[Union[str, int]] = None
+    inventory_barcode_url: Optional[str] = None
 
     @field_validator(
         'on_rent', 'rented_inventory_returned', 'on_event', 

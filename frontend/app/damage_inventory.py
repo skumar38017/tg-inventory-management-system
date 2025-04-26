@@ -9,7 +9,6 @@ from api_request.damage_inventory_api_request import (
     load_submitted_wastage_inventory,
     show_all_wastage_inventory
 )
-from widgets.inventory_combobox import InventoryComboBox
 
 class DamageWindow:
     def __init__(self, parent):

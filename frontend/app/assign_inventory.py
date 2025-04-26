@@ -9,7 +9,6 @@ from api_request.assign_inventory_api_request import (
     get_assigned_inventory_by_id,
     delete_assigned_inventory
 )
-from widgets.inventory_combobox import InventoryComboBox
 
 class AssignInventoryWindow:
     def __init__(self, parent):

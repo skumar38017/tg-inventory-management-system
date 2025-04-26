@@ -165,7 +165,32 @@ class InventoryComboBox(ttk.Combobox):
             "wastage_approved_by": item.get("wastage_approved_by") or "",
             "wastage_status": item.get("wastage_status") or "",
             "wastage_barcode": item.get("wastage_barcode") or "",
-            "wastage_barcode_image_url": item.get("wastage_barcode_image_url") or ""
+            "wastage_barcode_image_url": item.get("wastage_barcode_image_url") or "",
+
+            "total_quantity": item.get("total_quantity") or 0,
+            "manufacturer": item.get("manufacturer") or "",
+            "purchase_dealer": item.get("purchase_dealer") or "",
+            "purchase_date": item.get("purchase_date") or "",
+            "purchase_amount": item.get("purchase_amount") or 0,
+            "repair_quantity": item.get("repair_quantity") or 0,
+            "repair_cost": item.get("repair_cost") or 0,
+            "on_rent": item.get("on_rent") or False,
+            "vendor_name": item.get("vendor_name") or "",
+            "total_rent": item.get("total_rent") or 0,
+            "rented_inventory_returned": item.get("rented_inventory_returned") or False,
+            "on_event": item.get("on_event") or False,
+            "in_office": item.get("in_office") or False,
+            "in_warehouse": item.get("in_warehouse") or False,
+            "issued_qty": item.get("issued_qty") or 0,
+            "balance_qty": item.get("balance_qty") or 0,
+            "bar_code": item.get("bar_code") or "",
+            "barcode_image_url": item.get("barcode_image_url") or "",
+            "submitted_by": item.get("submitted_by") or "",
+            "created_at": item.get("created_at") or "",
+            "updated_at": item.get("updated_at") or "",
+            "inventory_barcode": item.get("inventory_barcode") or "",
+            "inventory_unique_code": item.get("inventory_unique_code") or "",
+            "inventory_barcode_url": item.get("inventory_barcode_url") or "",
         }
         
         for date_field in ["event_date", "receive_date", "wastage_date"]:

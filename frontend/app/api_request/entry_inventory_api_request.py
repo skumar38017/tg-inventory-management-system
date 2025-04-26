@@ -143,7 +143,23 @@ def show_all_inventory() -> List[Dict[str, str]]:
         logger.error(f"Unexpected error during fetch: {str(e)}")
         messagebox.showerror("Error", "An unexpected error occurred")
         return []
-    
+
+# load Inventory from redis by `Invenrtory Name`
+def load_record_by_inventory_name(inventory_name: str) -> Dict:
+    try:
+        response = make_api_request("GET", f"get-assigned-inventory/{inventory_name}/")
+        response.raise_for_status()
+        return format_inventory_response(response.json())
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch assigned inventory: {e}")
+        messagebox.showerror("Error", "Could not fetch assigned inventory data")
+        return {}
+    except Exception as e:
+        logger.error(f"Unexpected error during fetch: {e}")
+        messagebox.showerror("Error", "An unexpected error occurred")
+        return {}  
+
 # Add new inventory items to the database with proper data formatting
 def add_new_inventory_item(item_data: dict):
     """Inventory item creation with all fields optional"""
@@ -284,7 +300,7 @@ async def upload_to_event_data():
     try:
         response = await make_api_request(
             "POST",
-            "to_event-upload-data/",
+            "Upload-entry-inventory/",
             headers={"Content-Type": "application/json"}
         )
         
@@ -303,6 +319,7 @@ async def upload_to_event_data():
         messagebox.showerror("Error", "Failed to connect to upload service")
         return False
     
+
 # #  Search  Project by [Project_id] by clicking search
 # def search_project_details_by_project_id(project_id: str) -> List[Dict]:
 #     """Fetch inventory data filtered by a single project_id from the API"""

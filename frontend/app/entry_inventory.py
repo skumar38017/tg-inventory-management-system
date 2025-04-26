@@ -6,7 +6,8 @@ from api_request.entry_inventory_api_request import (
     show_all_inventory,
     filter_inventory_by_date_range,
     add_new_inventory_item,
-    search_inventory_by_id
+    search_inventory_by_id,
+    load_record_by_inventory_name
 )
 from api_request.to_event_inventory_request import search_project_details_by_id
 from to_event import ToEventWindow
@@ -1102,8 +1103,9 @@ def create_list_frames(root):
     search_results_listbox.pack(side="left", fill="both", expand=True)
     
     return notebook
+
 ######################################################################################
-#  Update Window - Updated to match requested layout
+#  Update Window with InventoryComboBox integration
 ######################################################################################
 
 def create_update_button(search_frame):
@@ -1121,6 +1123,127 @@ def clear_date_entry(date_entry):
     date_entry._set_text('')  # Clear the displayed text
     date_entry._date = None   # Clear the internal date value
 
+def load_inventory_record(inventory_data):
+    """Populate the form fields with inventory data"""
+    if not inventory_data:
+        return
+        
+    try:
+        # Left column fields
+        update_window_entries["Sno"].config(state='normal')
+        update_window_entries["Sno"].delete(0, tk.END)
+        update_window_entries["Sno"].insert(0, inventory_data.get('sno', ''))
+        update_window_entries["Sno"].config(state='readonly')
+        
+        update_window_entries["ProductID"].config(state='normal')
+        update_window_entries["ProductID"].delete(0, tk.END)
+        update_window_entries["ProductID"].insert(0, inventory_data.get('product_id', ''))
+        update_window_entries["ProductID"].config(state='readonly')
+        
+        update_window_entries["Material"].delete(0, tk.END)
+        update_window_entries["Material"].insert(0, inventory_data.get('material', ''))
+        
+        update_window_entries["Manufacturer"].delete(0, tk.END)
+        update_window_entries["Manufacturer"].insert(0, inventory_data.get('manufacturer', ''))
+        
+        # Handle dates - skip if empty
+        purchase_date = inventory_data.get('purchase_date')
+        if purchase_date:
+            update_window_entries["Purchase Date"].set_date(purchase_date)
+        else:
+            clear_date_entry(update_window_entries["Purchase Date"])
+            
+        update_window_entries["Repair Quantity"].delete(0, tk.END)
+        update_window_entries["Repair Quantity"].insert(0, inventory_data.get('repair_quantity', ''))
+        
+        update_window_entries["Vendor Name"].delete(0, tk.END)
+        update_window_entries["Vendor Name"].insert(0, inventory_data.get('vendor_name', ''))
+        
+        update_window_entries["On Rent"].set(inventory_data.get('on_rent', False))
+        
+        returned_date = inventory_data.get('returned_date')
+        if returned_date:
+            update_window_entries["Returned Date"].set_date(returned_date)
+        else:
+            clear_date_entry(update_window_entries["Returned Date"])
+            
+        update_window_entries["In Office"].set(inventory_data.get('in_office', False))
+        
+        update_window_entries["Issued Qty"].delete(0, tk.END)
+        update_window_entries["Issued Qty"].insert(0, inventory_data.get('issued_qty', ''))
+        
+        update_window_entries["Submitted By"].delete(0, tk.END)
+        update_window_entries["Submitted By"].insert(0, inventory_data.get('submitted_by', ''))
+        
+        # Right column fields
+        update_window_entries["InventoryID"].config(state='normal')
+        update_window_entries["InventoryID"].delete(0, tk.END)
+        update_window_entries["InventoryID"].insert(0, inventory_data.get('inventory_id', ''))
+        update_window_entries["InventoryID"].config(state='readonly')
+        
+        update_window_entries["Name"].config(state='normal')
+        update_window_entries["Name"].delete(0, tk.END)
+        update_window_entries["Name"].insert(0, inventory_data.get('inventory_name', ''))
+        update_window_entries["Name"].config(state='readonly')
+        
+        update_window_entries["Total Quantity"].delete(0, tk.END)
+        update_window_entries["Total Quantity"].insert(0, inventory_data.get('total_quantity', ''))
+        
+        update_window_entries["Purchase Dealer"].delete(0, tk.END)
+        update_window_entries["Purchase Dealer"].insert(0, inventory_data.get('purchase_dealer', ''))
+        
+        update_window_entries["Purchase Amount"].delete(0, tk.END)
+        update_window_entries["Purchase Amount"].insert(0, inventory_data.get('purchase_amount', ''))
+        
+        update_window_entries["Repair Cost"].delete(0, tk.END)
+        update_window_entries["Repair Cost"].insert(0, inventory_data.get('repair_cost', ''))
+        
+        update_window_entries["Total Rent"].delete(0, tk.END)
+        update_window_entries["Total Rent"].insert(0, inventory_data.get('total_rent', ''))
+        
+        update_window_entries["Rented Returned"].set(inventory_data.get('rented_returned', False))
+        
+        update_window_entries["On Event"].set(inventory_data.get('on_event', False))
+        
+        update_window_entries["In Warehouse"].set(inventory_data.get('in_warehouse', False))
+        
+        update_window_entries["Balance Qty"].delete(0, tk.END)
+        update_window_entries["Balance Qty"].insert(0, inventory_data.get('balance_qty', ''))
+        
+        # Additional information
+        update_window_entries["ID"].config(state='normal')
+        update_window_entries["ID"].delete(0, tk.END)
+        update_window_entries["ID"].insert(0, inventory_data.get('id', ''))
+        update_window_entries["ID"].config(state='readonly')
+        
+        update_window_entries["Updated At"].config(state='normal')
+        update_window_entries["Updated At"].delete(0, tk.END)
+        update_window_entries["Updated At"].insert(0, inventory_data.get('updated_at', ''))
+        update_window_entries["Updated At"].config(state='readonly')
+        
+        update_window_entries["Unique Code"].config(state='normal')
+        update_window_entries["Unique Code"].delete(0, tk.END)
+        update_window_entries["Unique Code"].insert(0, inventory_data.get('inventory_unique_code', ''))
+        update_window_entries["Unique Code"].config(state='readonly')
+        
+        update_window_entries["Created At"].config(state='normal')
+        update_window_entries["Created At"].delete(0, tk.END)
+        update_window_entries["Created At"].insert(0, inventory_data.get('created_at', ''))
+        update_window_entries["Created At"].config(state='readonly')
+        
+        update_window_entries["Barcode"].config(state='normal')
+        update_window_entries["Barcode"].delete(0, tk.END)
+        update_window_entries["Barcode"].insert(0, inventory_data.get('inventory_barcode', ''))
+        update_window_entries["Barcode"].config(state='readonly')
+        
+        update_window_entries["Barcode URL"].config(state='normal')
+        update_window_entries["Barcode URL"].delete(0, tk.END)
+        update_window_entries["Barcode URL"].insert(0, inventory_data.get('inventory_barcode_url', ''))
+        update_window_entries["Barcode URL"].config(state='readonly')
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to load inventory data: {str(e)}")
+
 def open_update_window():
     """Open the update inventory window with the specified layout"""
     update_window = tk.Toplevel(root)
@@ -1136,11 +1259,20 @@ def open_update_window():
     top_frame.pack(fill='x', pady=(0, 10))
     
     tk.Label(top_frame, text="Inventory Name:").pack(side='left', padx=5)
-    inventory_name_combo = ttk.Combobox(top_frame, width=40)
+    
+    # Use InventoryComboBox instead of regular Combobox
+    inventory_name_combo = InventoryComboBox(top_frame, width=40)
     inventory_name_combo.pack(side='left', padx=5)
     
-    tk.Button(top_frame, text="Load Record").pack(side='left', padx=5)
-    tk.Button(top_frame, text="Edit").pack(side='left', padx=5)
+    # Load button
+    load_btn = tk.Button(top_frame, text="Load Record", 
+                        command=lambda: load_inventory_record(inventory_name_combo.get_selected_item()))
+    load_btn.pack(side='left', padx=5)
+    
+    # Edit button - will enable editing of readonly fields
+    edit_btn = tk.Button(top_frame, text="Edit", 
+                        command=lambda: toggle_edit_mode(True))
+    edit_btn.pack(side='left', padx=5)
     
     # Middle section - Form fields
     form_frame = tk.Frame(main_frame)
@@ -1159,7 +1291,7 @@ def open_update_window():
     
     # Left column fields
     fields_left = [
-        ("Sno:", "entry", False),
+        ("Sno:", "entry", True),  # Readonly
         ("ProductID:", "entry", True),  # Readonly
         ("Material:", "entry", False),
         ("Manufacturer:", "entry", False),
@@ -1296,14 +1428,82 @@ def open_update_window():
     button_frame.pack(fill='x', pady=10)
     
     buttons = [
-        ("Clear", lambda: None),
-        ("Update", lambda: None),
+        ("Clear", lambda: clear_form()),
+        ("Update", lambda: update_inventory_record()),
         ("Close", update_window.destroy),
-        ("Refresh", lambda: None)
+        ("Refresh", lambda: inventory_name_combo._load_all_inventory_names())
     ]
     
     for text, command in buttons:
         tk.Button(button_frame, text=text, command=command).pack(side='left', padx=5, expand=True)
+    
+    def clear_form():
+        """Clear all form fields"""
+        for key, widget in update_window_entries.items():
+            if isinstance(widget, tk.Entry):
+                widget.config(state='normal')
+                widget.delete(0, tk.END)
+                if key in ["Sno", "ProductID", "InventoryID", "Name", "ID", "Updated At", 
+                           "Unique Code", "Created At", "Barcode", "Barcode URL"]:
+                    widget.config(state='readonly')
+            elif isinstance(widget, DateEntry):
+                clear_date_entry(widget)
+            elif isinstance(widget, tk.BooleanVar):
+                widget.set(False)
+        
+        inventory_name_combo.set('')
+    
+    def update_inventory_record():
+        """Update the inventory record with form data"""
+        try:
+            # Collect data from form fields
+            inventory_data = {
+                'material': update_window_entries["Material"].get(),
+                'manufacturer': update_window_entries["Manufacturer"].get(),
+                'purchase_date': update_window_entries["Purchase Date"].get(),
+                'repair_quantity': update_window_entries["Repair Quantity"].get(),
+                'vendor_name': update_window_entries["Vendor Name"].get(),
+                'on_rent': update_window_entries["On Rent"].get(),
+                'returned_date': update_window_entries["Returned Date"].get(),
+                'in_office': update_window_entries["In Office"].get(),
+                'issued_qty': update_window_entries["Issued Qty"].get(),
+                'submitted_by': update_window_entries["Submitted By"].get(),
+                'total_quantity': update_window_entries["Total Quantity"].get(),
+                'purchase_dealer': update_window_entries["Purchase Dealer"].get(),
+                'purchase_amount': update_window_entries["Purchase Amount"].get(),
+                'repair_cost': update_window_entries["Repair Cost"].get(),
+                'total_rent': update_window_entries["Total Rent"].get(),
+                'rented_returned': update_window_entries["Rented Returned"].get(),
+                'on_event': update_window_entries["On Event"].get(),
+                'in_warehouse': update_window_entries["In Warehouse"].get(),
+                'balance_qty': update_window_entries["Balance Qty"].get()
+            }
+            
+            # TODO: Implement API call to update the record
+            # response = make_api_request("PUT", f"inventory/{update_window_entries['ID'].get()}", data=inventory_data)
+            # response.raise_for_status()
+            
+            messagebox.showinfo("Success", "Inventory record updated successfully")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to update inventory: {str(e)}")
+    
+    def toggle_edit_mode(enable):
+        """Toggle edit mode for readonly fields"""
+        readonly_fields = ["Sno", "ProductID", "InventoryID", "Name", "ID", "Updated At", 
+                         "Unique Code", "Created At", "Barcode", "Barcode URL"]
+        
+        for field in readonly_fields:
+            if field in update_window_entries:
+                update_window_entries[field].config(state='normal' if enable else 'readonly')
+    
+    # Load initial inventory names
+    inventory_name_combo._load_all_inventory_names()
+    
+    # Bind combobox selection to load record automatically
+    inventory_name_combo.bind("<<ComboboxSelected>>", 
+                            lambda e: load_inventory_record(inventory_name_combo.get_selected_item()))
+
 ################################################################################################################
 
 

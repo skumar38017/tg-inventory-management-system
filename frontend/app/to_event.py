@@ -7,8 +7,6 @@ from api_request.to_event_inventory_request import (
     update_submitted_project_in_db,
     search_project_details_by_id
 )
-from widgets.inventory_combobox import InventoryComboBox
-
 class ToEventWindow:
     def __init__(self, parent):
         self.parent = parent
