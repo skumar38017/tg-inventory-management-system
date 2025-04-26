@@ -31,7 +31,6 @@ Project Structure.txt
 sumit_accessKeys.csv
 sumit_credentials.csv
 credentials/users/*
-alembic/versions/*
 office-inventory-457815-933d2b7634a8.json
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
@@ -48,9 +47,6 @@ office-inventory-457815-933d2b7634a8.json
 
 #  Almbic version
 *.sqlite3
-versions
-alembic/versions/*
-
 
 #  Static files
 staticfiles
