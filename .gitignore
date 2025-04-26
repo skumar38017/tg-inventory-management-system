@@ -47,6 +47,7 @@ office-inventory-457815-933d2b7634a8.json
 
 #  Almbic version
 *.sqlite3
+alembic/versions/*
 
 #  Static files
 staticfiles
