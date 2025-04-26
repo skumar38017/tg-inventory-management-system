@@ -127,6 +127,12 @@ docker run -it --rm \
 
 
 # redis command for local machine if you are running into docker
+# on local host
+
+echo 1 | sudo tee /proc/sys/vm/overcommit_memory
+echo "vm.overcommit_memory = 1" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
 cat /proc/sys/vm/overcommit_memory
 echo 1 | sudo tee /proc/sys/vm/overcommit_memory
 
