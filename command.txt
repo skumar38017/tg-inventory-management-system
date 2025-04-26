@@ -48,9 +48,12 @@ docker build -t tg/inventory .
 
 2. Tag your image for ECR: 
 docker tag tg/inventory:latest 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
+docker tag tg/inventory:latest 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:frontend-v1
+docker tag tg/inventory:latest 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:backend-v1
 
 3. Push the image to ECR
 docker push 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
+
 
 4. pull the image from ECR
 docker pull 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
