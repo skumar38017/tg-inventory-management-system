@@ -57,13 +57,13 @@ services:
     environment:
       - DISPLAY=${DISPLAY:-host.docker.internal:0}
       - PYTHONPATH=/app
-      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000/api/v1/}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000/}
       - API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api/v1/}
       - POSTGRES_HOST=postgres
       - REDIS_HOST=redis
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix  # For Linuxok 
-      - ./frontend/app:/app
+    command: python app/entry_inventory.py 
     # Windows compatibility requires host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
