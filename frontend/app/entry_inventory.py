@@ -529,9 +529,8 @@ def add_new_row(scrollable_frame, header_labels):
                 text="✕",
                 command=lambda e=date_entry: e.delete(0, 'end'),
                 font=('Helvetica', 7),
-                width=2,
+                width=1,
                 relief='flat',
-                bg='#f0f0f0'
             )
             clear_btn.pack(side='right', padx=(2,0))
             
@@ -909,9 +908,8 @@ def create_list_frames(root):
                 text="✕",
                 command=lambda e=date_entry: e.delete(0, 'end'),
                 font=('Helvetica', 7),
-                width=2,
+                width=1,
                 relief='flat',
-                bg='#f0f0f0'
             )
             clear_btn.pack(side='right', padx=(2,0))
             
