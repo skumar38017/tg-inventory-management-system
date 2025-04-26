@@ -31,7 +31,8 @@ Project Structure.txt
 sumit_accessKeys.csv
 sumit_credentials.csv
 credentials
-redis_data/redis.conf
+redis_data/redis.conf/
+alembic/versions/*
 
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/

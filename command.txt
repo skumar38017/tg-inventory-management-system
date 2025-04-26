@@ -137,3 +137,6 @@ cat /proc/sys/vm/overcommit_memory
 echo 1 | sudo tee /proc/sys/vm/overcommit_memory
 
 docker exec -it redisclient redis-cli --user ${REDIS_USER} --pass ${REDIS_PASSWORD} config get *
+
+
+docker compose down -v && docker compose up -d

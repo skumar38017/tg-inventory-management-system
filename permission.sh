@@ -31,6 +31,7 @@ fi
 
 # Set PYTHONPATH to current directory
 export PYTHONPATH="$(pwd)"
+export PYTHONPATH="$PYTHONPATH:$(pwd)"
 
 # Change permissions using sudo
 echo "$PASSWORD" | sudo -S chmod -R 755 redis_data/
