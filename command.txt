@@ -36,7 +36,8 @@ docker exec -it ims-frontend /bin/bash
 
 export DISPLAY=host.docker.internal:0
 xhost +localhost
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 
 ######################################################################
 # ECR Commands
@@ -122,3 +123,11 @@ docker run -it --rm \
   -v $(pwd):/app \
   ims-frontend python app/entry_inventory.py \
   ims-frontend
+
+
+
+# redis command for local machine if you are running into docker
+cat /proc/sys/vm/overcommit_memory
+echo 1 | sudo tee /proc/sys/vm/overcommit_memory
+
+docker exec -it redisclient redis-cli --user ${REDIS_USER} --pass ${REDIS_PASSWORD} config get *

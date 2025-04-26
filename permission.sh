@@ -35,5 +35,6 @@ export PYTHONPATH="$(pwd)"
 # Change permissions using sudo
 echo "$PASSWORD" | sudo -S chmod -R 755 redis_data/
 echo "$PASSWORD" | sudo -S chmod -R 755 postgres_data/
+echo "$PASSWORD" | sudo -S chmod +x redis_data/redis-entrypoint.sh
 
 echo "✅ Permissions set successfully."
