@@ -490,6 +490,7 @@ def create_inventory_item(scrollable_frame, header_labels):
     else:
         messagebox.showwarning("Warning", "No items were added")
         
+
 #  Add a new row of input fields below the existing ones
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row of input fields below the existing ones"""
@@ -511,7 +512,7 @@ def add_new_row(scrollable_frame, header_labels):
             date_frame = tk.Frame(scrollable_frame)
             date_frame.grid(row=row_num, column=col, sticky="ew", padx=1, pady=1)
             
-            # Create DateEntry widget
+            # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
                 width=18,
@@ -520,6 +521,7 @@ def add_new_row(scrollable_frame, header_labels):
                 borderwidth=1,
                 date_pattern='yyyy-mm-dd',
                 font=('Helvetica', 9))
+            date_entry.delete(0, 'end')  # Clear any default date
             date_entry.pack(fill=tk.X, expand=True)
             entries[var_name] = date_entry
         else:
@@ -877,7 +879,7 @@ def create_list_frames(root):
             date_frame = tk.Frame(scrollable_frame)
             date_frame.grid(row=1, column=col, sticky="ew", padx=1, pady=1)
             
-            # Create DateEntry widget
+            # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
                 width=18,
@@ -886,6 +888,7 @@ def create_list_frames(root):
                 borderwidth=1,
                 date_pattern='yyyy-mm-dd',
                 font=('Helvetica', 9))
+            date_entry.delete(0, 'end')  # Clear any default date
             date_entry.pack(fill=tk.X, expand=True)
             entries[var_name] = date_entry
         else:
@@ -904,10 +907,10 @@ def create_list_frames(root):
             elif field == 'ProductID':
                 entries[var_name].insert(0, generate_product_id())
                 entries[var_name].config(state='readonly')
-                    
-        # Configure column weights
-        for col in range(len(header_labels)):
-            scrollable_frame.grid_columnconfigure(col, weight=1)
+                        
+            # Configure column weights
+            for col in range(len(header_labels)):
+                scrollable_frame.grid_columnconfigure(col, weight=1)
     
     # Button container
     button_frame = tk.Frame(form_container)
