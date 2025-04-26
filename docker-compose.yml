@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - ${PWD}/postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
@@ -51,30 +51,30 @@ services:
         soft: 100032
         hard: 100032
 
-  frontend:
-    container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
-    image: ${IMAGE}:latest
-    environment:
-      - DISPLAY=${DISPLAY:-host.docker.internal:0}
-      - PYTHONPATH=/app
-      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000/}
-      - API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api/v1/}
-      - POSTGRES_HOST=postgres
-      - REDIS_HOST=redis
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix  # For Linuxok 
-    command: python app/entry_inventory.py 
-    # Windows compatibility requires host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    # Use network_mode: host for Linux, bridge for Windows
-    network_mode: ${NETWORK_MODE:-bridge}
-    stdin_open: true
-    tty: true
-    depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
+  # frontend:
+  #   container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
+  #   image: ${IMAGE}:latest
+  #   environment:
+  #     - DISPLAY=${DISPLAY:-host.docker.internal:0}
+  #     - PYTHONPATH=/app
+  #     - BACKEND_URL=${BACKEND_URL:-http://localhost:8000/}
+  #     - API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api/v1/}
+  #     - POSTGRES_HOST=postgres
+  #     - REDIS_HOST=redis
+  #   volumes:
+  #     - /tmp/.X11-unix:/tmp/.X11-unix  # For Linuxok 
+  #   command: python app/entry_inventory.py 
+  #   # Windows compatibility requires host.docker.internal
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   # Use network_mode: host for Linux, bridge for Windows
+  #   network_mode: ${NETWORK_MODE:-bridge}
+  #   stdin_open: true
+  #   tty: true
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   restart: unless-stopped
 
 volumes:
   postgres_data:

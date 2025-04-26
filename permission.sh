@@ -34,8 +34,8 @@ export PYTHONPATH="$(pwd)"
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
 
 # Change permissions using sudo
-echo "$PASSWORD" | sudo -S chmod -R 755 redis_data/
-echo "$PASSWORD" | sudo -S chmod -R 755 postgres_data/
-echo "$PASSWORD" | sudo -S chmod +x redis_data/redis-entrypoint.sh
+echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Documents/tg-inventory-management-system/redis_data/
+echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Documents/tg-inventory-management-system/postgres_data/
+echo "$PASSWORD" | sudo -S chmod +x /home/$USER/Documents/tg-inventory-management-system/redis_data/redis-entrypoint.sh
 
 echo "✅ Permissions set successfully."
