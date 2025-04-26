@@ -1,0 +1,26 @@
+python frontend/app/entry_inventory.py
+
+######################################################################
+# ECR Commands
+######################################################################
+1. aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 891377266155.dkr.ecr.ap-south-1.amazonaws.com
+
+2. pull the image from ECR
+docker pull 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
+
+
+4. Run the image
+
+On Linux:
+xhost +local:docker
+docker run -it --rm \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -e PYTHONPATH=/app \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+  python app/entry_inventory.py
+
+            OR
+
+bash run-frontend.sh
