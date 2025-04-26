@@ -1059,6 +1059,9 @@ def create_list_frames(root):
                         font=('Helvetica', 9, 'bold'))
     search_btn.grid(row=0, column=6, sticky='e', padx=5)
 
+    # Add Update button
+    create_update_button(search_fields_frame)
+
     # Separator line
     ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
 
@@ -1099,6 +1102,210 @@ def create_list_frames(root):
     search_results_listbox.pack(side="left", fill="both", expand=True)
     
     return notebook
+######################################################################################
+#  Update Window - Updated to match requested layout
+######################################################################################
+
+def create_update_button(search_frame):
+    """Create an Update button in the search frame"""
+    update_btn = tk.Button(
+        search_frame, 
+        text="Update", 
+        command=open_update_window,
+        font=('Helvetica', 9, 'bold')
+    )
+    update_btn.grid(row=0, column=7, sticky='e', padx=5)
+
+def clear_date_entry(date_entry):
+    """Clear the date entry by setting it to None and updating the display"""
+    date_entry._set_text('')  # Clear the displayed text
+    date_entry._date = None   # Clear the internal date value
+
+def open_update_window():
+    """Open the update inventory window with the specified layout"""
+    update_window = tk.Toplevel(root)
+    update_window.title("Update Inventory")
+    update_window.geometry("1000x800")  # Adjust size as needed
+    
+    # Main container
+    main_frame = tk.Frame(update_window)
+    main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+    
+    # Top section - Inventory Name dropdown and buttons
+    top_frame = tk.Frame(main_frame)
+    top_frame.pack(fill='x', pady=(0, 10))
+    
+    tk.Label(top_frame, text="Inventory Name:").pack(side='left', padx=5)
+    inventory_name_combo = ttk.Combobox(top_frame, width=40)
+    inventory_name_combo.pack(side='left', padx=5)
+    
+    tk.Button(top_frame, text="Load Record").pack(side='left', padx=5)
+    tk.Button(top_frame, text="Edit").pack(side='left', padx=5)
+    
+    # Middle section - Form fields
+    form_frame = tk.Frame(main_frame)
+    form_frame.pack(fill='both', expand=True)
+    
+    # Create two columns for the form
+    left_column = tk.Frame(form_frame)
+    left_column.pack(side='left', fill='both', expand=True, padx=5)
+    
+    right_column = tk.Frame(form_frame)
+    right_column.pack(side='left', fill='both', expand=True, padx=5)
+    
+    # Dictionary to store all entry widgets for later access
+    global update_window_entries
+    update_window_entries = {}
+    
+    # Left column fields
+    fields_left = [
+        ("Sno:", "entry", False),
+        ("ProductID:", "entry", True),  # Readonly
+        ("Material:", "entry", False),
+        ("Manufacturer:", "entry", False),
+        ("Purchase Date:", "date", False),
+        ("Repair Quantity:", "entry", False),
+        ("Vendor Name:", "entry", False),
+        ("On Rent:", "checkbox", False),
+        ("Returned Date:", "date", False),
+        ("In Office:", "checkbox", False),
+        ("Issued Qty:", "entry", False),
+        ("Submitted By:", "long_entry", False)
+    ]
+    
+    for label_text, field_type, is_readonly in fields_left:
+        frame = tk.Frame(left_column)
+        frame.pack(fill='x', pady=2)
+        
+        tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
+        
+        if field_type == "entry":
+            entry = tk.Entry(frame)
+            if is_readonly:
+                entry.config(state='readonly')
+            entry.pack(side='left', fill='x', expand=True)
+            update_window_entries[label_text.strip(":")] = entry
+        elif field_type == "date":
+            # Create a frame for date entry and clear button
+            date_frame = tk.Frame(frame)
+            date_frame.pack(side='left', fill='x', expand=True)
+            
+            # Date entry
+            date_entry = DateEntry(date_frame, date_pattern='yyyy-mm-dd')
+            date_entry.pack(side='left', fill='x', expand=True)
+            
+            # Clear button for date
+            clear_btn = tk.Button(date_frame, text="Clear", 
+                                command=lambda de=date_entry: clear_date_entry(de),
+                                font=('Helvetica', 8))
+            clear_btn.pack(side='left', padx=2)
+            
+            if is_readonly:
+                date_entry.config(state='readonly')
+                clear_btn.config(state='disabled')
+            
+            update_window_entries[label_text.strip(":")] = date_entry
+        elif field_type == "checkbox":
+            var = tk.BooleanVar()
+            cb = tk.Checkbutton(frame, variable=var)
+            cb.pack(side='left')
+            update_window_entries[label_text.strip(":")] = var
+        elif field_type == "long_entry":
+            entry = tk.Entry(frame)
+            entry.pack(side='left', fill='x', expand=True)
+            update_window_entries[label_text.strip(":")] = entry
+    
+    # Right column fields
+    fields_right = [
+        ("InventoryID:", "entry", True),  # Readonly
+        ("Name:", "entry", True),        # Readonly
+        ("Total Quantity:", "entry", False),
+        ("Purchase Dealer:", "entry", False),
+        ("Purchase Amount:", "entry", False),
+        ("Repair Cost:", "entry", False),
+        ("Total Rent:", "entry", False),
+        ("Rented Returned:", "checkbox", False),
+        ("On Event:", "checkbox", False),
+        ("In Warehouse:", "checkbox", False),
+        ("Balance Qty:", "entry", False)
+    ]
+    
+    for label_text, field_type, is_readonly in fields_right:
+        frame = tk.Frame(right_column)
+        frame.pack(fill='x', pady=2)
+        
+        tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
+        
+        if field_type == "entry":
+            entry = tk.Entry(frame)
+            if is_readonly:
+                entry.config(state='readonly')
+            entry.pack(side='left', fill='x', expand=True)
+            update_window_entries[label_text.strip(":")] = entry
+        elif field_type == "checkbox":
+            var = tk.BooleanVar()
+            cb = tk.Checkbutton(frame, variable=var)
+            cb.pack(side='left')
+            update_window_entries[label_text.strip(":")] = var
+    
+    # Additional information section (read-only)
+    info_frame = tk.LabelFrame(main_frame, text="Additional Information (Read-only or auto-generated)")
+    info_frame.pack(fill='x', pady=10)
+    
+    # Create two columns for info section
+    info_left = tk.Frame(info_frame)
+    info_left.pack(side='left', fill='both', expand=True, padx=5)
+    
+    info_right = tk.Frame(info_frame)
+    info_right.pack(side='left', fill='both', expand=True, padx=5)
+    
+    # Info fields left
+    info_fields_left = [
+        ("ID:", "entry", True),
+        ("Updated At:", "entry", True),
+        ("Unique Code:", "entry", True)
+    ]
+    
+    for label_text, field_type, is_readonly in info_fields_left:
+        frame = tk.Frame(info_left)
+        frame.pack(fill='x', pady=2)
+        
+        tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
+        entry = tk.Entry(frame, state='readonly')
+        entry.pack(side='left', fill='x', expand=True)
+        update_window_entries[label_text.strip(":")] = entry
+    
+    # Info fields right
+    info_fields_right = [
+        ("Created At:", "entry", True),
+        ("Barcode:", "entry", True),
+        ("Barcode URL:", "entry", True)
+    ]
+    
+    for label_text, field_type, is_readonly in info_fields_right:
+        frame = tk.Frame(info_right)
+        frame.pack(fill='x', pady=2)
+        
+        tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
+        entry = tk.Entry(frame, state='readonly')
+        entry.pack(side='left', fill='x', expand=True)
+        update_window_entries[label_text.strip(":")] = entry
+    
+    # Button section
+    button_frame = tk.Frame(main_frame)
+    button_frame.pack(fill='x', pady=10)
+    
+    buttons = [
+        ("Clear", lambda: None),
+        ("Update", lambda: None),
+        ("Close", update_window.destroy),
+        ("Refresh", lambda: None)
+    ]
+    
+    for text, command in buttons:
+        tk.Button(button_frame, text=text, command=command).pack(side='left', padx=5, expand=True)
+################################################################################################################
+
 
 def create_bottom_frames(root):
     """Create the bottom frames with action buttons"""
