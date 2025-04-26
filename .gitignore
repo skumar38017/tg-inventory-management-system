@@ -30,8 +30,7 @@ inventory_data.json
 Project Structure.txt
 sumit_accessKeys.csv
 sumit_credentials.csv
-credentials
-redis_data/redis.conf/
+credentials/users/
 alembic/versions/*
 
 
