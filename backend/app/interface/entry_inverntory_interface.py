@@ -75,6 +75,17 @@ class EntryInventoryInterface:
         Returns single EntryInventoryUpdateOut instance or None if not found.
         """
         pass
+
+    async def get_by_inventory_name(
+        self, 
+        db: AsyncSession, 
+        inventory_name: str
+    ) -> Optional[EntryInventoryUpdateOut]:
+        """
+        Get inventory entry by its inventory_name.
+        Returns single EntryInventoryUpdateOut instance or None if not found.
+        """
+        pass
     
     async def update_entry(
         self,

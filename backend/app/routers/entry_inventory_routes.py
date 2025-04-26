@@ -329,6 +329,27 @@ async def get_inventory_item(
         raise HTTPException(status_code=404, detail="EntryInventory not found")
     return entry_inventory
 
+# READ: Get an inventory which is match from Inventory Name
+@router.get("/load-record/{inventory_name}",
+            response_model=EntryInventoryOut,
+            status_code=200,
+            summary="Get an entry from the inventory by its Inventory Name",
+            description="This endpoint is used to get an entry from the inventory by its Inventory Name. It takes a Inventory Name as a parameter and returns the entry with the specified Inventory Name.",
+            response_model_exclude_unset=True,
+            tags=["Get Inventory (Redis)"]
+)
+async def get_inventory_item(
+    inventory_name: str,
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    entry_inventory = await service.get_by_inventory_name(db, inventory_name)
+    if not entry_inventory:
+        raise HTTPException(status_code=404, detail="EntryInventory not found")
+    return entry_inventory
+
+
+
 # READ ALL: Get entire inventory entries direct from database (no search) according in sequence alphabetical order
 @router.get("/getlist",
             response_model=list[EntryInventoryOut],
