@@ -490,7 +490,6 @@ def create_inventory_item(scrollable_frame, header_labels):
     else:
         messagebox.showwarning("Warning", "No items were added")
         
-
 #  Add a new row of input fields below the existing ones
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row of input fields below the existing ones"""
@@ -508,21 +507,34 @@ def add_new_row(scrollable_frame, header_labels):
             )
             entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
         elif field in ['Purchase Date', 'Returned Date']:
-            # Create a frame to hold the date entry
+            # Create a frame to hold the date entry and clear button
             date_frame = tk.Frame(scrollable_frame)
             date_frame.grid(row=row_num, column=col, sticky="ew", padx=1, pady=1)
             
             # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
-                width=18,
+                width=16,  # Slightly reduced to accommodate clear button
                 background='darkblue',
                 foreground='white',
                 borderwidth=1,
                 date_pattern='yyyy-mm-dd',
                 font=('Helvetica', 9))
             date_entry.delete(0, 'end')  # Clear any default date
-            date_entry.pack(fill=tk.X, expand=True)
+            date_entry.pack(side='left', fill=tk.X, expand=True)
+            
+            # Add clear button
+            clear_btn = tk.Button(
+                date_frame,
+                text="✕",
+                command=lambda e=date_entry: e.delete(0, 'end'),
+                font=('Helvetica', 7),
+                width=2,
+                relief='flat',
+                bg='#f0f0f0'
+            )
+            clear_btn.pack(side='right', padx=(2,0))
+            
             entries[var_name] = date_entry
         else:
             entries[var_name] = tk.Entry(
@@ -875,21 +887,34 @@ def create_list_frames(root):
             )
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
         elif field in ['Purchase Date', 'Returned Date']:
-            # Create a frame to hold the date entry
+            # Create a frame to hold the date entry and clear button
             date_frame = tk.Frame(scrollable_frame)
             date_frame.grid(row=1, column=col, sticky="ew", padx=1, pady=1)
             
             # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
-                width=18,
+                width=16,  # Slightly reduced to accommodate clear button
                 background='darkblue',
                 foreground='white',
                 borderwidth=1,
                 date_pattern='yyyy-mm-dd',
                 font=('Helvetica', 9))
             date_entry.delete(0, 'end')  # Clear any default date
-            date_entry.pack(fill=tk.X, expand=True)
+            date_entry.pack(side='left', fill=tk.X, expand=True)
+            
+            # Add clear button
+            clear_btn = tk.Button(
+                date_frame,
+                text="✕",
+                command=lambda e=date_entry: e.delete(0, 'end'),
+                font=('Helvetica', 7),
+                width=2,
+                relief='flat',
+                bg='#f0f0f0'
+            )
+            clear_btn.pack(side='right', padx=(2,0))
+            
             entries[var_name] = date_entry
         else:
             entries[var_name] = tk.Entry(
@@ -911,7 +936,7 @@ def create_list_frames(root):
             # Configure column weights
             for col in range(len(header_labels)):
                 scrollable_frame.grid_columnconfigure(col, weight=1)
-    
+
     # Button container
     button_frame = tk.Frame(form_container)
     button_frame.pack(fill='x', pady=5)
