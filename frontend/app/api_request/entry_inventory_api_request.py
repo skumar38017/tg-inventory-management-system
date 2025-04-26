@@ -295,30 +295,107 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> 
         messagebox.showwarning("Search Error", str(e))
         return []
             
-async def upload_to_event_data():
-    """Trigger upload of Redis data to main database"""
+# Update edit inventory by ```Inventory ID``` 
+def update_existing_inventory(item_data: dict):
+    """Update inventory item with all fields optional"""
     try:
-        response = await make_api_request(
-            "POST",
-            "Upload-entry-inventory/",
-            headers={"Content-Type": "application/json"}
+        # Helper function to clean input values
+        def clean_value(value):
+            if value is None or str(value).strip() == '':
+                return None
+            return str(value).strip()
+        
+        # Helper function for numeric fields (as strings)
+        def clean_number_str(value):
+            try:
+                if value is None or str(value).strip() == '':
+                    return None
+                # Convert to number first to validate, then back to string
+                num = float(value) if '.' in str(value) else int(float(value))
+                return str(num)
+            except (ValueError, TypeError):
+                return None
+        
+        # Helper function for boolean fields
+        def clean_boolean(value):
+            if value is None:
+                return None
+            if isinstance(value, bool):
+                return value
+            if str(value).lower() in ('true', 'yes', '1'):
+                return True
+            if str(value).lower() in ('false', 'no', '0'):
+                return False
+            return None
+        
+        # Helper function for date fields
+        def clean_date(date_str):
+            try:
+                if date_str:
+                    return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
+                return None
+            except (ValueError, TypeError):
+                return None
+
+        # Clean inventory_id - required field
+        inventory_id = clean_value(item_data.get('inventory_id'))
+        if not inventory_id:
+            raise ValueError("Inventory ID is required")
+
+        # Payload construction - all fields optional except inventory_id
+        payload = {
+            "inventory_name": clean_value(item_data.get('inventory_name')),
+            "material": clean_value(item_data.get('material')),
+            "total_quantity": clean_number_str(item_data.get('total_quantity')),
+            "manufacturer": clean_value(item_data.get('manufacturer')),
+            "purchase_dealer": clean_value(item_data.get('purchase_dealer')),
+            "purchase_date": clean_date(item_data.get('purchase_date')),
+            "purchase_amount": clean_number_str(item_data.get('purchase_amount')),
+            "repair_quantity": clean_number_str(item_data.get('repair_quantity')),
+            "repair_cost": clean_number_str(item_data.get('repair_cost')),
+            "on_rent": clean_boolean(item_data.get('on_rent')),
+            "vendor_name": clean_value(item_data.get('vendor_name')),
+            "total_rent": clean_number_str(item_data.get('total_rent')),
+            "rented_inventory_returned": clean_boolean(item_data.get('rented_inventory_returned')),
+            "returned_date": clean_date(item_data.get('returned_date')),
+            "on_event": clean_boolean(item_data.get('on_event')),
+            "in_office": clean_boolean(item_data.get('in_office')),
+            "in_warehouse": clean_boolean(item_data.get('in_warehouse')),
+            "issued_qty": clean_number_str(item_data.get('issued_qty')),
+            "balance_qty": clean_number_str(item_data.get('balance_qty')),
+            "submitted_by": clean_value(item_data.get('submitted_by')),
+            "created_at": clean_date(item_data.get('created_at'))
+        }
+
+        # Remove None values to keep payload clean
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        logger.debug(f"Sending payload: {payload}")
+
+        # API request
+        response = make_api_request(
+            "PUT",
+            f"update/{inventory_id}/",
+            headers={"Content-Type": "application/json"},
+            json=payload
         )
         
-        if response.status_code == 200:
-            uploaded_count = len(response.json())
-            messagebox.showinfo("Success", 
-                              f"Successfully uploaded {uploaded_count} records")
-            return True
-        else:
-            messagebox.showerror("Error", 
-                                "Failed to upload data from Redis")
-            return False
+        # Handle response
+        if response.status_code == 422:
+            errors = response.json().get('detail', [])
+            error_msgs = "\n".join(
+                f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
+                for e in errors if isinstance(e, dict)
+            )
+            raise Exception(f"Validation errors:\n{error_msgs}")
             
+        response.raise_for_status()
+        return response.json()
+        
     except Exception as e:
-        logger.error(f"Upload failed: {str(e)}")
-        messagebox.showerror("Error", "Failed to connect to upload service")
-        return False
-    
+        logger.error(f"Error updating inventory item: {str(e)}")
+        raise Exception(f"Could not update inventory item: {str(e)}")
+        
 
 # #  Search  Project by [Project_id] by clicking search
 # def search_project_details_by_project_id(project_id: str) -> List[Dict]:

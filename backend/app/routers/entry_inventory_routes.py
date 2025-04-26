@@ -433,7 +433,7 @@ async def search_inventory(
         )   
     
 # UPDATE: Update an existing inventory entry
-@router.put("/update/{inventory_id}",
+@router.put("/update/{inventory_id}/",
             response_model=EntryInventoryOut,
             status_code=200,
             summary="Update an entry in the inventory",

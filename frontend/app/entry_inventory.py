@@ -7,7 +7,7 @@ from api_request.entry_inventory_api_request import (
     filter_inventory_by_date_range,
     add_new_inventory_item,
     search_inventory_by_id,
-    load_record_by_inventory_name
+    update_existing_inventory
 )
 from api_request.to_event_inventory_request import search_project_details_by_id
 from to_event import ToEventWindow
@@ -1456,38 +1456,48 @@ def open_update_window():
     def update_inventory_record():
         """Update the inventory record with form data"""
         try:
+            # Get inventory ID - required field
+            inventory_id = update_window_entries["InventoryID"].get()
+            if not inventory_id:
+                messagebox.showerror("Error", "Inventory ID is required")
+                return
+
             # Collect data from form fields
             inventory_data = {
-                'material': update_window_entries["Material"].get(),
-                'manufacturer': update_window_entries["Manufacturer"].get(),
-                'purchase_date': update_window_entries["Purchase Date"].get(),
-                'repair_quantity': update_window_entries["Repair Quantity"].get(),
-                'vendor_name': update_window_entries["Vendor Name"].get(),
-                'on_rent': update_window_entries["On Rent"].get(),
-                'returned_date': update_window_entries["Returned Date"].get(),
-                'in_office': update_window_entries["In Office"].get(),
-                'issued_qty': update_window_entries["Issued Qty"].get(),
-                'submitted_by': update_window_entries["Submitted By"].get(),
-                'total_quantity': update_window_entries["Total Quantity"].get(),
-                'purchase_dealer': update_window_entries["Purchase Dealer"].get(),
-                'purchase_amount': update_window_entries["Purchase Amount"].get(),
-                'repair_cost': update_window_entries["Repair Cost"].get(),
-                'total_rent': update_window_entries["Total Rent"].get(),
-                'rented_returned': update_window_entries["Rented Returned"].get(),
-                'on_event': update_window_entries["On Event"].get(),
-                'in_warehouse': update_window_entries["In Warehouse"].get(),
-                'balance_qty': update_window_entries["Balance Qty"].get()
+                "inventory_id": inventory_id,
+                "inventory_name": update_window_entries["Name"].get(),
+                "material": update_window_entries["Material"].get(),
+                "total_quantity": update_window_entries["Total Quantity"].get(),
+                "manufacturer": update_window_entries["Manufacturer"].get(),
+                "purchase_dealer": update_window_entries["Purchase Dealer"].get(),
+                "purchase_date": update_window_entries["Purchase Date"].get(),
+                "purchase_amount": update_window_entries["Purchase Amount"].get(),
+                "repair_quantity": update_window_entries["Repair Quantity"].get(),
+                "repair_cost": update_window_entries["Repair Cost"].get(),
+                "on_rent": update_window_entries["On Rent"].get(),
+                "vendor_name": update_window_entries["Vendor Name"].get(),
+                "total_rent": update_window_entries["Total Rent"].get(),
+                "rented_inventory_returned": update_window_entries["Rented Returned"].get(),
+                "returned_date": update_window_entries["Returned Date"].get(),
+                "on_event": update_window_entries["On Event"].get(),
+                "in_office": update_window_entries["In Office"].get(),
+                "in_warehouse": update_window_entries["In Warehouse"].get(),
+                "issued_qty": update_window_entries["Issued Qty"].get(),
+                "balance_qty": update_window_entries["Balance Qty"].get(),
+                "submitted_by": update_window_entries["Submitted By"].get(),
+                "created_at": update_window_entries["Created At"].get()
             }
+
+            # Call the update function
+            updated_item = update_existing_inventory(inventory_data)
             
-            # TODO: Implement API call to update the record
-            # response = make_api_request("PUT", f"inventory/{update_window_entries['ID'].get()}", data=inventory_data)
-            # response.raise_for_status()
-            
+            # Show success message and refresh the form
             messagebox.showinfo("Success", "Inventory record updated successfully")
+            load_inventory_record(updated_item)
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update inventory: {str(e)}")
-    
+
     def toggle_edit_mode(enable):
         """Toggle edit mode for readonly fields"""
         readonly_fields = ["Sno", "ProductID", "InventoryID", "Name", "ID", "Updated At", 

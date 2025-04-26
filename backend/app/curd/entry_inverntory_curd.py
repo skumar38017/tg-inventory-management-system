@@ -382,7 +382,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail=f"Error fetching inventory by date range: {str(e)}"
             )
 
-    # READ ALL: Get all inventory entries directly from redis
+# READ ALL: Get all inventory entries directly from redis
     async def get_all_entries(self, db: AsyncSession, skip: int = 0) -> List[InventoryRedisOut]:
         try:
             # Get all keys matching your project pattern
@@ -414,7 +414,7 @@ class EntryInventoryService(EntryInventoryInterface):
         except Exception as e:
             logger.error(f"Redis error fetching entries: {e}")
 
-    # READ: Get an inventory entry by its inventry_id
+# READ: Get an inventory entry by its inventry_id
     async def get_by_inventory_id(self, db: AsyncSession, inventory_id: str) -> Optional[EntryInventoryOut]:
         try:
             # Search all inventory keys in Redis
@@ -447,7 +447,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail="Error fetching inventory from Redis"
             )
 
-    # READ: Get an inventory entry by its Inventory Name
+# READ: Get an inventory entry by its Inventory Name
     async def get_by_inventory_name(self, db: AsyncSession, inventory_name: str) -> Optional[EntryInventoryOut]:
         try:
             # Search all inventory keys in Redis
@@ -557,7 +557,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail=f"Failed to update inventory: {str(e)}"
             )
     
-    # DELETE: Delete an inventory entry by  {Inventory ID}
+# DELETE: Delete an inventory entry by  {Inventory ID}
     async def delete_entry(self, db: AsyncSession, inventory_id: str) -> bool:
         try:
             # Format inventory_id if needed
@@ -650,7 +650,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail=f"Error searching inventory items: {str(e)}"
             )
 
-    #  Show all inventory entries directly from local Redis after clicking {Show All} button
+#  Show all inventory entries directly from local Redis after clicking {Show All} button
     async def show_all_inventory_from_redis(self) -> List[InventoryRedisOut]:
         """Retrieve all inventory entries from Redis"""
         try:
@@ -680,7 +680,7 @@ class EntryInventoryService(EntryInventoryInterface):
                 detail="Failed to load inventory from Redis"
             )
 
-    # List all inventory entries function
+# List all inventory entries function
     async def list_entry_inventories_curd(self, db: AsyncSession):
         try:
             # Get all inventory keys from Redis
