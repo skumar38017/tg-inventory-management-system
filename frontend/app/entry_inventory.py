@@ -1269,7 +1269,7 @@ def open_update_window():
                         command=lambda: load_inventory_record(inventory_name_combo.get_selected_item()))
     load_btn.pack(side='left', padx=5)
     
-    # Edit button - will enable editing of readonly fields
+    # Edit button - will enable editing of editable fields
     edit_btn = tk.Button(top_frame, text="Edit", 
                         command=lambda: toggle_edit_mode(True))
     edit_btn.pack(side='left', padx=5)
@@ -1313,8 +1313,7 @@ def open_update_window():
         
         if field_type == "entry":
             entry = tk.Entry(frame)
-            if is_readonly:
-                entry.config(state='readonly')
+            entry.config(state='readonly' if is_readonly else 'normal')
             entry.pack(side='left', fill='x', expand=True)
             update_window_entries[label_text.strip(":")] = entry
         elif field_type == "date":
@@ -1332,8 +1331,14 @@ def open_update_window():
                                 font=('Helvetica', 8))
             clear_btn.pack(side='left', padx=2)
             
+            # Store the clear button on the date_entry object for later access
+            date_entry.clear_btn = clear_btn
+            
             if is_readonly:
                 date_entry.config(state='readonly')
+                clear_btn.config(state='disabled')
+            else:
+                date_entry.config(state='disabled')
                 clear_btn.config(state='disabled')
             
             update_window_entries[label_text.strip(":")] = date_entry
@@ -1344,6 +1349,7 @@ def open_update_window():
             update_window_entries[label_text.strip(":")] = var
         elif field_type == "long_entry":
             entry = tk.Entry(frame)
+            entry.config(state='normal')
             entry.pack(side='left', fill='x', expand=True)
             update_window_entries[label_text.strip(":")] = entry
     
@@ -1370,8 +1376,7 @@ def open_update_window():
         
         if field_type == "entry":
             entry = tk.Entry(frame)
-            if is_readonly:
-                entry.config(state='readonly')
+            entry.config(state='readonly' if is_readonly else 'normal')
             entry.pack(side='left', fill='x', expand=True)
             update_window_entries[label_text.strip(":")] = entry
         elif field_type == "checkbox":
@@ -1438,20 +1443,26 @@ def open_update_window():
         tk.Button(button_frame, text=text, command=command).pack(side='left', padx=5, expand=True)
     
     def clear_form():
-        """Clear all form fields"""
+        """Clear all form fields while maintaining readonly states"""
         for key, widget in update_window_entries.items():
             if isinstance(widget, tk.Entry):
+                # Temporarily enable to clear, then restore state
+                current_state = widget['state']
                 widget.config(state='normal')
                 widget.delete(0, tk.END)
-                if key in ["Sno", "ProductID", "InventoryID", "Name", "ID", "Updated At", 
-                           "Unique Code", "Created At", "Barcode", "Barcode URL"]:
-                    widget.config(state='readonly')
+                widget.config(state=current_state)
             elif isinstance(widget, DateEntry):
                 clear_date_entry(widget)
+                # Restore the state
+                if key in ["Purchase Date", "Returned Date"]:
+                    widget.config(state='enable')
+                    if hasattr(widget, 'clear_btn'):
+                        widget.clear_btn.config(state='enable')
             elif isinstance(widget, tk.BooleanVar):
                 widget.set(False)
         
         inventory_name_combo.set('')
+        toggle_edit_mode(False)
     
     def update_inventory_record():
         """Update the inventory record with form data"""
@@ -1491,21 +1502,55 @@ def open_update_window():
             # Call the update function
             updated_item = update_existing_inventory(inventory_data)
             
-            # Show success message and refresh the form
+            # Show success message and clear the form
             messagebox.showinfo("Success", "Inventory record updated successfully")
-            load_inventory_record(updated_item)
+            clear_form()  # Clear the form instead of reloading
+            update_main_inventory_list()
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to update inventory: {str(e)}")
 
     def toggle_edit_mode(enable):
-        """Toggle edit mode for readonly fields"""
-        readonly_fields = ["Sno", "ProductID", "InventoryID", "Name", "ID", "Updated At", 
-                         "Unique Code", "Created At", "Barcode", "Barcode URL"]
+        """Toggle edit mode for editable fields while keeping readonly fields always readonly"""
+        # These fields should ALWAYS be readonly, regardless of edit mode
+        permanent_readonly_fields = [
+            "Sno", "ProductID", "InventoryID", "Name", 
+            "ID", "Updated At", "Unique Code", 
+            "Created At", "Barcode", "Barcode URL"
+        ]
         
-        for field in readonly_fields:
+        # These are the fields that should be editable when in edit mode
+        editable_fields = [
+            "Material", "Manufacturer", "Purchase Date", "Repair Quantity",
+            "Vendor Name", "On Rent", "Returned Date", "In Office", "Issued Qty",
+            "Submitted By", "Total Quantity", "Purchase Dealer", "Purchase Amount",
+            "Repair Cost", "Total Rent", "Rented Returned", "On Event", 
+            "In Warehouse", "Balance Qty"
+        ]
+        
+        # First, ensure all permanent readonly fields stay readonly
+        for field in permanent_readonly_fields:
             if field in update_window_entries:
-                update_window_entries[field].config(state='normal' if enable else 'readonly')
+                if isinstance(update_window_entries[field], tk.Entry):
+                    update_window_entries[field].config(state='readonly')
+                elif isinstance(update_window_entries[field], DateEntry):
+                    update_window_entries[field].config(state='readonly')
+        
+        # Then toggle the editable fields based on the enable parameter
+        for field in editable_fields:
+            if field in update_window_entries:
+                if isinstance(update_window_entries[field], tk.Entry):
+                    update_window_entries[field].config(state='normal' if enable else 'readonly')
+                elif isinstance(update_window_entries[field], DateEntry):
+                    update_window_entries[field].config(state='normal' if enable else 'normal')
+                    if hasattr(update_window_entries[field], 'clear_btn'):
+                        update_window_entries[field].clear_btn.config(state='normal' if enable else 'normal')
+                elif isinstance(update_window_entries[field], tk.BooleanVar):
+                    # Checkboxes are always editable (their state is controlled by the variable)
+                    pass
+    
+    # Initialize edit mode to False
+    toggle_edit_mode(False)
     
     # Load initial inventory names
     inventory_name_combo._load_all_inventory_names()
