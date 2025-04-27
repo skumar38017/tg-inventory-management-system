@@ -14,6 +14,7 @@ from to_event import ToEventWindow
 from from_event import FromEventWindow
 from assign_inventory import AssignInventoryWindow
 from damage_inventory import DamageWindow
+from entry_update_pop_window import UpdatePopUpWindow
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
@@ -741,10 +742,13 @@ def create_list_frames(root):
                            font=('Helvetica', 9))
     show_all_btn.grid(row=0, column=5, padx=5)
     
-    # Right side controls
     right_frame = tk.Frame(date_filter_frame)
     right_frame.pack(side="right", fill="x")
-    
+
+    # Add Update button before Sync button
+    update_btn = create_update_button(right_frame)
+    update_btn.pack(side="right", padx=5)
+
     # Upload button
     upload_btn = tk.Button(
         right_frame, 
@@ -754,8 +758,6 @@ def create_list_frames(root):
     )
     upload_btn.pack(side="right", padx=5)
 
-    right_frame = tk.Frame(date_filter_frame)
-    right_frame.pack(side="right", fill="x")
 
     # Main List Sync Item Container button
     sync_btn = tk.Button(
@@ -765,6 +767,9 @@ def create_list_frames(root):
         font=('Helvetica', 9, 'bold')
     )
     sync_btn.pack(side="right", padx=5)
+
+    # Add Update button
+    create_update_button(inventory_frame)
     
     # Separator
     ttk.Separator(inventory_frame, orient='horizontal').pack(fill="x", pady=5)
@@ -1060,8 +1065,6 @@ def create_list_frames(root):
                         font=('Helvetica', 9, 'bold'))
     search_btn.grid(row=0, column=6, sticky='e', padx=5)
 
-    # Add Update button
-    create_update_button(search_fields_frame)
 
     # Separator line
     ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
@@ -1108,20 +1111,26 @@ def create_list_frames(root):
 #  Update Window with InventoryComboBox integration
 ######################################################################################
 
-def create_update_button(search_frame):
+def create_update_button(inventory_frame):
     """Create an Update button in the search frame"""
     update_btn = tk.Button(
-        search_frame, 
+        inventory_frame,
         text="Update", 
         command=open_update_window,
         font=('Helvetica', 9, 'bold')
     )
-    update_btn.grid(row=0, column=7, sticky='e', padx=5)
+    return update_btn  
 
 def clear_date_entry(date_entry):
-    """Clear the date entry by setting it to None and updating the display"""
-    date_entry._set_text('')  # Clear the displayed text
-    date_entry._date = None   # Clear the internal date value
+    """Clear the date entry by setting it to empty and updating the display"""
+    if date_entry['state'] == 'normal':  # Only clear if the field is editable
+        # Clear the displayed text
+        date_entry.delete(0, tk.END)
+        # Clear the internal date value
+        date_entry._set_text('')
+        # For ttkbootstrap DateEntry, you might also need to reset the _date attribute
+        if hasattr(date_entry, '_date'):
+            date_entry._date = None
 
 def load_inventory_record(inventory_data):
     """Populate the form fields with inventory data"""
@@ -1319,29 +1328,30 @@ def open_update_window():
         elif field_type == "date":
             # Create a frame for date entry and clear button
             date_frame = tk.Frame(frame)
-            date_frame.pack(side='left', fill='x', expand=True)
-            
+            date_frame.pack(side='left', fill='x', expand=True)  
+
             # Date entry
             date_entry = DateEntry(date_frame, date_pattern='yyyy-mm-dd')
             date_entry.pack(side='left', fill='x', expand=True)
             
             # Clear button for date
-            clear_btn = tk.Button(date_frame, text="Clear", 
-                                command=lambda de=date_entry: clear_date_entry(de),
-                                font=('Helvetica', 8))
+            clear_btn = tk.Button(
+                date_frame, 
+                text="Clear", 
+                command=lambda de=date_entry: clear_date_entry(de),
+                font=('Helvetica', 8),
+                state='normal'
+            )
             clear_btn.pack(side='left', padx=2)
             
-            # Store the clear button on the date_entry object for later access
+            # Store reference to the clear button
             date_entry.clear_btn = clear_btn
             
-            if is_readonly:
-                date_entry.config(state='readonly')
-                clear_btn.config(state='disabled')
-            else:
-                date_entry.config(state='disabled')
-                clear_btn.config(state='disabled')
+            # Initially disable the date entry
+            date_entry.config(state='normal')
             
             update_window_entries[label_text.strip(":")] = date_entry
+
         elif field_type == "checkbox":
             var = tk.BooleanVar()
             cb = tk.Checkbutton(frame, variable=var)
@@ -1511,15 +1521,15 @@ def open_update_window():
             messagebox.showerror("Error", f"Failed to update inventory: {str(e)}")
 
     def toggle_edit_mode(enable):
-        """Toggle edit mode for editable fields while keeping readonly fields always readonly"""
-        # These fields should ALWAYS be readonly, regardless of edit mode
+        """Toggle edit mode for editable fields"""
+        # These fields should ALWAYS be readonly
         permanent_readonly_fields = [
             "Sno", "ProductID", "InventoryID", "Name", 
             "ID", "Updated At", "Unique Code", 
             "Created At", "Barcode", "Barcode URL"
         ]
         
-        # These are the fields that should be editable when in edit mode
+        # These fields should be editable in edit mode
         editable_fields = [
             "Material", "Manufacturer", "Purchase Date", "Repair Quantity",
             "Vendor Name", "On Rent", "Returned Date", "In Office", "Issued Qty",
@@ -1528,27 +1538,28 @@ def open_update_window():
             "In Warehouse", "Balance Qty"
         ]
         
-        # First, ensure all permanent readonly fields stay readonly
+        # Set permanent readonly fields
         for field in permanent_readonly_fields:
             if field in update_window_entries:
-                if isinstance(update_window_entries[field], tk.Entry):
-                    update_window_entries[field].config(state='readonly')
-                elif isinstance(update_window_entries[field], DateEntry):
-                    update_window_entries[field].config(state='readonly')
+                widget = update_window_entries[field]
+                if isinstance(widget, (tk.Entry, DateEntry)):
+                    widget.config(state='readonly')
+                if hasattr(widget, 'clear_btn'):
+                    widget.clear_btn.config(state='disabled')
         
-        # Then toggle the editable fields based on the enable parameter
+        # Toggle editable fields
         for field in editable_fields:
             if field in update_window_entries:
-                if isinstance(update_window_entries[field], tk.Entry):
-                    update_window_entries[field].config(state='normal' if enable else 'readonly')
-                elif isinstance(update_window_entries[field], DateEntry):
-                    update_window_entries[field].config(state='normal' if enable else 'normal')
-                    if hasattr(update_window_entries[field], 'clear_btn'):
-                        update_window_entries[field].clear_btn.config(state='normal' if enable else 'normal')
-                elif isinstance(update_window_entries[field], tk.BooleanVar):
-                    # Checkboxes are always editable (their state is controlled by the variable)
-                    pass
-    
+                widget = update_window_entries[field]
+                if isinstance(widget, tk.Entry):
+                    widget.config(state='normal' if enable else 'readonly')
+                elif isinstance(widget, DateEntry):
+                    widget.config(state='normal' if enable else 'disabled')
+                    if hasattr(widget, 'clear_btn'):
+                        widget.clear_btn.config(state='normal' if enable else 'disabled')
+                elif isinstance(widget, tk.BooleanVar):
+                    pass  # Checkboxes are always editable
+
     # Initialize edit mode to False
     toggle_edit_mode(False)
     
