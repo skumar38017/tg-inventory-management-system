@@ -26,16 +26,17 @@ class UpdatePopUpWindow:
         )
         return update_btn
 
+    @staticmethod
     def clear_date_entry(date_entry):
-        """Clear the date entry by setting it to empty and updating the display"""
-        if date_entry['state'] == 'normal':  # Only clear if the field is editable
-            # Clear the displayed text
-            date_entry.delete(0, tk.END)
-            # Clear the internal date value
-            date_entry._set_text('')
-            # For ttkbootstrap DateEntry, you might also need to reset the _date attribute
-            if hasattr(date_entry, '_date'):
-                date_entry._date = None
+        """Clear the date entry by setting it to empty"""
+        try:
+            if date_entry['state'] != 'disabled':
+                date_entry.delete(0, tk.END)
+                if hasattr(date_entry, '_date'):
+                    date_entry._date = None
+                date_entry.update()
+        except Exception as e:
+            print(f"Error clearing date entry: {e}")
 
     def load_inventory_record(inventory_data):
         """Populate the form fields with inventory data"""
@@ -256,7 +257,7 @@ class UpdatePopUpWindow:
                 # Store reference to the clear button
                 date_entry.clear_btn = clear_btn
                 
-                # Initially disable the date entry
+                # Set initial state
                 date_entry.config(state='normal')
                 
                 update_window_entries[label_text.strip(":")] = date_entry
@@ -305,7 +306,7 @@ class UpdatePopUpWindow:
                 update_window_entries[label_text.strip(":")] = var
         
         # Additional information section (read-only)
-        info_frame = tk.LabelFrame(main_frame, text="Additional Information (Read-only or auto-generated)")
+        info_frame = tk.LabelFrame(main_frame, text="Additional Information (auto-generated)")
         info_frame.pack(fill='x', pady=10)
         
         # Create two columns for info section
@@ -365,18 +366,17 @@ class UpdatePopUpWindow:
             """Clear all form fields while maintaining readonly states"""
             for key, widget in update_window_entries.items():
                 if isinstance(widget, tk.Entry):
-                    # Temporarily enable to clear, then restore state
                     current_state = widget['state']
                     widget.config(state='normal')
                     widget.delete(0, tk.END)
                     widget.config(state=current_state)
                 elif isinstance(widget, DateEntry):
+                    current_state = widget['state']
+                    widget.config(state='normal')
                     UpdatePopUpWindow.clear_date_entry(widget)
-                    # Restore the state
-                    if key in ["Purchase Date", "Returned Date"]:
-                        widget.config(state='enable')
-                        if hasattr(widget, 'clear_btn'):
-                            widget.clear_btn.config(state='enable')
+                    widget.config(state=current_state)
+                    if hasattr(widget, 'clear_btn'):
+                        widget.clear_btn.config(state=current_state)
                 elif isinstance(widget, tk.BooleanVar):
                     widget.set(False)
             
