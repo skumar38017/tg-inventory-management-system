@@ -1,10 +1,24 @@
 #  frontend/app/entry_update_pop_window.py
 from common_imports import *
+from entry_inventory import *
+from widgets.inventory_combobox import InventoryComboBox
+
 
 class UpdatePopUpWindow:
 ######################################################################################
 #  Update Window with InventoryComboBox integration
 ######################################################################################
+
+    def create_update_button(inventory_frame):
+        """Create an Update button in the search frame"""
+        update_btn = tk.Button(
+            inventory_frame,
+            text="Update", 
+            command=UpdatePopUpWindow.open_update_window,  # Changed this line
+            font=('Helvetica', 9, 'bold')
+        )
+        return update_btn
+
     def clear_date_entry(date_entry):
         """Clear the date entry by setting it to empty and updating the display"""
         if date_entry['state'] == 'normal':  # Only clear if the field is editable
@@ -44,7 +58,7 @@ class UpdatePopUpWindow:
             if purchase_date:
                 update_window_entries["Purchase Date"].set_date(purchase_date)
             else:
-                clear_date_entry(update_window_entries["Purchase Date"])
+                UpdatePopUpWindow.clear_date_entry(update_window_entries["Purchase Date"])
                 
             update_window_entries["Repair Quantity"].delete(0, tk.END)
             update_window_entries["Repair Quantity"].insert(0, inventory_data.get('repair_quantity', ''))
@@ -58,7 +72,7 @@ class UpdatePopUpWindow:
             if returned_date:
                 update_window_entries["Returned Date"].set_date(returned_date)
             else:
-                clear_date_entry(update_window_entries["Returned Date"])
+                UpdatePopUpWindow.clear_date_entry(update_window_entries["Returned Date"])
                 
             update_window_entries["In Office"].set(inventory_data.get('in_office', False))
             
@@ -137,6 +151,7 @@ class UpdatePopUpWindow:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load inventory data: {str(e)}")
 
+    @staticmethod
     def open_update_window():
         """Open the update inventory window with the specified layout"""
         update_window = tk.Toplevel(root)
@@ -159,7 +174,7 @@ class UpdatePopUpWindow:
         
         # Load button
         load_btn = tk.Button(top_frame, text="Load Record", 
-                            command=lambda: load_inventory_record(inventory_name_combo.get_selected_item()))
+                            command=lambda: UpdatePopUpWindow.load_inventory_record(inventory_name_combo.get_selected_item()))
         load_btn.pack(side='left', padx=5)
         
         # Edit button - will enable editing of editable fields
@@ -222,7 +237,7 @@ class UpdatePopUpWindow:
                 clear_btn = tk.Button(
                     date_frame, 
                     text="Clear", 
-                    command=lambda de=date_entry: clear_date_entry(de),
+                    command=lambda de=date_entry: UpdatePopUpWindow.clear_date_entry(de),
                     font=('Helvetica', 8),
                     state='normal'
                 )
@@ -346,7 +361,7 @@ class UpdatePopUpWindow:
                     widget.delete(0, tk.END)
                     widget.config(state=current_state)
                 elif isinstance(widget, DateEntry):
-                    clear_date_entry(widget)
+                    UpdatePopUpWindow.clear_date_entry(widget)
                     # Restore the state
                     if key in ["Purchase Date", "Returned Date"]:
                         widget.config(state='enable')
@@ -452,6 +467,6 @@ class UpdatePopUpWindow:
         
         # Bind combobox selection to load record automatically
         inventory_name_combo.bind("<<ComboboxSelected>>", 
-                                lambda e: load_inventory_record(inventory_name_combo.get_selected_item()))
+                                lambda e: UpdatePopUpWindow.load_inventory_record(inventory_name_combo.get_selected_item()))
 
 ################################################################################################################

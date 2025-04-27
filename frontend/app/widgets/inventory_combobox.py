@@ -1,3 +1,4 @@
+# frontend/app/widgets/inventory_combobox.py
 from common_imports import *
 from config import make_api_request
 from utils.inventory_utils import format_wastage_inventory_item
