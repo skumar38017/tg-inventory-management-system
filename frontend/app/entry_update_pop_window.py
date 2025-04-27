@@ -8,6 +8,7 @@ class UpdatePopUpWindow:
 ######################################################################################
 #  Update Window with InventoryComboBox integration
 ######################################################################################
+    root = None
 
     def create_update_button(inventory_frame):
         """Create an Update button in the search frame"""
