@@ -746,7 +746,7 @@ def create_list_frames(root):
     right_frame.pack(side="right", fill="x")
 
     # Add Update button before Sync button
-    update_btn = UpdatePopUpWindow.create_update_button(right_frame)
+    update_btn = UpdatePopUpWindow.create_update_button(right_frame, root_window=root)
     update_btn.pack(side="right", padx=5)
 
     # Upload button
@@ -769,7 +769,7 @@ def create_list_frames(root):
     sync_btn.pack(side="right", padx=5)
 
     # Add Update button
-    UpdatePopUpWindow.create_update_button(inventory_frame)
+    UpdatePopUpWindow.create_update_button(inventory_frame, root_window=root)
     
     # Separator
     ttk.Separator(inventory_frame, orient='horizontal').pack(fill="x", pady=5)

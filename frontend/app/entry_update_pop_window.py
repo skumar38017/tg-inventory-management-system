@@ -1,21 +1,27 @@
 #  frontend/app/entry_update_pop_window.py
 from common_imports import *
-from entry_inventory import *
 from widgets.inventory_combobox import InventoryComboBox
+from api_request.entry_inventory_api_request import (
+    update_existing_inventory
+)
+from entry_inventory import update_main_inventory_list
 
 
 class UpdatePopUpWindow:
+    root = None
+    def __init__(self, root_window):
+        self.root = root_window
 ######################################################################################
 #  Update Window with InventoryComboBox integration
 ######################################################################################
-    root = None
-
-    def create_update_button(inventory_frame):
+    @classmethod
+    def create_update_button(cls, inventory_frame, root_window):
         """Create an Update button in the search frame"""
+        cls.root = root_window  # Store the root window reference
         update_btn = tk.Button(
             inventory_frame,
             text="Update", 
-            command=UpdatePopUpWindow.open_update_window,  # Changed this line
+            command=cls.open_update_window,
             font=('Helvetica', 9, 'bold')
         )
         return update_btn
@@ -152,12 +158,15 @@ class UpdatePopUpWindow:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load inventory data: {str(e)}")
 
-    @staticmethod
-    def open_update_window():
+    @classmethod
+    def open_update_window(cls):
         """Open the update inventory window with the specified layout"""
-        update_window = tk.Toplevel(root)
+        if not cls.root:
+            raise ValueError("Root window not set for UpdatePopUpWindow")
+            
+        update_window = tk.Toplevel(cls.root)
         update_window.title("Update Inventory")
-        update_window.geometry("1000x800")  # Adjust size as needed
+        update_window.geometry("1000x800")
         
         # Main container
         main_frame = tk.Frame(update_window)
