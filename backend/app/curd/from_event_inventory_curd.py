@@ -42,7 +42,7 @@ from pydantic import ValidationError
 import json
 from sqlalchemy import select, delete
 from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
-
+from backend.app.utils.inventory_updater import InventoryUpdater
 from backend.app.database.redisclient import get_redis
 redis_client=get_redis()
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ logger.setLevel(logging.INFO)
 
 class FromEventInventoryService(FromEventInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
+        self.InventoryUpdater = InventoryUpdater(redis_client)
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
@@ -350,14 +351,19 @@ class FromEventInventoryService(FromEventInventoryInterface):
                     json.dumps(item, default=str)
                 )
     
-            return ToEventRedisOut(**redis_data)
-    
+                await self.InventoryUpdater.handle_to_event({
+                    'name': item.get('name'),  
+                    'total': item.get('RecQty', 0)  
+                })
+   
         except Exception as e:
             logger.error(f"Redis storage failed: {str(e)}", exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to create inventory: {str(e)}"
             )
+        finally:
+            return ToEventRedisOut(**redis_data)
     
  #  show all project directly from local Redis in `submitted Forms` directly after submitting the form
     async def from_event_load_submitted_project_from_redis(self, skip: int = 0) -> List[ToEventRedisOut]:
@@ -442,6 +448,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
             logger.error(f"Error fetching project {project_id} from Redis: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
 
+# Update record in existing project in Redis and update `inventory Quantity` in Inventory acording to operation
     async def from_event_update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
         try:
             redis_key = f"from_event_inventory:{project_id}"
@@ -454,7 +461,7 @@ class FromEventInventoryService(FromEventInventoryInterface):
             ]
 
             # Fetch existing project data from Redis
-            existing_data = await self.redis.set(redis_key)
+            existing_data = await self.redis.get(redis_key)  # Changed from set() to get()
             if not existing_data:
                 raise HTTPException(status_code=404, detail="Project not found")
                 
@@ -467,19 +474,44 @@ class FromEventInventoryService(FromEventInventoryInterface):
                     existing_dict['inventory_items'] = []
                 else:
                     # Map existing items by sno for ID preservation
-                    existing_items = {item['id']: item for item in existing_dict.get('inventory_items', [])}
+                    existing_items = {item['sno']: item for item in existing_dict.get('inventory_items', [])}
                     
                     updated_items = []
                     for new_item in update_dict['inventory_items']:
+                        # Ensure RecQty is properly converted to int
+                        try:
+                            rec_qty = int(new_item.get('RecQty', 0))
+                        except (ValueError, TypeError):
+                            rec_qty = 0
+
                         # If item exists, preserve its ID and project_id
                         if 'sno' in new_item and new_item['sno'] in existing_items:
                             existing_item = existing_items[new_item['sno']]
                             new_item['id'] = existing_item.get('id')
                             new_item['project_id'] = existing_item.get('project_id')
-                        # If new item, generate ID and set project_id
+                
+                            # For returns, we use RecQty directly (positive value)
+                            old_rec_qty = int(existing_item.get('RecQty', 0))
+                            quantity_diff = rec_qty - old_rec_qty
                         else:
+                            # If new item, generate ID and set project_id
                             new_item['id'] = str(uuid.uuid4())
                             new_item['project_id'] = project_id
+                            quantity_diff = rec_qty
+                    
+                        # Update inventory if there's a quantity change
+                        if quantity_diff != 0 and 'name' in new_item:
+                            try:
+                                await self.InventoryUpdater.handle_from_event({  # Changed to handle_from_event
+                                    'name': new_item['name'],
+                                    'RecQty': abs(quantity_diff),  # Use absolute value
+                                    'inventory_id': new_item.get('inventory_id'),
+                                    'is_adjustment': True
+                                })
+                            except Exception as e:
+                                logger.error(f"Failed to update inventory for {new_item.get('name')}: {str(e)}")
+                                # Continue with project update but log the error
+
                         updated_items.append(new_item)
                     
                     update_dict['inventory_items'] = updated_items
@@ -505,9 +537,9 @@ class FromEventInventoryService(FromEventInventoryInterface):
                 raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
 
             # Save to Redis
-            await redis_client.get(
+            await self.redis.set(
                 redis_key,
-                validated_data.model_dump_json()
+                json.dumps(validated_data.model_dump(), cls=CustomJSONEncoder)  # Use custom encoder
             )
 
             return validated_data
@@ -517,9 +549,11 @@ class FromEventInventoryService(FromEventInventoryInterface):
         except Exception as e:
             logger.error(f"Error updating project {project_id}: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error updating project: {str(e)}")
+    
+    
 
-    class CustomJSONEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, (datetime, date)):
-                return obj.isoformat()
-            return super().default(obj)
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)

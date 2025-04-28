@@ -168,7 +168,59 @@ class InventoryUpdater:
             logger.error(f"Failed to process To Event for {data.get('name')}: {str(e)}")
             raise
        
-    
+    async def handle_from_event(self, data: dict) -> InventoryRedisOut:
+        try:
+            if not data.get('name'):
+                raise ValueError("Inventory name is required")
+            if 'RecQty' not in data:
+                raise ValueError("Received quantity (RecQty) is required")
+
+            # Convert RecQty to integer
+            rec_qty = int(data['RecQty'])
+            if rec_qty <= 0:
+                raise ValueError("RecQty must be positive")
+
+            # Default to adjustment mode for returns
+            is_adjustment = data.get('is_adjustment', True)
+
+            # Find inventory by name if ID not provided
+            if not data.get('inventory_id'):
+                keys = await self.redis.keys("inventory:*")
+                matching_key = None
+                for key in keys:
+                    key_parts = key.split(':')
+                    if len(key_parts) == 2 and key_parts[1].startswith(data['name']):
+                        matching_key = key
+                        break
+                
+                if not matching_key:
+                    raise ValueError(f"Inventory {data['name']} not found")
+                    
+                data['inventory_id'] = key_parts[1][len(data['name']):]
+
+            logger.info(f"Processing return for {data['name']} (Qty: {rec_qty})")
+
+            # For returns, we:
+            # 1. Decrease issued_qty by RecQty
+            # 2. Balance auto-updates via (total_quantity - issued_qty)
+            result = await self.update_inventory(
+                inventory_name=data['name'],
+                issued_qty=-rec_qty,  # Negative to decrease issued quantity
+                operation="From Event",
+                adjustment_mode=is_adjustment
+            )
+
+            logger.info(
+                f"Successfully processed return - {data['name']}: "
+                f"Issued reduced by {rec_qty}, "
+                f"New balance: {result.balance_qty}"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to process return for {data.get('name')}: {str(e)}")
+            raise
+
     async def handle_assign_inventory(
         self, 
         rec_qty: int, 
