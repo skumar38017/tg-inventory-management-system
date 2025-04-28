@@ -26,6 +26,7 @@ from backend.app.schema.to_event_inventry_schma import (
 )
 from backend.app.curd.to_event_inventry_curd import ToEventInventoryService
 from backend.app.interface.to_event_interface import ToEventInventoryInterface
+from backend.app.interface.inventory_updater_interface import InventoryUpdaterInterface
 
 # Dependency to get the to_event service
 def get_to_event_service(

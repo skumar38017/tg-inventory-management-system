@@ -282,7 +282,6 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                             await self.redis.set(
                                 existing_key,
                                 json.dumps(existing_dict, default=str),
-                                ex=200
                             )
                             
                             synced_items.append(InventoryRedisOut(**existing_dict))
