@@ -428,6 +428,7 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
             logger.error(f"Error fetching project {project_id} from Redis: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error fetching project: {str(e)}")
 
+# Update record in existing project in Redis and update `inventory Quantity` in Inventory acording to operation
     async def update_project_data(self, project_id: str, update_data: ToEventRedisUpdateIn):
         try:
             redis_key = f"to_event_inventory:{project_id}"
@@ -458,16 +459,40 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
                     updated_items = []
                     for new_item in update_dict['inventory_items']:
                         # If item exists, preserve its ID and project_id
+                        # Calculate quantity difference for inventory updates
+                        quantity_diff = 0
+
+                        # If item exists, preserve its ID and project_id
                         if 'sno' in new_item and new_item['sno'] in existing_items:
                             existing_item = existing_items[new_item['sno']]
                             new_item['id'] = existing_item.get('id')
                             new_item['project_id'] = existing_item.get('project_id')
-                        # If new item, generate ID and set project_id
+                
+                            # Calculate the difference between old and new total
+                            old_total = existing_item.get('total', 0)
+                            new_total = new_item.get('total', 0)
+                            quantity_diff = new_total - old_total
                         else:
+                            # If new item, generate ID, set project_id and use the full quantity
                             new_item['id'] = str(uuid.uuid4())
                             new_item['project_id'] = project_id
-                        updated_items.append(new_item)
+                            quantity_diff = new_item.get('total', 0)
                     
+                    # Update inventory if there's a quantity change
+                    if quantity_diff != 0 and 'name' in new_item:
+                        try:
+                            await self.InventoryUpdater.handle_to_event({
+                                'name': new_item['name'],
+                                'total': quantity_diff,
+                                'inventory_id': new_item.get('inventory_id'),
+                                'is_adjustment': True  # This tells it to treat as adjustment
+                            })
+                        except Exception as e:
+                            logger.error(f"Failed to update inventory for {new_item.get('name')}: {str(e)}")
+
+                        # Continue with project update even if inventory update fails
+                        # You might want to handle this differently based on requirements
+                        updated_items.append(new_item)
                     update_dict['inventory_items'] = updated_items
 
             # Step 2: Merge updates
@@ -491,7 +516,7 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
                 raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
 
             # Save to Redis
-            await self.redis.set(  # Changed from redis_client to self.redis
+            await self.redis.set(
                 redis_key,
                 validated_data.model_dump_json()
             )

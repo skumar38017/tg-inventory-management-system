@@ -60,45 +60,73 @@ class InventoryUpdater:
         inventory_name: str,
         total_quantity: int = 0,
         issued_qty: int = 0,
-        operation: str = None
+        operation: str = None,
+        adjustment_mode: bool = False  # New flag for update operations
     ) -> InventoryRedisOut:
         """
-        Update inventory quantities in Redis based on the operation.
+        Update inventory quantities in Redis with enhanced handling for updates.
         
         Args:
-            inventory_name: ID of the inventory to update
-            total_quantity: Quantity to add to Total Qty (default 0)
-            issued_qty: Quantity to add to Issue Qty (default 0)
+            inventory_name: Name/ID of the inventory to update
+            total_quantity: Quantity to add/set for Total Qty (default 0)
+            issued_qty: Quantity to add/set for Issue Qty (default 0)
             operation: Name of the operation for logging (optional)
-            
+            adjustment_mode: If True, treats quantities as adjustments (add/subtract)
+                        If False, treats quantities as absolute values (set)
+                        
         Returns:
             Updated inventory data as InventoryRedisOut
             
         Raises:
             ValueError: If inventory is not found in Redis
+            ValueError: If trying to set negative quantities
         """
         current = await self._get_current_inventory(inventory_name)
         
         if not current:
-            raise ValueError(f"Inventory with ID {inventory_name} not found in Redis")
+            raise ValueError(f"Inventory {inventory_name} not found in Redis")
             
+        # Get current values with proper type conversion
         current_total = int(current.get('total_quantity', 0))
         current_issue = int(current.get('issued_qty', 0))
         
-        new_total = current_total + total_quantity
-        new_issue = current_issue + issued_qty
-        new_balance = new_total - new_issue
+        # Calculate new values based on adjustment mode
+        if adjustment_mode:
+            # For adjustments (during project updates)
+            new_total = current_total + total_quantity
+            new_issue = current_issue + issued_qty
+        else:
+            # For absolute values (during project creation)
+            new_total = total_quantity if total_quantity != 0 else current_total
+            new_issue = issued_qty if issued_qty != 0 else current_issue
         
+        # Validate quantities won't go negative
+        if new_total < 0 or new_issue < 0 or (new_total - new_issue) < 0:
+            raise ValueError(
+                f"Invalid quantities would result in negative values: "
+                f"Total={new_total}, Issued={new_issue}, Balance={new_total - new_issue}"
+            )
+        
+        # Prepare updates
         updates = current.copy()
         updates.update({
             'total_quantity': new_total,
             'issued_qty': new_issue,
-            'balance_qty': new_balance
+            'balance_qty': new_total - new_issue,
         })
         
+        # Apply updates
         await self._update_redis_inventory(inventory_name, updates)
+        
+        logger.info(
+            f"Inventory {inventory_name} updated: "
+            f"Total {current_total}→{new_total}, "
+            f"Issued {current_issue}→{new_issue}, "
+            f"Operation: {operation or 'N/A'}"
+        )
+        
         return InventoryRedisOut(**updates)
-            
+
     async def handle_to_event(self, data: dict) -> InventoryRedisOut:
         try:
             if not data.get('name'):
@@ -106,65 +134,40 @@ class InventoryUpdater:
             if 'total' not in data:
                 raise ValueError("Total quantity is required")
                 
+            # Determine if this is an adjustment (update) or absolute (create)
+            is_adjustment = data.get('is_adjustment', False)
+            
             # If inventory_id is not provided, search by name
             if not data.get('inventory_id'):
-                # Get all inventory keys
                 keys = await self.redis.keys("inventory:*")
-                
-                # Find matching inventory by name
                 matching_key = None
                 for key in keys:
-                    # Extract inventory_name from key (format: "inventory:{name}{id}")
                     key_parts = key.split(':')
-                    if len(key_parts) != 2:
-                        continue
-                        
-                    # The full identifier is the part after "inventory:"
-                    full_identifier = key_parts[1]
-                    
-                    # Try to find where the name ends and ID begins
-                    # We know inventory_name is at the start and ID is at the end
-                    # So we'll check if the name matches the beginning of the identifier
-                    inventory_name = data['name']
-                    if full_identifier.startswith(inventory_name):
+                    if len(key_parts) == 2 and key_parts[1].startswith(data['name']):
                         matching_key = key
                         break
                 
                 if not matching_key:
-                    raise ValueError(f"Inventory with name {data['name']} not found in Redis")
+                    raise ValueError(f"Inventory {data['name']} not found")
                     
-                # Extract the inventory_id from the matching key
-                # The ID is whatever comes after the inventory_name in the key
-                inventory_id = full_identifier[len(inventory_name):]
-                data['inventory_id'] = inventory_id
-            else:
-                # If inventory_id was provided, use it directly
-                matching_key = f"inventory:{data['name']}{data['inventory_id']}"
-                
-            # Verify the inventory exists
-            exists = await self.redis.exists(matching_key)
-            if not exists:
-                raise ValueError(f"Inventory {data['name']} with ID {data.get('inventory_id')} not found in Redis")
-        
+                data['inventory_id'] = key_parts[1][len(data['name']):]
+            
             logger.info(f"Processing To Event for inventory: {data['name']}")
+            
             result = await self.update_inventory(
                 inventory_name=data['name'],
                 issued_qty=data['total'],
-                operation="To Event"
+                operation="To Event",
+                adjustment_mode=is_adjustment
             )
+            
             logger.info(f"Successfully updated inventory: {data['name']}")
             return result
+            
         except Exception as e:
             logger.error(f"Failed to process To Event for {data.get('name')}: {str(e)}")
             raise
-
-    async def handle_from_event(self, data: dict) -> InventoryRedisOut:
-        """Handle From Event operation"""
-        return await self.update_inventory(
-            inventory_name=data['name'],
-            total_quantity=data['RecQty'],  
-            operation="From Event" 
-        )
+       
     
     async def handle_assign_inventory(
         self, 
