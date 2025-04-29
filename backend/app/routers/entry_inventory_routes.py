@@ -123,7 +123,7 @@ async def upload_inventory_data(
         logger.info("Starting Redis to database upload process")
         
         # Get data from service
-        uploaded_items = await service.upload_from_event_inventory(db)
+        uploaded_items = await service.upload_entry_inventory(db)
         
         if not uploaded_items:
             logger.warning("No inventory items found in Redis for upload")

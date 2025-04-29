@@ -64,7 +64,7 @@ class EntryInventoryService(EntryInventoryInterface):
         self.base_url = config.BASE_URL
 
 
-    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+    async def upload_entry_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
         """Upload all inventory entries from Redis to the database with proper PUT/PATCH handling."""
         try:
             await db.rollback()  # Start fresh
