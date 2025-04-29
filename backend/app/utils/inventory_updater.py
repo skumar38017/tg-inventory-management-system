@@ -134,7 +134,7 @@ class InventoryUpdater:
             if 'total' not in data:
                 raise ValueError("Total quantity is required")
                 
-            # Determine if this is an adjustment (update) or absolute (create)
+            # Determine if this is an adjustment (update) or absolute (create)docker 
             is_adjustment = data.get('is_adjustment', False)
             
             # If inventory_id is not provided, search by name
@@ -221,19 +221,39 @@ class InventoryUpdater:
             logger.error(f"Failed to process return for {data.get('name')}: {str(e)}")
             raise
 
-    async def handle_assign_inventory(
-        self, 
-        rec_qty: int, 
-        quantity: int, 
-        inventory_name: str
-    ) -> InventoryRedisOut:
-        """Handle Assign Inventory operation"""
-        return await self.update_inventory(
-            inventory_name=inventory_name,
-            total_quantity=rec_qty,
-            issued_qty=quantity,
-            operation="Assign Inventory"
-        )
+    async def handle_assign_inventory(self, data: dict) -> InventoryRedisOut:
+        try:
+            # Validate required fields
+            if not data.get('name'):
+                raise ValueError("Inventory name is required")
+            if 'quantity' not in data:
+                raise ValueError("Quantity is required")
+            # Convert quantity to integer
+            try:
+                quantity = int(data['quantity'])
+            except (ValueError, TypeError):
+                raise ValueError("Quantity must be a valid number")
+
+            logger.info(f"Processing assignment update for {data['name']} (Qty: {quantity})")
+
+            # Update inventory - adjust issued quantity (can be positive or negative)
+            result = await self.update_inventory(
+                inventory_name=data['name'],
+                issued_qty=quantity,  # Can be positive or negative
+                operation="Assignment Update",
+                adjustment_mode=True  # Treat as adjustment
+            )
+
+            logger.info(
+                f"Successfully processed assignment update - {data['name']}: "
+                f"Issued {'increased' if quantity > 0 else 'decreased'} by {abs(quantity)}, "
+                f"New balance: {result.balance_qty}"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to process assignment update for {data.get('name')}: {str(e)}")
+            raise
 
     async def handle_damage(self, quantity: int, inventory_name: str) -> InventoryRedisOut:
         """Handle Damage operation"""

@@ -29,6 +29,7 @@ from backend.app.schema.assign_inventory_schema import (
 )
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
+from backend.app.utils.inventory_updater import InventoryUpdater
 from typing import Union
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ from backend.app.database.redisclient import get_redis
 class AssignInventoryService(AssignmentInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
+        self.InventoryUpdater = InventoryUpdater(redis_client)
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
 
@@ -155,6 +157,12 @@ class AssignInventoryService(AssignmentInventoryInterface):
             if not inventory_data.get('inventory_id'):
                 raise ValueError("inventory_id is required")
 
+            # Convert quantity to integer
+            try:
+                quantity = int(inventory_data['quantity'])
+            except (ValueError, TypeError):
+                raise ValueError("quantity must be a valid number")
+            
             if not inventory_data.get('assignment_barcode'):
                 barcode_data = {
                     'employee_name': inventory_data['employee_name'],
@@ -168,8 +176,18 @@ class AssignInventoryService(AssignmentInventoryInterface):
                     'assignment_barcode_image_url': inventory_data.get('assignment_barcode_image_url', "")
                 })
 
+            # Update inventory quantities
+            try:
+                await self.InventoryUpdater.handle_assign_inventory({
+                    'name': inventory_data['inventory_name'],
+                    'quantity': quantity,
+                })
+            except Exception as e:
+                logger.error(f"Failed to update inventory quantities: {str(e)}")
+                raise ValueError(f"Failed to update inventory: {str(e)}")
+
             redis_key = f"assignment:{inventory_data['employee_name']}{inventory_data['inventory_id']}"            
-            await self.redis.set(redis_key, json.dumps(inventory_data, default=str), ex=86400)
+            await self.redis.set(redis_key, json.dumps(inventory_data, default=str))
             return AssignmentInventory(**inventory_data)
 
         except ValueError as ve:
@@ -340,6 +358,33 @@ class AssignInventoryService(AssignmentInventoryInterface):
             # Parse existing record
             existing_dict = json.loads(existing_data)
             
+            # Determine if this is a return operation
+            is_return = update_dict.get('status', '') == 'Returned'
+            was_assigned = existing_dict.get('status', '').lower() == 'assigned'
+            
+            # Calculate quantity adjustment
+            quantity_adjustment = 0
+            if 'quantity' in update_dict:
+                try:
+                    new_quantity = int(update_dict['quantity'])
+                    old_quantity = int(existing_dict.get('quantity', 0))
+                    
+                    if is_return and was_assigned:
+                        # Full return - use original quantity
+                        quantity_adjustment = -old_quantity
+                    elif is_return and not was_assigned:
+                        # Partial return
+                        quantity_adjustment = -(old_quantity - new_quantity)
+                    else:
+                        # Assignment or quantity change
+                        quantity_adjustment = new_quantity - old_quantity
+                        
+                except (ValueError, TypeError):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Quantity must be a valid number"
+                    )
+                
             # Verify immutable fields haven't changed
             immutable_fields = {
                 'id': existing_dict.get('id'),
@@ -361,6 +406,30 @@ class AssignInventoryService(AssignmentInventoryInterface):
             # Merge updates while preserving immutable fields
             updated_dict = {**existing_dict, **update_dict, **immutable_fields}
             updated_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+            
+            # Update inventory quantities if needed
+            if quantity_adjustment != 0:
+                try:
+                    if is_return:
+                        # Use handle_from_event for returns
+                        await self.InventoryUpdater.handle_from_event({
+                            'name': existing_dict.get('inventory_name'),
+                            'RecQty': abs(quantity_adjustment),
+                            'is_adjustment': True
+                        })
+                    else:
+                        # Use handle_assign_inventory for assignments
+                        await self.InventoryUpdater.handle_assign_inventory({
+                            'name': existing_dict.get('inventory_name'),
+                            'quantity': quantity_adjustment,
+                            'is_adjustment': True
+                        })
+                except Exception as e:
+                    logger.error(f"Failed to update inventory quantities: {str(e)}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to update inventory quantities: {str(e)}"
+                    )
             
             # Convert all datetime objects to ISO format strings
             def convert_datetime(obj):
@@ -386,6 +455,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 status_code=500,
                 detail=f"Failed to update assignment: {str(e)}"
             )
+
         
     #  Show all Assigned Inventory from local Redis 
     async def show_all_assigned_inventory_from_redis(self, skip: int = 0) -> List[AssignmentInventoryRedisOut]:

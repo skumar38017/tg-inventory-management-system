@@ -550,7 +550,6 @@ class FromEventInventoryService(FromEventInventoryInterface):
             logger.error(f"Error updating project {project_id}: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error updating project: {str(e)}")
     
-    
 
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):

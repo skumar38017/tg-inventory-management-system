@@ -22,14 +22,14 @@ class EntryInventoryBase(BaseValidators,BaseModel):
     purchase_amount: Optional[Union[str, float, int]] = None
     repair_quantity: Optional[Union[str, float, int]] = None
     repair_cost: Optional[Union[str, float, int]] = None
-    on_rent: Optional[str] = "false"  # Changed to non-optional with default
+    on_rent: Optional[str] = "false" 
     vendor_name: Optional[str] = None
     total_rent: Optional[Union[str, float, int]] = None
-    rented_inventory_returned: Optional[str] = "false"  # Changed to non-optional with default
-    returned_date: Optional[Union[str, date]] = None  # Added this missing field
-    on_event: Optional[str] = "false"  # Changed to non-optional with default
-    in_office: Optional[str] = "false"  # Changed to non-optional with default
-    in_warehouse: Optional[str] = "false"  # Changed to non-optional with default
+    rented_inventory_returned: Optional[str] = "false" 
+    returned_date: Optional[Union[str, date]] = None 
+    on_event: Optional[str] = "false"  
+    in_office: Optional[str] = "false"  
+    in_warehouse: Optional[str] = "false"  
     issued_qty: Optional[Union[str, float, int]] = None
     balance_qty: Optional[Union[str, float, int]] = None
     submitted_by: Optional[str] = None
@@ -210,7 +210,6 @@ class InventoryRedisOut(StoreInventoryRedis):
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)
         return cls(**data)
-
 
 class GoogleSyncInventoryBase(BaseValidators, BaseModel):
     id: Optional[str] = None  # Allow id in base model
