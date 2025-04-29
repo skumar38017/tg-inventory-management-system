@@ -255,13 +255,69 @@ class InventoryUpdater:
             logger.error(f"Failed to process assignment update for {data.get('name')}: {str(e)}")
             raise
 
-    async def handle_damage(self, quantity: int, inventory_name: str) -> InventoryRedisOut:
-        """Handle Damage operation"""
-        return await self.update_inventory(
-            inventory_name=inventory_name,
-            issued_qty=quantity,
-            operation="Damage"
-        )
+    async def handle_wastage(self, data: dict) -> InventoryRedisOut:
+        """Handle Wastage operation (for returned/approved items)"""
+        try:
+            if not data.get('name'):
+                raise ValueError("Inventory name is required")
+            if 'quantity' not in data:
+                raise ValueError("Quantity is required")
+            
+            # Convert quantity to integer
+            try:
+                quantity = int(data['quantity'])
+            except (ValueError, TypeError):
+                raise ValueError("Quantity must be a valid number")
+
+            if quantity <= 0:
+                raise ValueError("Quantity must be positive")
+
+            # Get current inventory state
+            current = await self._get_current_inventory(data['name'])
+            if not current:
+                raise ValueError(f"Inventory {data['name']} not found")
+                
+            current_total = int(current.get('total_quantity', 0))
+            current_issued = int(current.get('issued_qty', 0))
+            current_balance = current_total - current_issued
+
+            # Check if wastage would make balance negative
+            if (current_total - quantity) < current_issued:
+                # First return all issued items before marking as wastage
+                if current_issued > 0:
+                    await self.update_inventory(
+                        inventory_name=data['name'],
+                        issued_qty=-current_issued,  # Return all issued items
+                        operation="Return Before Wastage"
+                    )
+                
+                # Verify we can now perform wastage
+                current_total = int(current.get('total_quantity', 0)) - current_issued
+                if (current_total - quantity) < 0:
+                    raise ValueError(
+                        f"Cannot mark {quantity} as wastage. Only {current_total} items available after returns"
+                    )
+
+            logger.info(f"Processing wastage for {data['name']} (Qty: {quantity})")
+
+            # Update inventory - decrease total quantity
+            result = await self.update_inventory(
+                inventory_name=data['name'],
+                total_quantity=quantity,  # Negative to decrease total
+                operation="Wastage"
+            )
+
+            logger.info(
+                f"Successfully processed wastage - {data['name']}: "
+                f"Total reduced by {quantity}, "
+                f"New balance: {result.balance_qty}"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to process wastage for {data.get('name')}: {str(e)}")
+            raise
+
 
     async def create_inventory(self, inventory_data: Dict[str, Any]) -> InventoryRedisOut:
         """Create new inventory record in Redis"""

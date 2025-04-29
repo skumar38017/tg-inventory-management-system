@@ -197,19 +197,18 @@ def update_wastage_inventory(employee_name: str, inventory_id: str, data: Dict) 
             "assign_to": data.get("assign_to", ""),
             "sno": data.get("sno", ""),
             "description": data.get("description", ""),
-            "quantity": data.get("quantity", "1"),  # Always set quantity to 1
-            "status": data.get("status", "assigned"),  # Always set status to assigned
-            "receive_date": data.get("receive_date", ""),  # Always set receive_date to empty
-            "receive_by": data.get("receive_by", ""),  # Always set receive_by to empty
-            "check_status": data.get("check_status", ""),  # Always set check_status to empty
-            "location": data.get("location", ""),  # Always set location to empty
-            "project_name": data.get("project_name", ""),  # Always set project_name to empty
-            "comment": data.get("comment", ""),  # Always set comment to empty
-            "zone_activity": data.get("zone_activity", ""),  # Always set zone_activity to empty
-            "wastage_reason": data.get("wastage_reason", ""),  # Always set wastage_reason to empty
-            "wastage_date": data.get("wastage_date", ""),  # Always set wastage_date to empty
-            "wastage_approved_by": data.get("wastage_approved_by", ""),  # Always set wastage_approved_by to empty
-            "wastage_status": data.get("wastage_status", ""),  # Always set wastage_status to empty
+            "quantity": data.get("quantity", "1"), 
+            "status": data.get("status", "assigned"),  
+            "receive_date": data.get("receive_date", ""), 
+            "receive_by": data.get("receive_by", ""), 
+            "check_status": data.get("check_status", ""),  
+            "location": data.get("location", ""), 
+            "project_name": data.get("project_name", ""), 
+            "zone_activity": data.get("zone_activity", ""),  
+            "wastage_reason": data.get("wastage_reason", ""),  
+            "wastage_date": data.get("wastage_date", ""),
+            "wastage_approved_by": data.get("wastage_approved_by", ""),  
+            "wastage_status": data.get("wastage_status", ""),  
         }
                
         logger.debug(f"Sending update data: {update_data}")

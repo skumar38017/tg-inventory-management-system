@@ -159,7 +159,7 @@ class WastageInventoryService(WastageInventoryInterface):
             logger.error(f"Upload operation failed: {e}", exc_info=True)
             raise
 
-    # Create new entry of wastage inventory for to_event which is directly stored in redis
+# Create new entry of wastage inventory for to_event which is directly stored in redis
     async def create_wastage_inventory(self,  db: AsyncSession, item: Union[WastageInventoryCreate, dict]) -> WastageInventory:
         try:
             if isinstance(item, WastageInventoryCreate):
@@ -174,17 +174,32 @@ class WastageInventoryService(WastageInventoryInterface):
             wastage_data['updated_at'] = current_time.isoformat()
             wastage_data['created_at'] = current_time.isoformat()
             
-            if not wastage_data.get('employee_name'):
-                raise ValueError("employee_name is required")
-            if not wastage_data.get('inventory_id'):
-                raise ValueError("inventory_id is required")
+            # Validate required fields
+            required_fields = ['inventory_name', 'inventory_id', 'quantity', 'status']
+            for field in required_fields:
+                if not wastage_data.get(field):
+                    raise ValueError(f"{field} is required")
 
-            # Convert quantity to int if it exists
-            if 'quantity' in wastage_data and wastage_data['quantity'] is not None:
+            # Convert and validate quantity
+            try:
+                quantity = int(float(wastage_data['quantity']))
+                if quantity <= 0:
+                    raise ValueError("Quantity must be positive")
+                wastage_data['quantity'] = quantity
+            except (ValueError, TypeError):
+                raise ValueError("Quantity must be a valid positive number")
+        
+            # Check if status requires wastage processing
+            wastage_statuses = ["Approved", "appeal_approved", "Approved By Higher Authority", "Returned"]
+            if wastage_data.get('status') in wastage_statuses:
                 try:
-                    wastage_data['quantity'] = int(float(wastage_data['quantity']))
-                except (ValueError, TypeError):
-                    raise ValueError("Quantity must be a valid number")
+                    await self.InventoryUpdater.handle_wastage({
+                        'name': wastage_data['inventory_name'],
+                        'quantity': quantity,
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to update inventory quantities: {str(e)}")
+                    raise ValueError(f"Failed to process wastage: {str(e)}")
 
             # Generate barcode if not provided
             if not wastage_data.get('wastage_barcode'):
@@ -224,6 +239,7 @@ class WastageInventoryService(WastageInventoryInterface):
                 status_code=500,
                 detail=f"Failed to create wastage inventory: {str(e)}"
             )
+        
         
     # load submitted wastage inventory 
     async def list_added_wastage_inventory(self, db: AsyncSession, skip: int = 0) -> List[WastageInventoryRedisOut]:

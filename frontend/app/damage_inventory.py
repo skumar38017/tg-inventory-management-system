@@ -334,6 +334,14 @@ class DamageWindow:
             if not messagebox.askyesno("Confirm", "Discard changes and create new entry?"):
                 return
         
+        self.clear_form_fields()
+        
+        self.edit_mode = False
+        self.current_edit_id = None
+        self.current_edit_employee = None
+        
+        logger.info("Prepared form for new entry")
+        
         for field, widget in self.entries.items():
             if isinstance(widget, ttk.Combobox):
                 widget.set('')
@@ -370,6 +378,20 @@ class DamageWindow:
         
         logger.info(f"Item selected: {values[self.fields.index('inventory_id')]}")
 
+    def clear_form_fields(self):
+        """Clear form fields without changing edit mode"""
+        for field, widget in self.entries.items():
+            if isinstance(widget, ttk.Combobox):
+                widget.set('')
+            elif isinstance(widget, DateEntry):
+                widget.set_date(datetime.now().date())
+            else:
+                widget.delete(0, tk.END)
+        
+        # Set default values
+        self.entries["wastage_date"].set_date(datetime.now().date())
+        self.entries["status"].set("damaged")
+    
     def edit_selected(self):
         """Edit the selected entry from the treeview"""
         if not hasattr(self, 'selected_item'):
@@ -380,8 +402,8 @@ class DamageWindow:
         if not values:
             return
             
-        # Clear all fields first
-        self.new_entry()
+        # Clear form fields without resetting edit mode
+        self.clear_form_fields()
         
         # Populate fields with selected item
         for field, value in zip(self.fields, values):
@@ -400,7 +422,7 @@ class DamageWindow:
         # Make read-only fields for fields that shouldn't be edited
         for field in ["inventory_id", "employee_name", "product_id", "project_id"]:
             self.entries[field].config(state='readonly')
-        
+            
         # Set edit mode
         self.edit_mode = True
         self.current_edit_id = values[self.fields.index("inventory_id")]
@@ -479,7 +501,6 @@ class DamageWindow:
             messagebox.showerror("Error", "Failed to submit entry")
 
     def update_selected(self):
-        """Update selected entry"""
         if not self.edit_mode or not self.current_edit_id or not self.current_edit_employee:
             messagebox.showwarning("Warning", "No item selected for editing")
             return
