@@ -65,12 +65,12 @@ class EntryInventoryOut(EntryInventoryBase):
     inventory_barcode: Optional[str] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
-
+    
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
             datetime: lambda v: UTCDateUtils.format_datetime(v),
-            date: lambda v: UTCDateUtils .format_date(v)
+            date: lambda v: UTCDateUtils.format_date(v)
         }
     )
     

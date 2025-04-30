@@ -29,7 +29,7 @@ class TransparentImageWriter(ImageWriter):
     def calculate_size(self, modules, line_width):
         """Calculate image size with extra space for text"""
         width, height = super().calculate_size(modules, line_width)
-        return width, height + 20  # Add space for text below barcode
+        return width, height # Add space for text below barcode
 
     def _paint_text(self, xpos, ypos):
         """Override text painting to put it behind the bars"""
@@ -118,7 +118,8 @@ class BarcodeGenerator:
         barcode_str: str, 
         unique_code: str, 
         save_to_disk: bool = True,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
+        inventory_name: Optional[str] = None,
     ) -> Tuple[bytes, str]:
         """
         Generate a transparent PNG barcode image with codes printed behind the bars
@@ -163,7 +164,7 @@ class BarcodeGenerator:
         
         # Draw semi-transparent background for text (optional)
         # This helps with readability while keeping the background mostly transparent
-        text_height = 20
+        text_height = 10
         text_bg = Image.new('RGBA', (barcode_img.width, text_height), (255, 255, 255, 100))
         barcode_img.paste(text_bg, (0, text_y_position - 5), text_bg)
         
@@ -188,19 +189,26 @@ class BarcodeGenerator:
             image_url = self._save_barcode_to_disk(
                 barcode_str, 
                 image_bytes,
-                output_path
+                output_path,
+                inventory_name 
             )
-        
+            
         return image_bytes, image_url
 
     def _save_barcode_to_disk(
         self, 
         barcode_str: str, 
         image_data: bytes,
-        custom_path: Optional[str] = None
+        custom_path: Optional[str] = None,
+        inventory_name: Optional[str] = None
     ) -> str:
         """Save barcode image to disk and return URL"""
-        filename = f"{barcode_str}.png"
+        # Use inventory_name if provided, otherwise use barcode_str
+        filename = f"{inventory_name.replace(' ', '_')}.png" if inventory_name else f"{barcode_str}.png"
+        
+        # Sanitize filename to remove any problematic characters
+        filename = "".join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
+        
         filepath = os.path.join(custom_path or self.barcode_base_path, filename)
         
         try:

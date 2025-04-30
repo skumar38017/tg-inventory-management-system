@@ -286,10 +286,10 @@ async def get_inventory_by_date_range(
 
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
-    response_model=EntryInventoryOut,
+    response_model=EntryInventoryOut,  # Make sure this is EntryInventoryOut
     status_code=201,
     summary="Create a new entry in the inventory",
-    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
+    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry including the barcode image data.",
     response_model_exclude_unset=True,
     tags=["create Inventory (Redis)"]
 )

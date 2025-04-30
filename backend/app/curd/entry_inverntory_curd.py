@@ -46,6 +46,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 from typing import Union
 import json
+import base64
 from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
 
@@ -296,7 +297,12 @@ class EntryInventoryService(EntryInventoryInterface):
                     inventory_type=inventory_type
                 )
                 # Generate and save the barcode image
-                image_bytes, image_url = self.barcode_generator.generate_barcode_image(barcode, unique_code)
+                image_bytes, image_url = self.barcode_generator.generate_barcode_image(
+                    barcode, 
+                    unique_code,
+                    inventory_name=inventory_data['inventory_name']  # Add this parameter
+                )
+                
                 inventory_data.update({
                     'inventory_barcode': barcode,
                     'inventory_unique_code': unique_code,
