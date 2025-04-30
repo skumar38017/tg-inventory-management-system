@@ -49,6 +49,7 @@ import json
 import base64
 from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
+from backend.app.utils.qr_code_generator import QRCodeGenerator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -61,6 +62,7 @@ class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
+        self.qr_generator = QRCodeGenerator()
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
 
@@ -285,6 +287,9 @@ class EntryInventoryService(EntryInventoryInterface):
                 val = inventory_data.get(field, default_value)
                 inventory_data[field] = BaseValidators.validate_boolean_fields(val)
 
+            # Generate QR code content first
+            # bar_content = self.qr_generator.barcode_qr_content(inventory_data)
+            
             # Generate barcode if not provided
             if not inventory_data.get('inventory_barcode'):
                 barcode_data = {
@@ -293,9 +298,11 @@ class EntryInventoryService(EntryInventoryInterface):
                     'id': inventory_id 
                 }
                 barcode, unique_code = self.barcode_generator.generate_linked_codes(
+                    # bar_content,
                     barcode_data, 
                     inventory_type=inventory_type
                 )
+
                 # Generate and save the barcode image
                 image_bytes, image_url = self.barcode_generator.generate_barcode_image(
                     barcode, 
@@ -308,6 +315,19 @@ class EntryInventoryService(EntryInventoryInterface):
                     'inventory_unique_code': unique_code,
                     'inventory_barcode_url': image_url  
                 })
+
+                # Generate QR code content first
+                qr_content = self.qr_generator.generate_qr_content(inventory_data)
+
+                # Then generate QR code with the content
+                qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
+                    data=qr_content,
+                    inventory_id=inventory_data['inventory_id'],
+                    inventory_name=inventory_data['inventory_name']
+                )
+            
+                # Add QR code URL to inventory data
+                inventory_data['inventory_qrcode_url'] = qr_url
 
             # Permanent Redis storage (no expiration)
             redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"

@@ -81,8 +81,10 @@ async def sync_from_sheets(
     4. Return the list of synced items
     """
     try:
+        inventory_type = 'inventory'
+
         logger.info("Starting Google Sheets sync operation")
-        synced_items = await service.sync_inventory_from_google_sheets(request)
+        synced_items = await service.sync_inventory_from_google_sheets(request, inventory_type=inventory_type)
         
         if not synced_items:
             logger.warning("Google Sheets sync completed with no items")

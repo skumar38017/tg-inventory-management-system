@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
 from backend.app import config
-from backend.app.schema.entry_inventory_schema import EntryInventoryCreate, EntryInventoryBarcodeOut
+from backend.app.schema.entry_inventory_schema import EntryInventoryCreate
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -244,55 +244,3 @@ class BarcodeGenerator:
         ).hexdigest().upper()
         
         return instance.unique_code == expected_unique
-
-    @staticmethod
-    def get_public_details(instance_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Return safe-to-share information for public scanning"""
-        return {
-            'company': "Tagglabs Experiential PVT. LTD.",
-            'address': "Eros City Square Mall, Eros City Square, Eros City, Haryana, India",
-            'inventory_name': instance_data.get('name'),
-            'inventory_id': instance_data.get('uuid'),
-            'sno': instance_data.get('sno'),
-            'product_id': instance_data.get('product_id'),
-            'project_id': instance_data.get('project_id'),
-            'employee_name': instance_data.get('employee_name'),
-            'status': instance_data.get('status'),
-            'contact': 'inventory@tagglabs.com',
-            'project_name': instance_data.get('project_name'),
-            'event_date': instance_data.get('event_date'),
-            'client_name': instance_data.get('client_name')
-        }
-
-    @staticmethod
-    def get_private_details(instance, requester: Any) -> Dict[str, Any]:
-        """Return full details for authorized users"""
-        base_details = BarcodeGenerator.get_public_details(instance)
-
-        if requester.role in ['admin', 'owner']:
-            return {
-                **base_details,
-                'setup_date': str(instance.setup_date) if instance.setup_date else None,
-                'poc': instance.poc,
-                'location': instance.location,
-                'submitted_by': instance.submitted_by,
-                'system_ids': {
-                    'uuid': instance.uuid,
-                    'unique_code': instance.unique_code
-                }
-            }
-        elif requester.role == 'staff':
-            return {
-                **base_details,
-                'location': instance.location,
-                'last_updated': str(instance.updated_at),
-                'project_name': instance.project_name
-            }
-        return base_details
-
-    @staticmethod
-    def validate_project_id(project_id: str) -> str:
-        """Validate project ID format"""
-        if not project_id:
-            raise ValueError("Project ID must be provided")
-        return project_id

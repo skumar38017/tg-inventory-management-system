@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 import redis.asyncio as redis
+from backend.app.database.redisclient import get_redis
 
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from backend.app.models.assign_inventory_model import AssignmentInventory
@@ -27,14 +28,13 @@ from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxRespon
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-from backend.app.database.redisclient import get_redis
 redis_client=get_redis()
 
 class WastageInventoryService(WastageInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
-        self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
+        self.barcode_generator = BarcodeGenerator()
 
     # Upload all `wastage_inventory` entries from local Redis to the database after click on `upload data` button
     async def upload_wastage_inventory(self, db: AsyncSession) -> List[WastageInventoryRedisOut]:
