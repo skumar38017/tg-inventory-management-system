@@ -284,7 +284,6 @@ async def get_inventory_by_date_range(
             detail=str(e)  # Return the actual error message
         )
 
-
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
     response_model=EntryInventoryOut,
@@ -301,13 +300,18 @@ async def create_inventory_item_route(
 ):
     try:
         logger.info(f"Creating new inventory item")
-        return await service.create_entry_inventory(db, item)
+        # Determine inventory type based on the item's properties
+        inventory_type = "inventory"  # Default type for this endpoint
+        return await service.create_entry_inventory(
+            db=db,
+            inventory_type=inventory_type,
+            entry_data=item
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-# ____________________________________________________________
 # ________________________________________________________________________________________
 
 # READ: Get an inventory which is match from inventry ID

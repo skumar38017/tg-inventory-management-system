@@ -75,3 +75,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
+
+# Barcode Generator Configuration
+BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/home/tagglabs/Videos/tg-inventory-management-system/static/barcodes")
+BARCODE_BASE_URL = "/static/barcodes"

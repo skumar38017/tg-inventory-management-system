@@ -2,9 +2,12 @@
 import asyncio
 import logging
 import uvicorn
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from backend.app import config
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.database.database import (
     check_db_connectivity, 
@@ -31,6 +34,12 @@ app = FastAPI(
     title="Tagglab - Inventory Management System",
     description="This is an inventory management system for the tagglab course.",
     version="1.1.0",
+)
+# Mount static files directory
+app.mount(
+    "/static", 
+    StaticFiles(directory=config.BARCODE_BASE_PATH),
+    name="static"
 )
 
 # Enable CORS for development only

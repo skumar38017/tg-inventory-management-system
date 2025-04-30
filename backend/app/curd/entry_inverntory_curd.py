@@ -245,7 +245,7 @@ class EntryInventoryService(EntryInventoryInterface):
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Create new entry of inventory for to_event which is directly stored in redis
-    async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory(self, db: AsyncSession, inventory_type: str, entry_data: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new inventory entry stored permanently in Redis (no database storage).
         """
@@ -291,11 +291,16 @@ class EntryInventoryService(EntryInventoryInterface):
                     'inventory_id': inventory_data['inventory_id'],
                     'id': inventory_id 
                 }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
+                barcode, unique_code = self.barcode_generator.generate_linked_codes(
+                    barcode_data, 
+                    inventory_type=inventory_type
+                )
+                # Generate and save the barcode image
+                image_bytes, image_url = self.barcode_generator.generate_barcode_image(barcode, unique_code)
                 inventory_data.update({
                     'inventory_barcode': barcode,
                     'inventory_unique_code': unique_code,
-                    'inventory_barcode_url': inventory_data.get('inventory_barcode_url', "")
+                    'inventory_barcode_url': image_url  
                 })
 
             # Permanent Redis storage (no expiration)

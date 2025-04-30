@@ -272,3 +272,31 @@ class GoogleSyncInventoryCreate(GoogleSyncInventoryBase):
         # No longer excluding fields since we want to allow them
         extra="ignore"
     )
+
+class EntryInventoryBarcodeOut(BaseValidators, BaseModel):
+    company: Optional[str] = "Tagglabs Experiential PVT. LTD.",
+    address: Optional[str] = "Eros City Square Mall, Eros City Square, Eros City, Haryana, India",
+    product_id: Optional[str] = None  
+    inventory_id: Optional[str] = None  
+    sno: Optional[Union[str, int]] = None
+    inventory_name: Optional[str] = None
+    material: Optional[str] = None
+    purchase_date: Optional[Union[str, date]] = None
+    on_rent: Optional[str] = "false" 
+    vendor_name: Optional[str] = None
+    rented_inventory_returned: Optional[str] = "false" 
+    returned_date: Optional[Union[str, date]] = None 
+    on_event: Optional[str] = "false"  
+    in_office: Optional[str] = "false"  
+    in_warehouse: Optional[str] = "false"  
+    submitted_by: Optional[str] = "Inventory Administator"
+    created_at: Optional[Union[str, datetime]] = None
+    inventory_barcode_url: Optional[str] = None
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_encoders={
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
+            date: lambda v: UTCDateUtils.format_date(v)
+        }
+    )
