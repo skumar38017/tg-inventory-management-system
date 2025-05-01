@@ -57,6 +57,7 @@ class InventoryQrCode(BaseValidators, BaseModel):
 class InventoryQrCodeResponse(BaseValidators, BaseModel):
     company: Optional[str] = "Tagglabs Experiential PVT. LTD."
     type: Optional[str] = "inventory"
+    # Include all possible fields from Redis
     id: Optional[Union[str, int]] = None
     product_id: Optional[str] = None
     inventory_id: Optional[str] = None

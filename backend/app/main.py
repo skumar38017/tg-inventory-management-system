@@ -9,6 +9,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from backend.app import config
 from fastapi.middleware.cors import CORSMiddleware
+from backend.app.database.redisclient import get_redis_dependency
+from redis import asyncio as aioredis
+from fastapi import APIRouter, HTTPException, Depends
+from backend.app.database.redisclient import get_redis
+from fastapi_limiter import FastAPILimiter
 from backend.app.database.database import (
     check_db_connectivity, 
     check_sync_db_connectivity_with_retry, 
@@ -20,6 +25,7 @@ from backend.app.database.redisclient import (
     close_redis
 )
 from backend.app.api_gateways import initialize_api_gateway
+redis_client: aioredis.Redis = Depends(get_redis_dependency)
 
 # Set up logging for the main script
 logger = logging.getLogger(__name__)
@@ -76,6 +82,11 @@ async def startup_event():
         # Initialize Redis
         await init_redis()
         
+        # Initialize rate limiter
+        redis_client = await get_redis()
+        await FastAPILimiter.init(redis_client)
+        logger.info("Rate limiter initialized successfully.")
+
         # Checking Redis connectivity with retries
         logger.info("Checking Redis connectivity...")
         if not await check_redis_connectivity_with_retry(retries=3, delay=5):

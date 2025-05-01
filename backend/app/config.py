@@ -81,6 +81,6 @@ BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/home/tagglabs/Videos/tg-inv
 BARCODE_BASE_URL = os.getenv("BARCODE_BASE_URL", "/static/barcodes")
 
 # In config.py
-QRCODE_BASE_PATH = os.getenv('QRCODE_BASE_PATH', "static/qrcodes")
-QRCODE_BASE_URL = os.getenv('QRCODE_BASE_URL', "/media/qrcodes")
+QRCODE_BASE_PATH = os.getenv('QRCODE_BASE_PATH', "http://localhost:8000/media/qrcodes")
+QRCODE_BASE_URL = os.getenv('QRCODE_BASE_URL', "http://localhost:8000/media/qrcodes")
 PUBLIC_API_URL=os.getenv('PUBLIC_API_URL', "http://localhost:8000")

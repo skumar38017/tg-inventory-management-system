@@ -41,6 +41,7 @@ class BarcodeGenerator:
         # Define the base path for barcode images
         self.barcode_base_path = config.BARCODE_BASE_PATH
         self.barcode_base_url = config.BARCODE_BASE_URL
+        self.public_api_url = config.PUBLIC_API_URL
         
         # Ensure the directory exists
         os.makedirs(self.barcode_base_path, exist_ok=True)
@@ -220,7 +221,7 @@ class BarcodeGenerator:
                 # For custom paths, use a relative URL
                 image_url = f"/media/barcodes/{filename}"
             else:
-                image_url = f"{self.barcode_base_url}/{filename}"
+                image_url = f"{self.public_api_url}/{self.barcode_base_url}/{filename}"
             
             logger.info(f"Barcode image saved to: {filepath}")
             return image_url
