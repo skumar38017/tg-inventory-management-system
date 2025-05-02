@@ -42,16 +42,14 @@ app = FastAPI(
     version="1.1.0",
 )
 # Mount static files directory
-app.mount(
-    "/static", 
-    StaticFiles(directory=config.BARCODE_BASE_PATH),
-    name="static"
-)
+# Mount both barcode and qrcode directories
+app.mount("/static/barcodes", StaticFiles(directory=config.BARCODE_BASE_PATH), name="barcodes")
+app.mount("/static/qrcodes", StaticFiles(directory=config.QRCODE_BASE_PATH), name="qrcodes")
 
 # Enable CORS for development only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development only
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
