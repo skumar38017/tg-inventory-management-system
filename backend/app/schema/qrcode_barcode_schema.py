@@ -37,18 +37,7 @@ class InventoryQrCodeResponse(BaseValidators, BaseModel):
     submitted_by: Optional[str] = None
     updated_at: Optional[Union[str, datetime]] = None
     created_at: Optional[Union[str, datetime]] = None
-
-    @field_validator('purchase_date', 'updated_at', 'created_at', mode='before')
-    def parse_date_fields(cls, value):
-        if value in [None, "", "null", "n/a", "N/A"]:
-            return None
-        if isinstance(value, date):
-            return value
-        try:
-            return UTCDateUtils.parse_date(value)
-        except ValueError:
-            raise ValueError("Date must be in YYYY-MM-DD format or null/n/a")
-        
+            
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
