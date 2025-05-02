@@ -335,6 +335,9 @@ class EntryInventoryService(EntryInventoryInterface):
                 redis_key,
                 json.dumps(inventory_data, default=str)
             )
+            # Store ID index for faster lookup
+            await self.redis.set(f"inventory:id:{inventory_data['inventory_id']}", redis_key)
+
             return EntryInventory(**inventory_data)
 
         except KeyError as ke:

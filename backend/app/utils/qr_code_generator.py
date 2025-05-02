@@ -77,7 +77,7 @@ class QRCodeGenerator:
         # Generate filename and URL
         filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}_qr.png"
         filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
-        qr_url = f"{self.public_api_url}/{self.qrcode_base_url}/{inventory_id}_qr.png"
+        qr_url = f"{self.public_api_url}{self.qrcode_base_url}/{filename}"
 
         # Save to disk if requested
         if save_to_disk:
@@ -94,13 +94,16 @@ class QRCodeGenerator:
 
     def generate_qr_content(self, instance_data: Dict) -> str:
         """Generate standardized content for QR codes"""
+        # Option 1: Just the Redis key (recommended)
+        # OR Option 2: Full API URL (requires your API to be publicly accessible)
         return (
-            f"ID: {instance_data.get('id', '')}\n"
-            f"Name: {instance_data.get('inventory_name', '')}\n"
-            f"Status: {instance_data.get('status', 'active')}\n"
-            f"Created: {instance_data.get('created_at', '')}"
+            f"{instance_data['inventory_name']}{instance_data['inventory_id']}|{instance_data['inventory_id']}"
+            f"{self.public_api_url}/api/v1/scan/{instance_data['inventory_name']}{instance_data['inventory_id']}"
         )
+        
 
-    def generate_qr_url(self, inventory_id: str) -> str:
+    def generate_qr_url(self, inventory_id: str, inventory_name: str) -> str:
         """Generate the QR code URL without creating the image"""
-        return f"{self.public_api_url}/{self.qrcode_base_url}/{inventory_id}_qr.png"
+        filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}_qr.png"
+        return f"{self.public_api_url}{self.qrcode_base_url}/{filename}"
+    

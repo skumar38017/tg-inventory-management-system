@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from backend.app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
 import logging
 import json
+import re
 from sqlalchemy import select, delete
 import redis.asyncio as redis
 from backend.app import config
@@ -23,35 +24,91 @@ class QRCodeService:
         self.public_api_url = config.PUBLIC_API_URL
 
 
+    def _extract_inventory_id(self, input_str: str) -> Optional[str]:
+        """Extract inventory ID from string using common patterns"""
+        patterns = [
+            r'(INV\d+)',          # Standard format (INV001)
+            r'(PRD\d+)',          # Product ID format (PRD001)
+            r'([A-Z]{3}\d{3,})',  # Three letters + numbers (ABC123)
+            r'(\d{4,})'           # Pure numbers (0001, 1001)
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, input_str)
+            if match:
+                return match.group(1)
+        return None
+
     async def get_inventory_item_by_qr(self, qr_data: str) -> Optional[Dict[str, Any]]:
         """
-        Fetch inventory item by QR code data from Redis only
-        Supports multiple lookup methods in Redis:
-        1. Direct key match
-        2. Pattern matching with inventory prefix
-        3. Wildcard search
+        Enhanced lookup that handles:
+        - Full name+ID (Steel RodINV002)
+        - Just ID (INV002)
+        - QR code content (name+ID|ID)
         """
         try:
-            return await self._fetch_from_redis(qr_data)
+            # First try direct lookup
+            item = await self._direct_redis_lookup(qr_data)
+            if item:
+                return item
+
+            # Handle pipe-separated QR content (name+ID|ID)
+            if '|' in qr_data:
+                for part in qr_data.split('|'):
+                    item = await self._direct_redis_lookup(part.strip())
+                    if item:
+                        return item
+
+            # Try extracting inventory ID
+            inventory_id = self._extract_inventory_id(qr_data)
+            if inventory_id:
+                # Check ID index first
+                redis_key = await self.redis.get(f"inventory:id:{inventory_id}")
+                if redis_key:
+                    item_data = await self.redis.get(redis_key)
+                    if item_data:
+                        return self._parse_redis_item(item_data)
+                
+                # Fallback to wildcard search
+                pattern = f"*{inventory_id}*"
+                cursor = "0"
+                while True:
+                    cursor, keys = await self.redis.scan(
+                        cursor=cursor,
+                        match=pattern,
+                        count=100
+                    )
+                    for key in keys:
+                        item_data = await self.redis.get(key)
+                        if item_data:
+                            return self._parse_redis_item(item_data)
+                    if cursor == "0":
+                        break
+
+            return None
         except Exception as e:
-            logger.error(f"Failed to fetch inventory item from Redis: {str(e)}")
+            logger.error(f"Lookup failed: {str(e)}")
             raise
     
     async def _fetch_from_redis(self, qr_data: str) -> Optional[Dict[str, Any]]:
         """Check Redis for inventory data using multiple possible keys"""
-        # Try these lookup methods in order
-        lookup_methods = [
-            self._direct_redis_lookup,
-            self._prefixed_redis_lookup,
-            self._wildcard_redis_lookup
-        ]
+        # First try direct key match
+        item = await self._direct_redis_lookup(qr_data)
+        if item:
+            return item
+            
+        # If the QR code contains a URL, extract the key/id
+        if qr_data.startswith(self.public_api_url):
+            # Extract the last part of the URL
+            path_parts = qr_data.split('/')
+            qr_data = path_parts[-1]  # Get the last segment
+            
+        # Try with inventory: prefix if not already present
+        if not qr_data.startswith('inventory:'):
+            qr_data = f"inventory:{qr_data}"
         
-        for method in lookup_methods:
-            item = await method(qr_data)
-            if item:
-                return item
-                
-        return None
+        # Try again with the processed data
+        return await self._direct_redis_lookup(qr_data)
     
     async def _direct_redis_lookup(self, qr_data: str) -> Optional[Dict[str, Any]]:
         """Check for exact key match"""
