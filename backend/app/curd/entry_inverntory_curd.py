@@ -46,8 +46,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 from typing import Union
 import json
+import base64
 from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
+from backend.app.utils.qr_code_generator import QRCodeGenerator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -60,11 +62,12 @@ class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
+        self.qr_generator = QRCodeGenerator()
         self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
 
 
-    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+    async def upload_entry_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
         """Upload all inventory entries from Redis to the database with proper PUT/PATCH handling."""
         try:
             await db.rollback()  # Start fresh
@@ -245,7 +248,7 @@ class EntryInventoryService(EntryInventoryInterface):
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Create new entry of inventory for to_event which is directly stored in redis
-    async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory(self, db: AsyncSession, inventory_type: str, entry_data: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new inventory entry stored permanently in Redis (no database storage).
         """
@@ -284,6 +287,9 @@ class EntryInventoryService(EntryInventoryInterface):
                 val = inventory_data.get(field, default_value)
                 inventory_data[field] = BaseValidators.validate_boolean_fields(val)
 
+            # Generate QR code content first
+            # bar_content = self.qr_generator.barcode_qr_content(inventory_data)
+            
             # Generate barcode if not provided
             if not inventory_data.get('inventory_barcode'):
                 barcode_data = {
@@ -291,12 +297,37 @@ class EntryInventoryService(EntryInventoryInterface):
                     'inventory_id': inventory_data['inventory_id'],
                     'id': inventory_id 
                 }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
+                barcode, unique_code = self.barcode_generator.generate_linked_codes(
+                    # bar_content,
+                    barcode_data, 
+                    inventory_type=inventory_type
+                )
+
+                # Generate and save the barcode image
+                image_bytes, image_url = self.barcode_generator.generate_barcode_image(
+                    barcode, 
+                    unique_code,
+                    inventory_name=inventory_data['inventory_name']  # Add this parameter
+                )
+                
                 inventory_data.update({
                     'inventory_barcode': barcode,
                     'inventory_unique_code': unique_code,
-                    'inventory_barcode_url': inventory_data.get('inventory_barcode_url', "")
+                    'inventory_barcode_url': image_url  
                 })
+
+                # Generate QR code content first
+                qr_content = self.qr_generator.generate_qr_content(inventory_data)
+
+                # Then generate QR code with the content
+                qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
+                    data=qr_content,
+                    inventory_id=inventory_data['inventory_id'],
+                    inventory_name=inventory_data['inventory_name']
+                )
+            
+                # Add QR code URL to inventory data
+                inventory_data['inventory_qrcode_url'] = qr_url
 
             # Permanent Redis storage (no expiration)
             redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"
@@ -304,6 +335,11 @@ class EntryInventoryService(EntryInventoryInterface):
                 redis_key,
                 json.dumps(inventory_data, default=str)
             )
+            standard_key = f"inventory:{inventory_data['inventory_name']}|{inventory_data['inventory_id']}"
+            
+            # Store ID index for faster lookup
+            await self.redis.set(f"inventory:id:{inventory_data['inventory_id']}", standard_key)
+
             return EntryInventory(**inventory_data)
 
         except KeyError as ke:

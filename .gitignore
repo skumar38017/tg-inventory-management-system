@@ -3,7 +3,8 @@
 .inventory
 
 static/barcodes/*.png
-static/barcodes/*.png*
+
+static/barcodes/.png
 !static/barcodes/.gitkeep
 Project Structure.txt
 ### Django ###
@@ -20,9 +21,6 @@ credentials.json
 authorized_user.json
 tg-inventory-457812-7ee6b89d05b2.json
 staticfiles/
-/static/barcodes/*
-static/barcodes/*
-static
 backend.zip
 postgres_data
 redis_data/redis_data
