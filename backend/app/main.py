@@ -43,8 +43,8 @@ app = FastAPI(
 )
 # Mount static files directory
 # Mount both barcode and qrcode directories
-app.mount("/static/barcodes", StaticFiles(directory=config.BARCODE_BASE_PATH), name="barcodes")
-app.mount("/static/qrcodes", StaticFiles(directory=config.QRCODE_BASE_PATH), name="qrcodes")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # Enable CORS for development only
 app.add_middleware(
@@ -148,8 +148,8 @@ async def custom_http_exception_handler(request, exc: HTTPException):
 if __name__ == "__main__":
     uvicorn.run(
         "backend.app.main:app", 
-        host="localhost", 
-        port=8000, 
+        host = "0.0.0.0" if config.ENVIRONMENT == "production" else "127.0.0.1",
+        port=config.PORT,
         reload=True,
         log_level="info"
     )

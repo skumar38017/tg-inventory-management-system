@@ -1,3 +1,5 @@
+#  backend/app/utils/qr_code_generator.py
+
 import qrcode
 import io
 import logging
@@ -5,6 +7,8 @@ import os
 from typing import Tuple, Dict
 from PIL import Image
 from backend.app import config
+import urllib.request
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -13,7 +17,7 @@ class QRCodeGenerator:
     def __init__(self):
         self.qrcode_base_path = config.QRCODE_BASE_PATH
         self.qrcode_base_url = config.QRCODE_BASE_URL
-        self.public_api_url = config.PUBLIC_API_URL
+        self.public_api_url = config.PUBLIC_API_URL 
         os.makedirs(self.qrcode_base_path, exist_ok=True)
 
     def generate_qr_code(
@@ -93,17 +97,7 @@ class QRCodeGenerator:
         return image_bytes, filename, qr_url
 
     def generate_qr_content(self, instance_data: Dict) -> str:
-        """Generate standardized content for QR codes"""
-        # Option 1: Just the Redis key (recommended)
-        # OR Option 2: Full API URL (requires your API to be publicly accessible)
-        return (
-            f"{instance_data['inventory_name']}{instance_data['inventory_id']}|{instance_data['inventory_id']}"
-            f"{self.public_api_url}/api/v1/scan/{instance_data['inventory_name']}{instance_data['inventory_id']}"
-        )
-        
-
-    def generate_qr_url(self, inventory_id: str, inventory_name: str) -> str:
-        """Generate the QR code URL without creating the image"""
-        filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}_qr.png"
-        return f"{self.public_api_url}{self.qrcode_base_url}/{filename}"
-    
+        """Generate QR code content as a direct API URL"""
+        # URL-encode the inventory name and ID
+        encoded_name = urllib.parse.quote(instance_data['inventory_name'])
+        return f"{self.public_api_url}/api/v1/scan/{encoded_name}{instance_data['inventory_id']}/"

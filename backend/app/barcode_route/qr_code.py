@@ -25,7 +25,7 @@ router = APIRouter()
 # Set up the router
 router = APIRouter()
 
-@router.get("/scan/{qr_data}",
+@router.get("/scan/{qr_data}/",
     response_model=InventoryQrCodeResponse,
     dependencies=[Depends(RateLimiter(times=10, seconds=60))]
 )
@@ -48,10 +48,17 @@ async def scan_qrcode(
     logger.info(f"Starting QR code scan for: {qr_data}")
     try:
         qr_service = QRCodeService(redis_client)
+
+        # First try to decode URL if present
+        if qr_data.startswith(('http://', 'https://')):
+            qr_data = qr_service._extract_qr_data_from_url(qr_data) or qr_data
         
+        # Standardize the input format
+        processed_data = qr_service._standardize_qr_input(qr_data)
+
         # First try exact match
         logger.info("Trying exact match...")
-        item = await qr_service.get_inventory_item_by_qr(qr_data)
+        item = await qr_service.get_inventory_item_by_qr(processed_data)
         
         if not item:
             # Try extracting ID (e.g., "INV002" from "Steel RodINV002")
@@ -129,6 +136,7 @@ async def upload_qrcode(
     file: UploadFile = File(...),
     redis_client: aioredis.Redis = Depends(get_redis_dependency)
 ) -> InventoryQrCodeResponse:
+    
     try:
         # Validate file type
         if not file.content_type.startswith('image/'):
@@ -158,6 +166,10 @@ async def upload_qrcode(
         decoded_data = decoded_objects[0].data.decode('utf-8').strip()
         logger.info(f"Decoded QR content: {decoded_data}")
         
+        # Standardize the decoded data
+        qr_service = QRCodeService(redis_client)
+        processed_data = qr_service._standardize_qr_input(decoded_data)
+
         # Clean and process the data
         if decoded_data.startswith('http'):
             # Extract last part of URL if it's a URL
@@ -167,7 +179,7 @@ async def upload_qrcode(
         decoded_data = decoded_data.replace('.png', '').replace('.jpg', '')
         
         # Try scanning with the decoded data
-        return await scan_qrcode(decoded_data, redis_client)
+        return await scan_qrcode(processed_data, redis_client)
         
     except HTTPException:
         raise

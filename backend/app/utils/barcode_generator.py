@@ -221,7 +221,7 @@ class BarcodeGenerator:
                 # For custom paths, use a relative URL
                 image_url = f"/media/barcodes/{filename}"
             else:
-                image_url = f"{self.public_api_url}/{self.barcode_base_url}/{filename}"
+                image_url = f"{self.public_api_url}{self.barcode_base_url}/{filename}"
             
             logger.info(f"Barcode image saved to: {filepath}")
             return image_url
