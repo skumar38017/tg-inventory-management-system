@@ -34,13 +34,13 @@ export PYTHONPATH="$(pwd)"
 export PYTHONPATH="$PYTHONPATH:$(pwd)"
 
 # Change permissions using sudo
-echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Documents/tg-inventory-management-system/redis_data/
-echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Documents/tg-inventory-management-system/redis_data/redis_data/
-echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Documents/tg-inventory-management-system/postgres_data/
-echo "$PASSWORD" | sudo -S chmod +x /home/$USER/Documents/tg-inventory-management-system/redis_data/redis-entrypoint.sh
-echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Documents/tg-inventory-management-system/run-frontend.sh
-echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Documents/tg-inventory-management-system/start-frontend.sh
-echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Documents/tg-inventory-management-system/run-frontend.sh
-echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Documents/tg-inventory-management-system/install_docker_setup.sh
+echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Videos/tg-inventory-management-system/redis_data/
+echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Videos/tg-inventory-management-system/redis_data/redis_data/
+echo "$PASSWORD" | sudo -S chmod -R 755 /home/$USER/Videos/tg-inventory-management-system/postgres_data/
+echo "$PASSWORD" | sudo -S chmod +x /home/$USER/Videos/tg-inventory-management-system/redis_data/redis-entrypoint.sh
+echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/run-frontend.sh
+echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/start-frontend.sh
+echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/run-frontend.sh
+echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/install_docker_setup.sh
 
 echo "✅ Permissions set successfully."
