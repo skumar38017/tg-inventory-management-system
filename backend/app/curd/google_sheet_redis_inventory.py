@@ -200,11 +200,11 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                 setattr(inventory_data, field, BaseValidators.validate_boolean_fields(val))
 
             # Generate barcode if not provided
-            if not inventory_data.get('inventory_barcode'):
+            if not inventory_data.inventory_barcode:
                 barcode_data = {
-                    'inventory_name': inventory_data['inventory_name'],
-                    'inventory_id': inventory_data['inventory_id'],
-                    'id': inventory_id 
+                    'inventory_name': inventory_data.inventory_name,
+                    'inventory_id': inventory_data.inventory_id,
+                    'id': id
                 }
                 barcode, unique_code = self.barcode_generator.generate_linked_codes(
                     barcode_data, 
@@ -214,14 +214,12 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                 image_bytes, image_url = self.barcode_generator.generate_barcode_image(
                     barcode, 
                     unique_code,
-                    inventory_name=inventory_data['inventory_name']  # Add this parameter
+                    inventory_name=inventory_data.inventory_name
                 )
                 
-                inventory_data.update({
-                    'inventory_barcode': barcode,
-                    'inventory_unique_code': unique_code,
-                    'inventory_barcode_url': image_url  
-                })
+                inventory_data.inventory_barcode = barcode
+                inventory_data.inventory_unique_code = unique_code
+                inventory_data.inventory_barcode_url = image_url
 
             return inventory_data
 
