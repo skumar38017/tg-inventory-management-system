@@ -1,17 +1,5 @@
 # backend/app/schema/to_event_inventry_schma.py
-from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
-from datetime import datetime, date, timezone
-from typing import Optional, List, Dict, Any
-import uuid
-import json
-import re
-from typing import Union
-from enum import Enum
-from pydantic import ValidationError
-import logging
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+from backend.app.utils.common_imports import *
 
 class InventoryItemBase(BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")

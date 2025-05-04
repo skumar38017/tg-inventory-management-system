@@ -1,22 +1,5 @@
 #  backend/app/schema/qrcode_barcode_schema.py
-
-from pydantic import BaseModel, field_validator, ConfigDict, Field
-from datetime import datetime, date, timezone
-from typing import Optional, Union, Dict, Any, List
-import uuid
-import json
-import re
-from typing import Union
-from enum import Enum
-from pydantic import ValidationError
-from backend.app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
-from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
-from backend.app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
-from backend.app.models.wastege_inventory_model import WastageInventory
-from backend.app.utils.field_validators import (
-    BaseValidators,
-)
-from backend.app.utils.date_utils import UTCDateUtils
+from backend.app.utils.common_imports import *
 
 class InventoryQrCodeResponse(BaseValidators, BaseModel):
     company: Optional[str] = "Tagglabs Experiential PVT. LTD."

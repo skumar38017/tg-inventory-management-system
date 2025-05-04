@@ -1,19 +1,6 @@
 # backend/app/main.py
-import asyncio
-import logging
-import uvicorn
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from backend.app import config
-from fastapi.middleware.cors import CORSMiddleware
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from backend.app.database.redisclient import get_redis
-from fastapi_limiter import FastAPILimiter
+from backend.app.utils.common_imports import *
+
 from backend.app.database.database import (
     check_db_connectivity, 
     check_sync_db_connectivity_with_retry, 
@@ -28,8 +15,6 @@ from backend.app.api_gateways import initialize_api_gateway
 redis_client: aioredis.Redis = Depends(get_redis_dependency)
 
 # Set up logging for the main script
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)

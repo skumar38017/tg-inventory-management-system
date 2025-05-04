@@ -1,7 +1,6 @@
 # backend/app/api_gateways.py
-from fastapi import APIRouter, FastAPI
-from typing import List, Dict, Type, Any
-from fastapi.routing import APIRoute
+from backend.app.utils.common_imports import *
+
 from backend.app.routers import (
     assign_inventory_routes,
     entry_inventory_routes,

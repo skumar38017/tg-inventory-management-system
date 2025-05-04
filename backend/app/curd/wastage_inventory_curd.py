@@ -1,32 +1,11 @@
 # backend/app/crud/wastage_inventory_crud.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
-import json
-import logging
-import uuid
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import update
-
-from fastapi import HTTPException, Depends
-from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-import redis.asyncio as redis
-from backend.app.database.redisclient import get_redis
+from backend.app.utils.common_imports import *
 
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.schema.wastage_inventory_schema import *
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
-from typing import Union
 from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
 from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 redis_client=get_redis()
 

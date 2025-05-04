@@ -1,37 +1,14 @@
 # backend/app/api/endpoints/qrcode.py
+from backend.app.utils.common_imports import *
 
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse, HTMLResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.app.utils.qr_code_generator import QRCodeGenerator
 from backend.app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
 from backend.app.services.qrcode_service import QRCodeService
-import json
-import logging
-from fastapi_limiter.depends import RateLimiter
-from typing import Optional
-import qrcode
-from PIL import ImageEnhance
-from pyzbar import pyzbar
-from backend.app import config
-from io import BytesIO
-from PIL import Image
-from fastapi.templating import Jinja2Templates
-from datetime import datetime
 from fastapi import Request
-
-
-logger = logging.getLogger(__name__)
+# Set up the router
 router = APIRouter()
 
 # Set up templates
 templates = Jinja2Templates(directory="backend/app/templates")
-
-# Set up the router
-router = APIRouter()
 
 @router.get("/scan/{qr_data}/",
     response_class=HTMLResponse,

@@ -1,41 +1,13 @@
 # backend/app/crud/assign_inventory_crud.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from datetime import datetime, timezone, date
-from typing import List, Optional
-import json
-import logging
-import uuid
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import update
-
-from fastapi import HTTPException, Depends
-from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-import redis.asyncio as redis
+from backend.app.utils.common_imports import *
 
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.schema.assign_inventory_schema import (
     AssignmentInventoryCreate,
-    AssignmentInventoryOut,
-    AssignmentInventoryUpdate,
-    AssignmentInventoryRedisIn,
     AssignmentInventoryRedisOut,
-    AssignmentInventorySearch,
     RedisSearchResult
 )
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
-from backend.app.utils.inventory_updater import InventoryUpdater
-from typing import Union
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-from backend.app.database.redisclient import get_redis
 
 class AssignInventoryService(AssignmentInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):

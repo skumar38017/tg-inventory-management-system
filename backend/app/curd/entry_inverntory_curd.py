@@ -1,19 +1,11 @@
 # backend/app/routers/entry_inventory_curd.py
+from backend.app.utils.common_imports import *
 
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from redis import asyncio as aioredis
-import redis.asyncio as redis
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from datetime import datetime, time, timedelta, timezone
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate, 
     EntryInventoryUpdate,
     EntryInventoryOut,
-    EntryInventorySearch,
     InventoryRedisOut,
     StoreInventoryRedis,
     DateRangeFilter
@@ -28,31 +20,7 @@ import gspread
 import requests
 from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
-
-
-from sqlalchemy.exc import SQLAlchemyError
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
-import logging
-from sqlalchemy import insert, update 
-import uuid
-from fastapi import HTTPException
-from typing import List, Optional
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
-from pydantic import ValidationError
-import random
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-
-from typing import Union
-import json
-import base64
-from backend.app.utils.date_utils import UTCDateUtils
-from backend.app.utils.field_validators import BaseValidators
-from backend.app.utils.qr_code_generator import QRCodeGenerator
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # ------------------------
 # CRUD OPERATIONS

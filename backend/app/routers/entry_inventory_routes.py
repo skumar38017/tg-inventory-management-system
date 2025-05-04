@@ -1,27 +1,15 @@
 # backend/app/routers/entry_inventory_routes.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-import logging
-from typing import Optional, List
-from pydantic import ValidationError
-from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime, date
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.app.database.database import get_async_db
-from datetime import datetime
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdate,
     EntryInventoryOut,
     InventoryRedisOut,
-    EntryInventorySearch,
     DateRangeFilter,
     InventoryRedisOut
 )
-import requests
 from fastapi import Depends, Request
-from fastapi import Request
 from backend.app.curd.entry_inverntory_curd import EntryInventoryService
 from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSyncService
 from backend.app.interface.entry_inverntory_interface import (
@@ -40,14 +28,8 @@ def get_entryget_inventory_from_google_sheet(
 ) -> GoogleSheetsToRedisSyncService:
     return GoogleSheetsToRedisSyncService(redis)
 
-
-
 # Set up the router
 router = APIRouter()
-
-# Setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # --------------------------
 # Asynchronous Endpoints

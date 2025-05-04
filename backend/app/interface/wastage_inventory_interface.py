@@ -4,17 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.schema.wastage_inventory_schema import (
-    WastageInventoryBase,
     WastageInventoryCreate,
-    WastageInventoryOut,
     WastageInventoryUpdate,
-    WastageInventoryRedisIn,
     WastageInventoryRedisOut,
     WastageInventorySearch,
 
 )
-from pydantic import BaseModel
-from datetime import date, datetime
 from backend.app.models.wastege_inventory_model import WastageInventory
 from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 

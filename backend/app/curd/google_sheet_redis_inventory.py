@@ -1,37 +1,16 @@
-import gspread
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from google.oauth2.service_account import Credentials
-from fastapi import HTTPException, Request
-from typing import List, Optional
-import json
-import random
-import logging
-from typing import List, Optional, Dict, Any, Union
-from fastapi import Request
-from starlette.requests import Request as StarletteRequest
+# backend/app/curd/google_sheet_curd.py
+from backend.app.utils.common_imports import *
 
-import uuid
-from datetime import datetime
-from pydantic import BaseModel
-from backend.app.utils.date_utils import UTCDateUtils
+import gspread
+from google.oauth2.service_account import Credentials
+from starlette.requests import Request as StarletteRequest
 from backend.app.schema.entry_inventory_schema import (
-    EntryInventoryBase,
     GoogleSyncInventoryCreate,
     InventoryRedisOut
 )
-import os
-from backend.app.utils.field_validators import BaseValidators
 from backend.app.interface.entry_inverntory_interface import GoogleSyncInventoryInterface
-import redis.asyncio as redis
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
 from google.oauth2 import service_account
-from backend.app.utils.qr_code_generator import QRCodeGenerator
 from dotenv import load_dotenv
-
-logger = logging.getLogger(__name__)
 
 class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
     """Implementation of GoogleSyncInventoryInterface with async operations"""

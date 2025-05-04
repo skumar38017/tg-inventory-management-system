@@ -1,19 +1,8 @@
 # backend/app/services/qrcode_service.py
+from backend.app.utils.common_imports import *
 
-from typing import Optional, Dict, Any
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
 from backend.app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
-import logging
-import json
-import re
-from sqlalchemy import select, delete
-import redis.asyncio as redis
-from backend.app import config
 from urllib.parse import urlparse
-
-logger = logging.getLogger(__name__)
 
 class QRCodeService:
     def __init__(self, redis_client: aioredis.Redis):
