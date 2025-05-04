@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Record</title>
@@ -21,7 +24,7 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 32px; /* Standard favicon size */
+            width: 32px;
             height: 32px;
         }
         
@@ -49,6 +52,7 @@
         .header {
             text-align: center;
             margin-bottom: 30px;
+            margin-top: 40px;
             border-bottom: 2px solid #eee;
             padding-bottom: 20px;
         }
@@ -99,18 +103,8 @@
             display: inline-block;
             padding: 3px 10px;
             border-radius: 20px;
-            font-size: 10px;
+            font-size: 12px;
             font-weight: bold;
-            color: white;
-        }
-        
-        .status-active {
-            background-color: #2ecc71;
-            color: white;
-        }
-        
-        .status-inactive {
-            background-color: #e74c3c;
             color: white;
         }
         
@@ -187,7 +181,7 @@
         </div>
         {% endif %}
         
-        <div class="detail-row">            
+        <div class="detail-row">
             <div class="detail-label">Status</div>
             <div class="detail-value">
                 {% set rent_status = on_rent|string|lower %}
