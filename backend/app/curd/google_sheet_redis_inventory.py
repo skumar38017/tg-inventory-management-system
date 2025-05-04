@@ -28,6 +28,7 @@ import redis.asyncio as redis
 from backend.app import config
 from backend.app.utils.barcode_generator import BarcodeGenerator
 from google.oauth2 import service_account
+from backend.app.utils.qr_code_generator import QRCodeGenerator
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.barcode_generator = BarcodeGenerator()
+        self.qr_generator = QRCodeGenerator()
         self.base_url = config.BASE_URL
         self.spreadsheet_url = config.SPREADSHEET_URL
         self.sheet_name = config.SHEET_NAME
@@ -220,6 +222,19 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                 inventory_data.inventory_barcode = barcode
                 inventory_data.inventory_unique_code = unique_code
                 inventory_data.inventory_barcode_url = image_url
+
+                # Generate QR code content first
+                qr_content = self.qr_generator.generate_qr_content(inventory_data)
+
+                # Then generate QR code with the content
+                qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
+                    data=qr_content,
+                    inventory_id=inventory_data.inventory_id,
+                    inventory_name=inventory_data.inventory_name
+                )
+
+                # Add QR code URL to inventory data
+                inventory_data.inventory_qrcode_url = qr_url
 
             return inventory_data
 

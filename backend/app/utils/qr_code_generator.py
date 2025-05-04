@@ -7,6 +7,7 @@ import os
 from typing import Tuple, Dict
 from PIL import Image
 from backend.app import config
+from typing import Union, Dict
 import urllib.request
 from urllib.parse import urlparse
 
@@ -96,8 +97,11 @@ class QRCodeGenerator:
 
         return image_bytes, filename, qr_url
 
-    def generate_qr_content(self, instance_data: Dict) -> str:
+    def generate_qr_content(self, instance_data: Union[Dict, object]) -> str:
         """Generate QR code content as a direct API URL"""
-        # URL-encode the inventory name and ID
-        encoded_name = urllib.parse.quote(instance_data['inventory_name'])
-        return f"{self.public_api_url}/api/v1/scan/{encoded_name}{instance_data['inventory_id']}/"
+        # Handle both dictionary and object access
+        name = instance_data['inventory_name'] if isinstance(instance_data, dict) else instance_data.inventory_name
+        inventory_id = instance_data['inventory_id'] if isinstance(instance_data, dict) else instance_data.inventory_id
+        
+        encoded_name = urllib.parse.quote(name)
+        return f"{self.public_api_url}/api/v1/scan/{encoded_name}{inventory_id}/"
