@@ -4,7 +4,7 @@ from backend.app.database.redisclient import get_redis_dependency
 from redis import asyncio as aioredis
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.utils.qr_code_generator import QRCodeGenerator
 from backend.app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
@@ -16,21 +16,31 @@ from typing import Optional
 import qrcode
 from PIL import ImageEnhance
 from pyzbar import pyzbar
+from backend.app import config
 from io import BytesIO
 from PIL import Image
+from fastapi.templating import Jinja2Templates
+from datetime import datetime
+from fastapi import Request
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Set up templates
+templates = Jinja2Templates(directory="backend/app/templates")
 
 # Set up the router
 router = APIRouter()
 
 @router.get("/scan/{qr_data}/",
+    response_class=HTMLResponse,
     response_model=InventoryQrCodeResponse,
     dependencies=[Depends(RateLimiter(times=10, seconds=60))]
 )
 async def scan_qrcode(
     qr_data: str,
+    request: Request,
     redis_client: aioredis.Redis = Depends(get_redis_dependency)
 ) -> InventoryQrCodeResponse:
     """
@@ -110,25 +120,47 @@ async def scan_qrcode(
         
         if not item:
             logger.warning("Item not found after all lookup attempts")
-            raise HTTPException(
-                status_code=404,
-                detail="Item not found in Redis. Try scanning with: inventory ID, product ID, or item name"
+            return templates.TemplateResponse(
+                "record.html",
+                {
+                    "request": request, 
+                    "company": "Tagglabs Experiential PVT. LTD.",
+                    "type": "inventory",
+                    "error": "Item not found in Redis. Try scanning with: inventory ID, product ID, or item name",
+                    "qr_code_url": ""
+                }
             )
         
         logger.info("Item found, mapping to response schema...")
         response_data = qr_service.map_to_response_schema(item)
+        
+        # Convert to dict and add timestamp
+        response_data_dict = response_data.dict()
+        response_data_dict["now"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Add QR code URL - using dictionary access
+        response_data_dict["qr_code_url"] = f"{config.PUBLIC_API_URL}{config.QRCODE_BASE_URL}/{item['inventory_name'].replace(' ', '_').lower()}{item['inventory_id']}_qr.png"
         logger.info(f"Successfully returned response for {qr_data}")
         
-        return response_data
+        return templates.TemplateResponse(
+            "record.html",
+            {
+                "request": request, 
+                **response_data_dict
+            }
+        )
         
-    except HTTPException:
-        logger.error("HTTPException in scan_qrcode", exc_info=True)
-        raise
     except Exception as e:
         logger.error(f"QR code scanning failed: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
+        return templates.TemplateResponse(
+            "record.html",
+            {
+                "request": request,
+                "company": "Tagglabs Experiential PVT. LTD.",
+                "type": "inventory",
+                "error": f"Internal server error: {str(e)}",
+                "qr_code_url": ""
+            }
         )
 
 @router.post("/upload/", response_model=InventoryQrCodeResponse)

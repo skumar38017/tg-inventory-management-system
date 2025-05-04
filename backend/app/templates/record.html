@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/public/favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Record</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            background-color: #f9f9f9;
+        }
+        
+        .qr-code-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .qr-code-container img {
+            width: 120px;
+            height: 120px;
+        }
+        .watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            opacity: 0.2;
+            z-index: -1;
+        }
+        
+        .watermark img {
+            width: 200px;
+            height: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .record-type {
+            font-size: 18px;
+            color: #7f8c8d;
+        }
+        
+        .record-details {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .detail-row {
+            display: flex;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            width: 200px;
+            color: #2c3e50;
+        }
+        
+        .detail-value {
+            flex: 1;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .status-active {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .status-inactive {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .timestamp {
+            font-size: 14px;
+            color: #95a5a6;
+            margin-top: 30px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-code-container">
+        {% if qr_code_url %}
+        <img src="{{ qr_code_url }}" alt="Item QR Code" onerror="this.style.display='none'">
+        {% endif %}
+    </div>
+    <div class="watermark">
+        <img src="/public/logo.webp" alt="Company Logo">
+    </div>
+    
+    <div class="header">
+        <div class="company-name">{{ company }}</div>
+        <div class="record-type">{{ type|upper }} RECORD</div>
+    </div>
+    
+    <div class="record-details">
+        {% if error %}
+        <div class="error-message" style="color: #e74c3c; font-weight: bold; text-align: center; padding: 20px;">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        {% if inventory_id %}
+        <div class="detail-row">
+            <div class="detail-label">Inventory ID</div>
+            <div class="detail-value">{{ inventory_id }}</div>
+        </div>
+        {% endif %}
+        
+        {% if product_id %}
+        <div class="detail-row">
+            <div class="detail-label">Product ID</div>
+            <div class="detail-value">{{ product_id }}</div>
+        </div>
+        {% endif %}
+        
+        {% if inventory_name %}
+        <div class="detail-row">
+            <div class="detail-label">Item Name</div>
+            <div class="detail-value">{{ inventory_name }}</div>
+        </div>
+        {% endif %}
+        
+        {% if material %}
+        <div class="detail-row">
+            <div class="detail-label">Material</div>
+            <div class="detail-value">{{ material }}</div>
+        </div>
+        {% endif %}
+        
+        {% if manufacturer %}
+        <div class="detail-row">
+            <div class="detail-label">Manufacturer</div>
+            <div class="detail-value">{{ manufacturer }}</div>
+        </div>
+        {% endif %}
+        
+        {% if purchase_date %}
+        <div class="detail-row">
+            <div class="detail-label">Purchase Date</div>
+            <div class="detail-value">{{ purchase_date }}</div>
+        </div>
+        {% endif %}
+        
+        <div class="detail-row">
+            <div class="detail-label">Status</div>
+            <div class="detail-value">
+                {% if on_rent %}
+                <span class="status-indicator status-active">ON RENT</span>
+                {% else %}
+                <span class="status-indicator status-inactive">NOT ON RENT</span>
+                {% endif %}
+                
+                {% if on_event %}
+                <span class="status-indicator status-active" style="margin-left: 10px;">ON EVENT</span>
+                {% else %}
+                <span class="status-indicator status-inactive" style="margin-left: 10px;">NOT ON EVENT</span>
+                {% endif %}
+                
+                {% if in_office %}
+                <span class="status-indicator status-active" style="margin-left: 10px;">IN OFFICE</span>
+                {% else %}
+                <span class="status-indicator status-inactive" style="margin-left: 10px;">NOT IN OFFICE</span>
+                {% endif %}
+                
+                {% if in_warehouse %}
+                <span class="status-indicator status-active" style="margin-left: 10px;">IN WAREHOUSE</span>
+                {% else %}
+                <span class="status-indicator status-inactive" style="margin-left: 10px;">NOT IN WAREHOUSE</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if submitted_by %}
+        <div class="detail-row">
+            <div class="detail-label">Submitted By</div>
+            <div class="detail-value">{{ submitted_by }}</div>
+        </div>
+        {% endif %}
+        
+        {% if created_at %}
+        <div class="detail-row">
+            <div class="detail-label">Created At</div>
+            <div class="detail-value">{{ created_at }}</div>
+        </div>
+        {% endif %}
+        
+        {% if updated_at %}
+        <div class="detail-row">
+            <div class="detail-label">Last Updated</div>
+            <div class="detail-value">{{ updated_at }}</div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="timestamp">
+        Generated on {{ now }}
+    </div>
+</body>
+</html>
