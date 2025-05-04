@@ -17,21 +17,22 @@
             background-color: #f9f9f9;
         }
         
-        .qr-code-container {
+        .top-logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 32px; /* Standard favicon size */
+            height: 32px;
+        }
+        
+        .qr-code {
             position: absolute;
             top: 20px;
             right: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .qr-code-container img {
             width: 120px;
             height: 120px;
         }
+        
         .watermark {
             position: fixed;
             bottom: 20px;
@@ -98,8 +99,9 @@
             display: inline-block;
             padding: 3px 10px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 10px;
             font-weight: bold;
+            color: white;
         }
         
         .status-active {
@@ -121,11 +123,12 @@
     </style>
 </head>
 <body>
-    <div class="qr-code-container">
-        {% if qr_code_url %}
-        <img src="{{ qr_code_url }}" alt="Item QR Code" onerror="this.style.display='none'">
-        {% endif %}
-    </div>
+    <img class="top-logo" src="/public/logo.ico" alt="Company Logo">
+
+    {% if qr_code_url %}
+    <img class="qr-code" src="{{ qr_code_url }}" alt="Item QR Code" onerror="this.style.display='none'">
+    {% endif %}
+
     <div class="watermark">
         <img src="/public/logo.webp" alt="Company Logo">
     </div>
@@ -184,32 +187,28 @@
         </div>
         {% endif %}
         
-        <div class="detail-row">
+        <div class="detail-row">            
             <div class="detail-label">Status</div>
             <div class="detail-value">
-                {% if on_rent %}
-                <span class="status-indicator status-active">ON RENT</span>
-                {% else %}
-                <span class="status-indicator status-inactive">NOT ON RENT</span>
-                {% endif %}
+                {% set rent_status = on_rent|string|lower %}
+                <span class="status-indicator" style="background-color: {% if rent_status in ['true', '1', 'active'] %}#2ecc71{% else %}#e74c3c{% endif %};">
+                    {% if rent_status in ['true', '1', 'active'] %}ON RENT{% else %}NOT ON RENT{% endif %}
+                </span>
                 
-                {% if on_event %}
-                <span class="status-indicator status-active" style="margin-left: 10px;">ON EVENT</span>
-                {% else %}
-                <span class="status-indicator status-inactive" style="margin-left: 10px;">NOT ON EVENT</span>
-                {% endif %}
+                {% set event_status = on_event|string|lower %}
+                <span class="status-indicator" style="margin-left: 10px; background-color: {% if event_status in ['true', '1', 'active'] %}#2ecc71{% else %}#e74c3c{% endif %};">
+                    {% if event_status in ['true', '1', 'active'] %}ON EVENT{% else %}NOT ON EVENT{% endif %}
+                </span>
                 
-                {% if in_office %}
-                <span class="status-indicator status-active" style="margin-left: 10px;">IN OFFICE</span>
-                {% else %}
-                <span class="status-indicator status-inactive" style="margin-left: 10px;">NOT IN OFFICE</span>
-                {% endif %}
+                {% set office_status = in_office|string|lower %}
+                <span class="status-indicator" style="margin-left: 10px; background-color: {% if office_status in ['true', '1', 'active'] %}#2ecc71{% else %}#e74c3c{% endif %};">
+                    {% if office_status in ['true', '1', 'active'] %}IN OFFICE{% else %}NOT IN OFFICE{% endif %}
+                </span>
                 
-                {% if in_warehouse %}
-                <span class="status-indicator status-active" style="margin-left: 10px;">IN WAREHOUSE</span>
-                {% else %}
-                <span class="status-indicator status-inactive" style="margin-left: 10px;">NOT IN WAREHOUSE</span>
-                {% endif %}
+                {% set warehouse_status = in_warehouse|string|lower %}
+                <span class="status-indicator" style="margin-left: 10px; background-color: {% if warehouse_status in ['true', '1', 'active'] %}#2ecc71{% else %}#e74c3c{% endif %};">
+                    {% if warehouse_status in ['true', '1', 'active'] %}IN WAREHOUSE{% else %}NOT IN WAREHOUSE{% endif %}
+                </span>
             </div>
         </div>
         
