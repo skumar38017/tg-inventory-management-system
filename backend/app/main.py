@@ -1,11 +1,6 @@
 # backend/app/main.py
-import asyncio
-import logging
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
+from backend.app.utils.common_imports import *
+
 from backend.app.database.database import (
     check_db_connectivity, 
     check_sync_db_connectivity_with_retry, 
@@ -17,10 +12,9 @@ from backend.app.database.redisclient import (
     close_redis
 )
 from backend.app.api_gateways import initialize_api_gateway
+redis_client: aioredis.Redis = Depends(get_redis_dependency)
 
 # Set up logging for the main script
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
@@ -32,11 +26,16 @@ app = FastAPI(
     description="This is an inventory management system for the tagglab course.",
     version="1.1.0",
 )
+# Mount static files directory
+# Mount both barcode and qrcode directories
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/public", StaticFiles(directory="backend/app/public"), name="public")
+app.mount("/templates", StaticFiles(directory="backend/app/templates"), name="templates")
 
 # Enable CORS for development only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development only
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,6 +66,11 @@ async def startup_event():
         # Initialize Redis
         await init_redis()
         
+        # Initialize rate limiter
+        redis_client = await get_redis()
+        await FastAPILimiter.init(redis_client)
+        logger.info("Rate limiter initialized successfully.")
+
         # Checking Redis connectivity with retries
         logger.info("Checking Redis connectivity...")
         if not await check_redis_connectivity_with_retry(retries=3, delay=5):
@@ -130,8 +134,8 @@ async def custom_http_exception_handler(request, exc: HTTPException):
 if __name__ == "__main__":
     uvicorn.run(
         "backend.app.main:app", 
-        host="localhost", 
-        port=8000, 
+        host = "0.0.0.0" if config.ENVIRONMENT == "production" else "127.0.0.1",
+        port=config.PORT,
         reload=True,
         log_level="info"
     )

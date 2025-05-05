@@ -1,15 +1,6 @@
 # backend/app/utils/inventory_updater.py
-from typing import Dict, Any
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from backend.app import config
+from backend.app.utils.common_imports import *
 from backend.app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
-import json
-import logging
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class InventoryUpdater:
     """Implementation of EntryInventoryInterface with async operations"""

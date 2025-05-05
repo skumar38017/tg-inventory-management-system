@@ -26,7 +26,7 @@ class GoogleSyncInventoryInterface:
 
 class EntryInventoryInterface:
     #  Upload all inventory entries from local Redis to the database after click on upload data button
-    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+    async def upload_entry_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
         """
         Upload all inventory entries from Redis to the database.
         

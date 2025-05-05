@@ -1,14 +1,15 @@
 # backend/app/api_gateways.py
-from fastapi import APIRouter, FastAPI
-from typing import List, Dict, Type, Any
-from fastapi.routing import APIRoute
+from backend.app.utils.common_imports import *
+
 from backend.app.routers import (
     assign_inventory_routes,
     entry_inventory_routes,
     wastage_inventory_routes,
     to_event_routes,
-    from_event_router
+    from_event_router,
+
 )
+from  backend.app.barcode_route import qr_code
 
 class APIGateway:
     """Centralized API Gateway for managing all routes and endpoints"""
@@ -30,6 +31,7 @@ class APIGateway:
         self.register_router(from_event_router.router, tags=["From Event Inventory"])
         self.register_router(assign_inventory_routes.router, tags=["Assign Inventory"])
         self.register_router(wastage_inventory_routes.router, tags=["Wastage Inventory"])
+        self.register_router(qr_code.router, tags=["QR Code"])
         
         self._routes_initialized = True
     

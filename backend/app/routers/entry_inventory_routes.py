@@ -1,27 +1,15 @@
 # backend/app/routers/entry_inventory_routes.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-import logging
-from typing import Optional, List
-from pydantic import ValidationError
-from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime, date
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.app.database.database import get_async_db
-from datetime import datetime
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdate,
     EntryInventoryOut,
     InventoryRedisOut,
-    EntryInventorySearch,
     DateRangeFilter,
     InventoryRedisOut
 )
-import requests
 from fastapi import Depends, Request
-from fastapi import Request
 from backend.app.curd.entry_inverntory_curd import EntryInventoryService
 from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSyncService
 from backend.app.interface.entry_inverntory_interface import (
@@ -40,14 +28,8 @@ def get_entryget_inventory_from_google_sheet(
 ) -> GoogleSheetsToRedisSyncService:
     return GoogleSheetsToRedisSyncService(redis)
 
-
-
 # Set up the router
 router = APIRouter()
-
-# Setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # --------------------------
 # Asynchronous Endpoints
@@ -81,8 +63,10 @@ async def sync_from_sheets(
     4. Return the list of synced items
     """
     try:
+        inventory_type = 'inventory'
+
         logger.info("Starting Google Sheets sync operation")
-        synced_items = await service.sync_inventory_from_google_sheets(request)
+        synced_items = await service.sync_inventory_from_google_sheets(request, inventory_type=inventory_type)
         
         if not synced_items:
             logger.warning("Google Sheets sync completed with no items")
@@ -123,7 +107,7 @@ async def upload_inventory_data(
         logger.info("Starting Redis to database upload process")
         
         # Get data from service
-        uploaded_items = await service.upload_from_event_inventory(db)
+        uploaded_items = await service.upload_entry_inventory(db)
         
         if not uploaded_items:
             logger.warning("No inventory items found in Redis for upload")
@@ -284,13 +268,12 @@ async def get_inventory_by_date_range(
             detail=str(e)  # Return the actual error message
         )
 
-
 # CREATE: Add a new entry to the inventory
 @router.post("/create-item/",
-    response_model=EntryInventoryOut,
+    response_model=EntryInventoryOut,  # Make sure this is EntryInventoryOut
     status_code=201,
     summary="Create a new entry in the inventory",
-    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry.",
+    description="This endpoint is used to create a new entry in the inventory. It takes a JSON payload with the necessary fields and values, and returns the created entry including the barcode image data.",
     response_model_exclude_unset=True,
     tags=["create Inventory (Redis)"]
 )
@@ -301,13 +284,18 @@ async def create_inventory_item_route(
 ):
     try:
         logger.info(f"Creating new inventory item")
-        return await service.create_entry_inventory(db, item)
+        # Determine inventory type based on the item's properties
+        inventory_type = "inventory"  # Default type for this endpoint
+        return await service.create_entry_inventory(
+            db=db,
+            inventory_type=inventory_type,
+            entry_data=item
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-# ____________________________________________________________
 # ________________________________________________________________________________________
 
 # READ: Get an inventory which is match from inventry ID

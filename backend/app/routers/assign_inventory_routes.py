@@ -1,29 +1,15 @@
 # backend/app/routers/Assign_inventory_routes.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-import logging
-import requests
-from fastapi import Response
-from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime, date
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.app.database.database import get_async_db
-from datetime import datetime
+
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.assign_inventory_schema import (
     AssignmentInventoryCreate,
-    AssignmentInventoryOut,
     AssignmentInventoryUpdate,
-    AssignmentInventoryRedisIn,
     AssignmentInventoryRedisOut,
-    AssignmentInventorySearch,
     RedisSearchResult
 )
-from pydantic import ValidationError
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.curd.assign_inventory_curd import AssignInventoryService
-from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 
 # Dependency to get the Assign inventory service
 def get_Assign_inventory_service(
@@ -33,10 +19,6 @@ def get_Assign_inventory_service(
 
 # Set up the router
 router = APIRouter()
-
-# Setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # --------------------------
 # Asynchronous Endpoints
@@ -49,7 +31,7 @@ logger.setLevel(logging.INFO)
     status_code=200,
     summary="Upload all assigned entries from Redis to database",
     description="Uploads all assign_inventory entries from local Redis to the database",
-    tags=["upload Inventory (DataBase)"]
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_assign_inventory(
     db: AsyncSession = Depends(get_async_db),

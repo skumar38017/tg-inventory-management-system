@@ -1,40 +1,19 @@
 # backend/app/crud/wastage_inventory_crud.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
-import json
-import logging
-import uuid
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import update
-
-from fastapi import HTTPException, Depends
-from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-import redis.asyncio as redis
+from backend.app.utils.common_imports import *
 
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.schema.wastage_inventory_schema import *
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
-from typing import Union
 from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
 from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-from backend.app.database.redisclient import get_redis
 redis_client=get_redis()
 
 class WastageInventoryService(WastageInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
-        self.barcode_generator = BarcodeGenerator()
         self.base_url = config.BASE_URL
+        self.barcode_generator = BarcodeGenerator()
 
     # Upload all `wastage_inventory` entries from local Redis to the database after click on `upload data` button
     async def upload_wastage_inventory(self, db: AsyncSession) -> List[WastageInventoryRedisOut]:
@@ -60,47 +39,50 @@ class WastageInventoryService(WastageInventoryInterface):
                         
                         # Validate and convert data using the schema
                         try:
-                            validated_data = WastageInventoryRedisIn(**entry).model_dump()
-                            
-                            # Convert date fields to date objects (for Date columns)
-                            for date_field in ['receive_date', 'event_date', 'wastage_date']:
-                                if date_field in validated_data and validated_data[date_field]:
-                                    if isinstance(validated_data[date_field], str):
-                                        try:
-                                            # Parse string to date object
-                                            validated_data[date_field] = datetime.strptime(
-                                                validated_data[date_field], "%Y-%m-%d"
-                                            ).date()
-                                        except ValueError:
-                                            logger.error(f"Invalid date format for {date_field}: {validated_data[date_field]}")
-                                            validated_data[date_field] = None
-                                    elif isinstance(validated_data[date_field], datetime):
-                                        # Extract date part from datetime
-                                        validated_data[date_field] = validated_data[date_field].date()
-                                    # If it's already a date object, leave as is
-                            
-                            # Convert datetime fields to formatted strings (for String columns)
-                            for datetime_field in ['created_at', 'updated_at']:
-                                if datetime_field in validated_data and validated_data[datetime_field]:
-                                    if isinstance(validated_data[datetime_field], (datetime, date)):
-                                        # Format as string in ISO format
-                                        validated_data[datetime_field] = validated_data[datetime_field].strftime("%Y-%m-%d %H:%M:%S")
-                                    elif isinstance(validated_data[datetime_field], str):
-                                        # If it's already a string, ensure it's in the right format
-                                        try:
-                                            # Try parsing to validate format
-                                            datetime.strptime(validated_data[datetime_field], "%Y-%m-%d %H:%M:%S")
-                                        except ValueError:
+                            if 'quantity' in entry and isinstance(entry['quantity'], (int, float)):
+                                entry['quantity'] = str(entry['quantity'])
+                                
+                                validated_data = WastageInventoryRedisIn(**entry).model_dump()
+                                
+                                # Convert date fields to date objects (for Date columns)
+                                for date_field in ['receive_date', 'event_date', 'wastage_date']:
+                                    if date_field in validated_data and validated_data[date_field]:
+                                        if isinstance(validated_data[date_field], str):
                                             try:
-                                                # Try to parse and reformat if not in correct format
-                                                dt = datetime.strptime(validated_data[datetime_field], "%Y-%m-%dT%H:%M:%S")
-                                                validated_data[datetime_field] = dt.strftime("%Y-%m-%d %H:%M:%S")
+                                                # Parse string to date object
+                                                validated_data[date_field] = datetime.strptime(
+                                                    validated_data[date_field], "%Y-%m-%d"
+                                                ).date()
                                             except ValueError:
-                                                logger.error(f"Invalid datetime format for {datetime_field}: {validated_data[datetime_field]}")
-                                                validated_data[datetime_field] = None
-                            
-                            all_redis_data.append(validated_data)
-                            uploaded_entries.append(WastageInventoryRedisOut(**validated_data))
+                                                logger.error(f"Invalid date format for {date_field}: {validated_data[date_field]}")
+                                                validated_data[date_field] = None
+                                        elif isinstance(validated_data[date_field], datetime):
+                                            # Extract date part from datetime
+                                            validated_data[date_field] = validated_data[date_field].date()
+                                        # If it's already a date object, leave as is
+                                
+                                # Convert datetime fields to formatted strings (for String columns)
+                                for datetime_field in ['created_at', 'updated_at']:
+                                    if datetime_field in validated_data and validated_data[datetime_field]:
+                                        if isinstance(validated_data[datetime_field], (datetime, date)):
+                                            # Format as string in ISO format
+                                            validated_data[datetime_field] = validated_data[datetime_field].strftime("%Y-%m-%d %H:%M:%S")
+                                        elif isinstance(validated_data[datetime_field], str):
+                                            # If it's already a string, ensure it's in the right format
+                                            try:
+                                                # Try parsing to validate format
+                                                datetime.strptime(validated_data[datetime_field], "%Y-%m-%d %H:%M:%S")
+                                            except ValueError:
+                                                try:
+                                                    # Try to parse and reformat if not in correct format
+                                                    dt = datetime.strptime(validated_data[datetime_field], "%Y-%m-%dT%H:%M:%S")
+                                                    validated_data[datetime_field] = dt.strftime("%Y-%m-%d %H:%M:%S")
+                                                except ValueError:
+                                                    logger.error(f"Invalid datetime format for {datetime_field}: {validated_data[datetime_field]}")
+                                                    validated_data[datetime_field] = None
+                                
+                                all_redis_data.append(validated_data)
+                                uploaded_entries.append(WastageInventoryRedisOut(**validated_data))
                         except ValidationError as e:
                             logger.error(f"Validation error for entry {entry.get('id')}: {e}")
                             continue
