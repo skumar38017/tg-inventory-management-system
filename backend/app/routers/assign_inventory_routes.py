@@ -31,7 +31,7 @@ router = APIRouter()
     status_code=200,
     summary="Upload all assigned entries from Redis to database",
     description="Uploads all assign_inventory entries from local Redis to the database",
-    tags=["upload Inventory (DataBase)"]
+    tags=["Upload Inventory (DataBase)"]
 )
 async def upload_assign_inventory(
     db: AsyncSession = Depends(get_async_db),
