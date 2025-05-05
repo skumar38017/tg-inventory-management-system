@@ -92,8 +92,8 @@ class InventoryComboBox(ttk.Combobox):
             if 0 <= selected_index < len(self._inventory_data):
                 selected_item = self._inventory_data[selected_index]
                 print(f"Selected: {selected_item['inventory_name']} (ID: {selected_item['inventory_id']})")
-                # Here you can add code to load the full data for the selected item
-                self._load_selected_item_data(selected_item)
+                # Emit an event with the selected item data
+                self.event_generate('<<InventorySelected>>', data=selected_item)
     
     def _load_selected_item_data(self, item: Dict):
         """Load data for the selected item"""
@@ -169,7 +169,8 @@ class InventoryComboBox(ttk.Combobox):
             "wastage_barcode_image_url": item.get("wastage_barcode_image_url") or "",
 
             "total_quantity": item.get("total_quantity") or 0,
-            "manufacturer": item.get("manufacturer") or "",
+            "material": item.get("material") or "inventory_name",
+            "manufacturer": item.get("manufacturer") or "unknown",
             "purchase_dealer": item.get("purchase_dealer") or "",
             "purchase_date": item.get("purchase_date") or "",
             "purchase_amount": item.get("purchase_amount") or 0,
@@ -179,16 +180,17 @@ class InventoryComboBox(ttk.Combobox):
             "vendor_name": item.get("vendor_name") or "",
             "total_rent": item.get("total_rent") or 0,
             "rented_inventory_returned": item.get("rented_inventory_returned") or False,
+            "returned_date": item.get("returned_date") or "",
             "on_event": item.get("on_event") or False,
             "in_office": item.get("in_office") or False,
             "in_warehouse": item.get("in_warehouse") or False,
             "issued_qty": item.get("issued_qty") or 0,
             "balance_qty": item.get("balance_qty") or 0,
-            "bar_code": item.get("bar_code") or "",
-            "barcode_image_url": item.get("barcode_image_url") or "",
             "submitted_by": item.get("submitted_by") or "",
             "created_at": item.get("created_at") or "",
             "updated_at": item.get("updated_at") or "",
+            "bar_code": item.get("bar_code") or "",
+            "barcode_image_url": item.get("barcode_image_url") or "",
             "inventory_barcode": item.get("inventory_barcode") or "",
             "inventory_unique_code": item.get("inventory_unique_code") or "",
             "inventory_barcode_url": item.get("inventory_barcode_url") or "",

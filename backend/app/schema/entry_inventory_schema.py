@@ -65,6 +65,7 @@ class EntryInventoryOut(EntryInventoryBase):
     inventory_barcode: Optional[str] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
+    inventory_qrcode_url: Optional[str] = None
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -195,6 +196,7 @@ class StoreInventoryRedis(BaseModel, BaseValidators):
     inventory_barcode: Optional[Union[str, int]] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
+    inventory_qrcode_url: Optional[str] = None
 
     model_config = ConfigDict(
         json_encoders={
@@ -206,6 +208,7 @@ class StoreInventoryRedis(BaseModel, BaseValidators):
 # Schema to Show record from Redis after clicking {Show All} button
 class InventoryRedisOut(StoreInventoryRedis):
     """Redis output model"""
+    inventory_qrcode_url: Optional[str] = None
     @classmethod
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)
@@ -241,6 +244,7 @@ class GoogleSyncInventoryBase(BaseValidators, BaseModel):
     inventory_barcode: Optional[str] = None
     inventory_unique_code: Optional[str] = None
     inventory_barcode_url: Optional[str] = None
+    inventory_qrcode_url: Optional[str] = None
 
     model_config = ConfigDict(
         extra="ignore",
