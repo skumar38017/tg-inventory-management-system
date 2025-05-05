@@ -9,7 +9,7 @@ import re
 from typing import Union
 from enum import Enum
 from pydantic import ValidationError
-from backend.app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
+from backend.app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
 from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
 from backend.app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
 from backend.app.models.wastege_inventory_model import WastageInventory
@@ -304,7 +304,7 @@ class RedisSearchResult(BaseModel):
         InventoryItemOut,
         ToEventRedisOut, 
         InventoryRedisOut, 
-        EntryInventoryOut,
+        StoreInventoryRedis,
         Dict[str, Any]
     ]
     

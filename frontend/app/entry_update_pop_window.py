@@ -44,6 +44,12 @@ class UpdatePopUpWindow:
             return
             
         try:
+            # Convert string booleans to actual booleans
+            def str_to_bool(value):
+                if isinstance(value, str):
+                    return value.lower() == "true"
+                return bool(value)
+
             # Left column fields
             update_window_entries["Sno"].config(state='normal')
             update_window_entries["Sno"].delete(0, tk.END)
@@ -56,11 +62,11 @@ class UpdatePopUpWindow:
             update_window_entries["ProductID"].config(state='readonly')
             
             update_window_entries["Material"].delete(0, tk.END)
-            update_window_entries["Material"].insert(0, inventory_data.get('material', ''))
+            update_window_entries["Material"].insert(0, inventory_data.get('material', 'inventory_name') or 'unknown')
             
             update_window_entries["Manufacturer"].delete(0, tk.END)
-            update_window_entries["Manufacturer"].insert(0, inventory_data.get('manufacturer', ''))
-            
+            update_window_entries["Manufacturer"].insert(0, inventory_data.get('manufacturer', 'unknown') or '')
+
             # Handle dates - skip if empty
             purchase_date = inventory_data.get('purchase_date')
             if purchase_date:
@@ -69,12 +75,12 @@ class UpdatePopUpWindow:
                 UpdatePopUpWindow.clear_date_entry(update_window_entries["Purchase Date"])
                 
             update_window_entries["Repair Quantity"].delete(0, tk.END)
-            update_window_entries["Repair Quantity"].insert(0, inventory_data.get('repair_quantity', ''))
+            update_window_entries["Repair Quantity"].insert(0, inventory_data.get('repair_quantity', '0') or 0)
             
             update_window_entries["Vendor Name"].delete(0, tk.END)
-            update_window_entries["Vendor Name"].insert(0, inventory_data.get('vendor_name', ''))
+            update_window_entries["Vendor Name"].insert(0, inventory_data.get('vendor_name', 'unknown') or '')
             
-            update_window_entries["On Rent"].set(inventory_data.get('on_rent', False))
+            update_window_entries["On Rent"].set(str_to_bool(inventory_data.get('on_rent', False)))
             
             returned_date = inventory_data.get('returned_date')
             if returned_date:
@@ -82,13 +88,13 @@ class UpdatePopUpWindow:
             else:
                 UpdatePopUpWindow.clear_date_entry(update_window_entries["Returned Date"])
                 
-            update_window_entries["In Office"].set(inventory_data.get('in_office', False))
+            update_window_entries["In Office"].set(str_to_bool(inventory_data.get('in_office', False)))
             
             update_window_entries["Issued Qty"].delete(0, tk.END)
-            update_window_entries["Issued Qty"].insert(0, inventory_data.get('issued_qty', ''))
+            update_window_entries["Issued Qty"].insert(0, inventory_data.get('issued_qty', '0') or 0)
             
             update_window_entries["Submitted By"].delete(0, tk.END)
-            update_window_entries["Submitted By"].insert(0, inventory_data.get('submitted_by', ''))
+            update_window_entries["Submitted By"].insert(0, inventory_data.get('submitted_by', '') or '')
             
             # Right column fields
             update_window_entries["InventoryID"].config(state='normal')
@@ -102,28 +108,29 @@ class UpdatePopUpWindow:
             update_window_entries["Name"].config(state='readonly')
             
             update_window_entries["Total Quantity"].delete(0, tk.END)
-            update_window_entries["Total Quantity"].insert(0, inventory_data.get('total_quantity', ''))
+            update_window_entries["Total Quantity"].insert(0, inventory_data.get('total_quantity', 0) or 0)
             
             update_window_entries["Purchase Dealer"].delete(0, tk.END)
-            update_window_entries["Purchase Dealer"].insert(0, inventory_data.get('purchase_dealer', ''))
+            update_window_entries["Purchase Dealer"].insert(0, inventory_data.get('purchase_dealer', '') or '')
             
             update_window_entries["Purchase Amount"].delete(0, tk.END)
-            update_window_entries["Purchase Amount"].insert(0, inventory_data.get('purchase_amount', ''))
+            update_window_entries["Purchase Amount"].insert(0, inventory_data.get('purchase_amount', 0) or 0)
             
             update_window_entries["Repair Cost"].delete(0, tk.END)
-            update_window_entries["Repair Cost"].insert(0, inventory_data.get('repair_cost', ''))
+            update_window_entries["Repair Cost"].insert(0, inventory_data.get('repair_cost', 0) or 0)
             
             update_window_entries["Total Rent"].delete(0, tk.END)
-            update_window_entries["Total Rent"].insert(0, inventory_data.get('total_rent', ''))
+            update_window_entries["Total Rent"].insert(0, inventory_data.get('total_rent', 0) or 0)
             
-            update_window_entries["Rented Returned"].set(inventory_data.get('rented_returned', False))
+            update_window_entries["Rented Returned"].set(str_to_bool(inventory_data.get('rented_inventory_returned', False)))
             
-            update_window_entries["On Event"].set(inventory_data.get('on_event', False))
+            update_window_entries["On Event"].set(str_to_bool(inventory_data.get('on_event', False)))
             
-            update_window_entries["In Warehouse"].set(inventory_data.get('in_warehouse', False))
+            update_window_entries["In Warehouse"].set(str_to_bool(inventory_data.get('in_warehouse', False)))
             
             update_window_entries["Balance Qty"].delete(0, tk.END)
-            update_window_entries["Balance Qty"].insert(0, inventory_data.get('balance_qty', ''))
+            update_window_entries["Balance Qty"].insert(0, inventory_data.get('balance_qty', 0) or 0)
+
             
             # Additional information
             update_window_entries["ID"].config(state='normal')
