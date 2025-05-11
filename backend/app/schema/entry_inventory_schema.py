@@ -54,8 +54,8 @@ class EntryInventoryOut(EntryInventoryBase):
     id: Optional[str] = None
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None
-    inventory_barcode: Optional[str] = None
-    inventory_unique_code: Optional[str] = None
+    inventory_barcode: Optional[Union[str, int]] = None
+    inventory_unique_code: Optional[Union[str, int]] = None
     inventory_barcode_url: Optional[str] = None
     inventory_qrcode_url: Optional[str] = None
     

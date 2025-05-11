@@ -69,7 +69,7 @@ SCOPES = [
 ]
 
 # Barcode Generator Configuration
-BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/home/tagglabs/Videos/tg-inventory-management-system/static/barcodes")
+BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/static/barcodes")
 BARCODE_BASE_URL = os.getenv("BARCODE_BASE_URL", "/static/barcodes")
 
 # QR Code Configuration

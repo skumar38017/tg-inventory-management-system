@@ -1,18 +1,12 @@
 #  backend/app/utils/qr_code_generator.py
 
-import qrcode
-import io
-import logging
-import os
-from typing import Tuple, Dict
-from PIL import Image
-from backend.app import config
-from typing import Union, Dict
+from backend.app.utils.common_imports import *
 import urllib.request
 from urllib.parse import urlparse
-
+from qrcode.image.svg import SvgImage
+import logging
+# Initialize logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class QRCodeGenerator:
     def __init__(self):

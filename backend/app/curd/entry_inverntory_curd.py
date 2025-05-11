@@ -10,6 +10,7 @@ from backend.app.schema.entry_inventory_schema import (
     StoreInventoryRedis,
     DateRangeFilter
 )
+
 # Google Sheets API
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -31,7 +32,7 @@ class EntryInventoryService(EntryInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.qr_generator = QRCodeGenerator()
-        self.barcode_generator = BarcodeGenerator()
+        self.barcode_generator = DynamicBarcodeGenerator()
         self.base_url = config.BASE_URL
 
 
@@ -255,48 +256,54 @@ class EntryInventoryService(EntryInventoryInterface):
                 val = inventory_data.get(field, default_value)
                 inventory_data[field] = BaseValidators.validate_boolean_fields(val)
 
-            # Generate QR code content first
-            # bar_content = self.qr_generator.barcode_qr_content(inventory_data)
-            
             # Generate barcode if not provided
             if not inventory_data.get('inventory_barcode'):
-                barcode_data = {
-                    'inventory_name': inventory_data['inventory_name'],
-                    'inventory_id': inventory_data['inventory_id'],
-                    'id': inventory_id 
-                }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(
-                    # bar_content,
-                    barcode_data, 
-                    inventory_type=inventory_type
-                )
+                # Generate minimal barcode with only bars, code, and unique code
+                try:
+                    # Generate minimal barcode with only bars, code, and unique code
+                    barcode_value, unique_code, barcode_svg = self.barcode_generator.generate_dynamic_barcode({
+                        'inventory_name': inventory_data['inventory_name'],
+                        'inventory_id': inventory_data.get('inventory_id', inventory_id),
+                        'type': inventory_type
+                    })
+                    
+                    # Save barcode image
+                    barcode_url = self.barcode_generator.save_barcode_image(
+                        barcode_svg,
+                        inventory_data['inventory_name'],
+                        inventory_data['inventory_id']
+                        
+                    )
 
-                # Generate and save the barcode image
-                image_bytes, image_url = self.barcode_generator.generate_barcode_image(
-                    barcode, 
-                    unique_code,
-                    inventory_name=inventory_data['inventory_name']  # Add this parameter
-                )
+                    inventory_data.update({
+                        'inventory_barcode': barcode_value,
+                        'inventory_unique_code': unique_code,
+                        'inventory_barcode_url': barcode_url,
+                    })
+                except ValueError as e:
+                    logger.error(f"Barcode generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+
+                try: 
+                    # Generate QR code content first
+                    qr_content = self.qr_generator.generate_qr_content(inventory_data)
+
+                    # Then generate QR code with the content
+                    qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
+                        data=qr_content,
+                        inventory_id=inventory_data['inventory_id'],
+                        inventory_name=inventory_data['inventory_name']
+                    )
                 
-                inventory_data.update({
-                    'inventory_barcode': barcode,
-                    'inventory_unique_code': unique_code,
-                    'inventory_barcode_url': image_url  
-                })
-
-                # Generate QR code content first
-                qr_content = self.qr_generator.generate_qr_content(inventory_data)
-
-                # Then generate QR code with the content
-                qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
-                    data=qr_content,
-                    inventory_id=inventory_data['inventory_id'],
-                    inventory_name=inventory_data['inventory_name']
-                )
-            
-                # Add QR code URL to inventory data
-                inventory_data['inventory_qrcode_url'] = qr_url
-
+                    # Add QR code URL to inventory data
+                    inventory_data['inventory_qrcode_url'] = qr_url
+                except ValueError as e:
+                    logger.error(f"QR code generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+                except Exception as e:
+                    logger.error(f"QR code generation failed: {str(e)}", exc_info=True)
+                    raise HTTPException(status_code=500, detail=str(e)) 
+                
             # Permanent Redis storage (no expiration)
             redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"
             await self.redis.set(

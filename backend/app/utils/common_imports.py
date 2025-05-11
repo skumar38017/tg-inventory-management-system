@@ -2,6 +2,7 @@
 
 # Standard Library Imports
 import os
+import io
 import re
 import json
 import uuid
@@ -72,7 +73,7 @@ from backend.app.database.redisclient import (
 from backend.app import config
 from backend.app.utils.date_utils import UTCDateUtils
 from backend.app.utils.field_validators import BaseValidators
-from backend.app.utils.barcode_generator import BarcodeGenerator
+from backend.app.utils.barcode_generator import DynamicBarcodeGenerator
 from backend.app.utils.qr_code_generator import QRCodeGenerator
 from backend.app.utils.inventory_updater import InventoryUpdater
 
