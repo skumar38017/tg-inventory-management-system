@@ -185,16 +185,16 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                 try:
                     # Generate minimal barcode with only bars, code, and unique code
                     barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
-                        'inventory_id': inventory_data.inventory_id,
                         'inventory_name': inventory_data.inventory_name,
+                        'inventory_id': inventory_data.inventory_id,
                         'type': inventory_type
                     })
                     
                     # Save barcode image
                     barcode_url = self.barcode_generator.save_barcode_image(
                         barcode_img,
-                        inventory_data.inventory_id,
                         inventory_data.inventory_name,
+                        inventory_data.inventory_id,
                     )
 
                     # Update inventory data with barcode information
