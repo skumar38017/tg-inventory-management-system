@@ -93,8 +93,8 @@ class DynamicBarcodeGenerator:
 
     def save_barcode_image(self, barcode_png: bytes, inventory_name: str, inventory_id: str) -> str:
         try:
-            safe_name = "".join(c for c in inventory_name if c.isalnum() or c in ('_', '-')).strip()
-            filename = f"{safe_name}_{inventory_id}.png"
+            filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}.png"
+            filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
             filepath = os.path.join(self.barcode_base_path, filename)
 
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
