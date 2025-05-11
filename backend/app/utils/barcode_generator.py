@@ -93,10 +93,31 @@ class DynamicBarcodeGenerator:
 
     def save_barcode_image(self, barcode_png: bytes, inventory_name: str, inventory_id: str) -> str:
         try:
-            filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}.png"
-            filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
-            filepath = os.path.join(self.barcode_base_path, filename)
+            # Debug log to verify inputs (remove after testing)
+            logger.debug(f"Original inputs - name: '{inventory_name}', id: '{inventory_id}'")
 
+            # ----- DEFENSIVE CHECKS -----
+            # Auto-correct swapped parameters if detected
+            if inventory_id and isinstance(inventory_id, str) and inventory_id.lower().startswith(('wireless', 'microphone', 'plastic')):
+                # If inventory_id looks like a name, swap the parameters
+                inventory_name, inventory_id = inventory_id, inventory_name
+                logger.warning(f"Auto-corrected swapped parameters. New name: '{inventory_name}', id: '{inventory_id}'")
+
+            # ----- FORMATTING LOGIC -----
+            # Clean and format the inventory name (lowercase with underscores)
+            clean_name = inventory_name.replace(' ', '_').lower()
+            
+            # Force uppercase ID and strip invalid chars
+            clean_id = ''.join(c for c in inventory_id.upper() if c.isalnum())
+            
+            # Final filename format: wireless_microphoneINV00456.png
+            filename = f"{clean_name}{clean_id}.png"
+            
+            # Remove any remaining special characters (keeps only alnum, _, and .)
+            filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
+            
+            # ----- SAVE FILE -----
+            filepath = os.path.join(self.barcode_base_path, filename)
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
             with open(filepath, 'wb') as f:

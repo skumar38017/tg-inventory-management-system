@@ -261,17 +261,17 @@ class EntryInventoryService(EntryInventoryInterface):
                 # Generate minimal barcode with only bars, code, and unique code
                 try:
                     # Generate minimal barcode with only bars, code, and unique code
-                    barcode_value, unique_code, barcode_svg = self.barcode_generator.generate_dynamic_barcode({
-                        'inventory_name': inventory_data['inventory_name'],
+                    barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
                         'inventory_id': inventory_data.get('inventory_id', inventory_id),
+                        'inventory_name': inventory_data['inventory_name'],
                         'type': inventory_type
                     })
                     
                     # Save barcode image
                     barcode_url = self.barcode_generator.save_barcode_image(
-                        barcode_svg,
+                        barcode_img,
+                        inventory_data.get('inventory_id', inventory_id),
                         inventory_data['inventory_name'],
-                        inventory_data['inventory_id']
                         
                     )
 
