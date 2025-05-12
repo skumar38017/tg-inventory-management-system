@@ -10,6 +10,7 @@ from backend.app.routers import (
 
 )
 from  backend.app.barcode_route import qr_code
+from backend.app.barcode_route import barcode
 
 class APIGateway:
     """Centralized API Gateway for managing all routes and endpoints"""
@@ -32,6 +33,7 @@ class APIGateway:
         self.register_router(assign_inventory_routes.router, tags=["Assign Inventory"])
         self.register_router(wastage_inventory_routes.router, tags=["Wastage Inventory"])
         self.register_router(qr_code.router, tags=["QR Code"])
+        self.register_router(barcode.router, tags=["Barcode"])
         
         self._routes_initialized = True
     

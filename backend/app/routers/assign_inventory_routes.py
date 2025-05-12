@@ -149,7 +149,12 @@ async def create_inventory_item_route(
     try:
         item_data = item.dict(exclude_unset=True)
         logger.info(f"New item created: {item_data}")
-        return await service.create_assignment_inventory(db, item_data)
+        inventory_type = "assignment_inventory" 
+        return await service.create_assignment_inventory(
+            db=db, 
+            item_data=item_data,
+            inventory_type=inventory_type
+            )
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))

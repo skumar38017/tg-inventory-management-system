@@ -13,7 +13,7 @@ class WastageInventoryService(WastageInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.base_url = config.BASE_URL
-        self.barcode_generator = BarcodeGenerator()
+        self.barcode_generator = DynamicBarcodeGenerator()
 
     # Upload all `wastage_inventory` entries from local Redis to the database after click on `upload data` button
     async def upload_wastage_inventory(self, db: AsyncSession) -> List[WastageInventoryRedisOut]:

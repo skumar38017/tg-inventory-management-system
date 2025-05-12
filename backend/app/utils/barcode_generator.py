@@ -48,7 +48,6 @@ class TransparentBlackBarsWriter(ImageWriter):
         img.putdata(new_pixels)
         return img
 
-
 class DynamicBarcodeGenerator:
     def __init__(self):
         self.barcode_base_path = config.BARCODE_BASE_PATH
@@ -65,10 +64,10 @@ class DynamicBarcodeGenerator:
         try:
             # Deterministic 12-digit numeric code from hash
             record_hash = hashlib.sha256(str(sorted(record_data.items())).encode()).hexdigest()
-            barcode_value = ''.join([c for c in record_hash if c.isdigit()])[:12]
+            barcode_value = ''.join([c for c in record_hash if c.isdigit()])[:13]
 
             # Unique human-readable verification code
-            unique_code = self._generate_alphanumeric_code(12)
+            unique_code = self._generate_alphanumeric_code(13)
 
             # Generate barcode using transparent writer
             barcode_class = barcode.get_barcode_class(self.barcode_type)

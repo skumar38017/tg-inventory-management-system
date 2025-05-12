@@ -13,7 +13,8 @@ templates = Jinja2Templates(directory="backend/app/templates")
 @router.get("/scan/{qr_data}/",
     response_class=HTMLResponse,
     response_model=InventoryQrCodeResponse,
-    dependencies=[Depends(RateLimiter(times=10, seconds=60))]
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    tags=["Scan Code (Redis)"]
 )
 async def scan_qrcode(
     qr_data: str,
@@ -140,7 +141,9 @@ async def scan_qrcode(
             }
         )
 
-@router.post("/upload/", response_model=InventoryQrCodeResponse)
+@router.post("/upload/", response_model=InventoryQrCodeResponse,
+            tags=["Upload code image (Redis)"]
+            )
 async def upload_qrcode(
     file: UploadFile = File(...),
     redis_client: aioredis.Redis = Depends(get_redis_dependency)

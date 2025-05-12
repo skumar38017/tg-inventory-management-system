@@ -29,9 +29,6 @@ class InventoryQrCodeResponse(BaseValidators, BaseModel):
         }
     )
 
-class BarcodeClallanScan(BaseValidators, BaseModel):
-    barcode_value: Optional[str] = Field(None, description="Barcode value")
-    unique_code: Optional[str] = Field(None, description="Unique code")
 
 class BarcodeClallanScanResponse(BaseModel):
     id: Optional[Union[str, int]] = None
@@ -68,7 +65,14 @@ class BarcodeClallanScanResponse(BaseModel):
         }
     )
 
+class BarcodeClallanScan(BaseValidators, BaseModel):
+    barcode_value: Optional[str] = Field(None, description="Barcode value")
+    unique_code: Optional[str] = Field(None, description="Unique code")
+
 class BarcodeScan(BaseValidators, BaseModel):
+    source_type: Optional[str] = Field(None, description="Source of the record (inventory, wastage_inventory, etc.)")
+    id: Optional[str] = None
+
     # Common fields
     sno: Optional[Union[str, int]] = None
     inventory_id: Optional[Union[str, int]] = None
@@ -90,7 +94,7 @@ class BarcodeScan(BaseValidators, BaseModel):
     
     # Assignment specific fields
     assign_to: Optional[str] = "Employee"
-    employee_name: Optional[str] = None
+    employee_name: Optional[str] = "Unknown"
     purpose_reason: Optional[str] = None
     assigned_date: Optional[Union[str, int, date]] = Field(default_factory=lambda: date.today().isoformat())
     assign_by: Optional[str] = "Inventory_Admin"
@@ -111,12 +115,12 @@ class BarcodeScan(BaseValidators, BaseModel):
     unit: Optional[Union[str, int]] = "PCS"
     per_unit_power: Optional[Union[str, int]] = 1
     total_power: Optional[Union[str, int]] = 1
-    poc: Optional[Union[str, int]] = 1
+    poc: Optional[Union[str, int]] = "Admin"
     
     # Inventory item specific fields
     total_quantity: Optional[Union[str, int]] = 1
     manufacturer: Optional[str] = "Tahgglabs"
-    purchase_dealer: Optional[str] = None
+    purchase_dealer: Optional[str] = "Unknown"
     purchase_date: Optional[Union[str, int, date]] = Field(default_factory=lambda: date.today().isoformat())
     purchase_amount: Optional[Union[str, int, float]] = 0
     repair_quantity: Optional[Union[str, int]] = 0
@@ -130,6 +134,9 @@ class BarcodeScan(BaseValidators, BaseModel):
     in_warehouse: Optional[Union[str, bool]] = "false"
     issued_qty: Optional[Union[str, int]] = 1
     balance_qty: Optional[Union[str, int]] = None
+    returned_date: Optional[Union[str, date]] = None
+    created_at: Optional[Union[str, datetime]] = None
+    updated_at: Optional[Union[str, datetime]] = None
 
     @field_validator(
         'on_rent', 'rented_inventory_returned', 'on_event', 
@@ -140,6 +147,12 @@ class BarcodeScan(BaseValidators, BaseModel):
             return str(v).lower()
         return v
 
+    class Config:
+        extra = "allow"
+
 class BarcodeScanResponse(BaseModel):
     items: List[BarcodeScan]
     total_count: int
+
+    class Config:
+        extra = "allow"
