@@ -70,7 +70,6 @@ class BarcodeClallanScan(BaseValidators, BaseModel):
     unique_code: Optional[str] = Field(None, description="Unique code")
 
 class BarcodeScan(BaseValidators, BaseModel):
-    source_type: Optional[str] = Field(None, description="Source of the record (inventory, wastage_inventory, etc.)")
     id: Optional[str] = None
 
     # Common fields
@@ -135,6 +134,7 @@ class BarcodeScan(BaseValidators, BaseModel):
     issued_qty: Optional[Union[str, int]] = 1
     balance_qty: Optional[Union[str, int]] = None
     returned_date: Optional[Union[str, date]] = None
+    inventory_qrcode_url: Optional[str] = None
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None
 
