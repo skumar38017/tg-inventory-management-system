@@ -29,7 +29,6 @@ class InventoryQrCodeResponse(BaseValidators, BaseModel):
         }
     )
 
-
 class BarcodeClallanScanResponse(BaseModel):
     id: Optional[Union[str, int]] = None
     sno: Optional[Union[str, int]] = None
@@ -156,3 +155,9 @@ class BarcodeScanResponse(BaseModel):
 
     class Config:
         extra = "allow"
+
+class BarcodeQrCodeResponse(BaseModel):
+    inventory_id: Optional[str] = None
+    inventory_name: Optional[str] = None
+    inventory_barcode_url: Optional[str] = None
+    inventory_qrcode_url: Optional[str] = None
