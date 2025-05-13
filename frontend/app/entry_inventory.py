@@ -15,6 +15,7 @@ from from_event import FromEventWindow
 from assign_inventory import AssignInventoryWindow
 from damage_inventory import DamageWindow
 from entry_update_pop_window import *
+from reveal_qr_barcode_window import *
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
@@ -648,6 +649,9 @@ def setup_main_window():
     
     return root
 
+def open_reveal_window():
+    """Open the Reveal QR & Barcode window"""
+    RevealQrAndBarcodeWindow(root).open_reveal_qr_and_barcode_pop_up()
 
 #  Create and configure the header frame with clock and company info
 def create_header_frame(root):
@@ -1065,6 +1069,17 @@ def create_list_frames(root):
                         font=('Helvetica', 9, 'bold'))
     search_btn.grid(row=0, column=6, sticky='e', padx=5)
 
+    # Add Reveal QR & Barcode button in top-right corner of search tab
+    reveal_btn = tk.Button(
+        search_fields_frame,
+        text="Reveal QR & Barcode", 
+        font=('Helvetica', 9),
+        width=20,
+        command=open_reveal_window 
+    )
+    reveal_btn.grid(row=0, column=7, sticky='e', padx=5, pady=5)
+    # Make sure to adjust the column weights so the button stays on the right
+    search_fields_frame.grid_columnconfigure(7, weight=1)
 
     # Separator line
     ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
@@ -1145,6 +1160,7 @@ def configure_grid(root):
     root.grid_rowconfigure(2, weight=0)  # Bottom buttons
     root.grid_columnconfigure(0, weight=1)
     root.grid_columnconfigure(1, weight=1)
+    root.grid_columnconfigure(2, weight=1)
 
 def main():
     """Main application entry point"""
