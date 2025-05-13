@@ -43,6 +43,7 @@ def format_inventory_item(item: Dict[str, Any]) -> Dict[str, str]:
         'Updated At': get_value('updated_at'),
         'BarCode': get_value('inventory_barcode'),
         'BacodeUrl': get_value('inventory_barcode_url'),
+        'QrCodeUrl': get_value('inventory_qrcode_url'),
     }
 
 def format_inventory_response(response_data: List[Dict[str, Any]]) -> List[Dict[str, str]]:
@@ -395,6 +396,24 @@ def update_existing_inventory(item_data: dict):
     except Exception as e:
         logger.error(f"Error updating inventory item: {str(e)}")
         raise Exception(f"Could not update inventory item: {str(e)}")
+
+
+# Reveal QR Code and Barcode for a list
+def list_barcode_qrcode() -> List[Dict[str, Any]]:
+    """List all barcode QR codes from backend"""
+    try:
+        response = make_api_request("GET", "list-barcode-qrcode/")
+        response.raise_for_status()
+        return format_inventory_response(response.json())
+        
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch barcode/qrcode list: {e}")
+        messagebox.showerror("Error", "Could not fetch barcode/qrcode data")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error during fetch: {e}")
+        messagebox.showerror("Error", "An unexpected error occurred")
+        return []  
         
 
 # #  Search  Project by [Project_id] by clicking search
