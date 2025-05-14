@@ -8,6 +8,7 @@ class RevealQrAndBarcodeWindow:
     def __init__(self, root_window):
         self.root = root_window
         self.selected_item = None  # To store the selected item
+        self.selection_var = tk.IntVar(value=0)  # Single variable for all radio buttons
         self.row_buttons = []  # To store radio buttons for selection
 
     def open_reveal_qr_and_barcode_pop_up(self):
@@ -112,6 +113,7 @@ class RevealQrAndBarcodeWindow:
         
         # Clear previous selection
         self.selected_item = None
+        self.selection_var.set(0)  # Reset selection
         self.row_buttons = []
         self.image_view_button.config(state=tk.DISABLED)
         
@@ -120,16 +122,15 @@ class RevealQrAndBarcodeWindow:
         
         # Add data rows
         for row, item in enumerate(backend_data, start=1):
-            # Radio button for selection
-            var = tk.IntVar()
+            # Radio button for selection - all share the same variable
             radio_btn = tk.Radiobutton(
-                self.table_frame, 
-                variable=var, 
+                self.table_frame,
+                variable=self.selection_var,
                 value=row,
                 command=lambda r=row, i=item: self.select_item(r, i)
             )
             radio_btn.grid(row=row, column=0, sticky="nsew")
-            self.row_buttons.append((radio_btn, var))
+            self.row_buttons.append(radio_btn)
 
             # Serial number (auto-increment)
             serial_label = tk.Label(self.table_frame, text=str(row), borderwidth=1, 
