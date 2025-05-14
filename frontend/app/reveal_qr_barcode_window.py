@@ -1,11 +1,14 @@
 # frontend/app/reveal_qr_&_barcode_window.py
 from common_imports import *
+from image_view import *
 from api_request.entry_inventory_api_request import list_barcode_qrcode
 
 class RevealQrAndBarcodeWindow:
     root = None
     def __init__(self, root_window):
         self.root = root_window
+        self.selected_item = None  # To store the selected item
+        self.row_buttons = []  # To store radio buttons for selection
 
     def open_reveal_qr_and_barcode_pop_up(self):
         """Open the Reveal QR & Barcode pop-up window"""
@@ -41,6 +44,11 @@ class RevealQrAndBarcodeWindow:
         load_button = tk.Button(button_frame, text="Load", 
                               command=self.load_data)
         load_button.pack(side='left', padx=5)
+
+        # Image View button
+        self.image_view_button = tk.Button(button_frame, text="Image View", 
+                              command=self.open_image_view, state=tk.DISABLED)
+        self.image_view_button.pack(side='left', padx=5)
                 
         # Make the window resizable
         self.reveal_qr_and_barcode_window.resizable(True, True)
@@ -84,7 +92,7 @@ class RevealQrAndBarcodeWindow:
         self.table_canvas.bind_all("<Shift-MouseWheel>", lambda e: self.table_canvas.xview_scroll(int(-1*(e.delta/120))), "units")
         
         # Create header row
-        headers = ["Serial No.", "Inventory ID", "Inventory Name", "Barcode URL", "QR Code URL"]
+        headers = ["Select", "Serial No.", "Inventory ID", "Inventory Name", "Barcode URL", "QR Code URL"]
         for col, header in enumerate(headers):
             header_label = tk.Label(self.table_frame, text=header, borderwidth=1, relief="solid", 
                                   padx=5, pady=5, font=('Helvetica', 12, 'bold'))
@@ -102,35 +110,51 @@ class RevealQrAndBarcodeWindow:
             if widget.grid_info()["row"] > 0:  # Skip header row
                 widget.destroy()
         
+        # Clear previous selection
+        self.selected_item = None
+        self.row_buttons = []
+        self.image_view_button.config(state=tk.DISABLED)
+        
         # Fetch data from backend using list_barcode_qrcode
         backend_data = list_barcode_qrcode()
         
         # Add data rows
         for row, item in enumerate(backend_data, start=1):
+            # Radio button for selection
+            var = tk.IntVar()
+            radio_btn = tk.Radiobutton(
+                self.table_frame, 
+                variable=var, 
+                value=row,
+                command=lambda r=row, i=item: self.select_item(r, i)
+            )
+            radio_btn.grid(row=row, column=0, sticky="nsew")
+            self.row_buttons.append((radio_btn, var))
+
             # Serial number (auto-increment)
             serial_label = tk.Label(self.table_frame, text=str(row), borderwidth=1, 
                                   relief="solid", padx=5, pady=5)
-            serial_label.grid(row=row, column=0, sticky="nsew")
+            serial_label.grid(row=row, column=1, sticky="nsew")
 
             # Inventory ID (from backend)
             inventory_id_label = tk.Label(self.table_frame, text=item["InventoryID"], borderwidth=1, 
                                  relief="solid", padx=5, pady=5)
-            inventory_id_label.grid(row=row, column=1, sticky="nsew")
+            inventory_id_label.grid(row=row, column=2, sticky="nsew")
             
             # Inventory Name (from backend)
             name_label = tk.Label(self.table_frame, text=item["Name"], borderwidth=1, 
                                  relief="solid", padx=5, pady=5)
-            name_label.grid(row=row, column=2, sticky="nsew")
+            name_label.grid(row=row, column=3, sticky="nsew")
             
             # Barcode URL (from backend)
             barcode_label = tk.Label(self.table_frame, text=item["BacodeUrl"], 
                                     borderwidth=1, relief="solid", padx=5, pady=5)
-            barcode_label.grid(row=row, column=3, sticky="nsew")
+            barcode_label.grid(row=row, column=4, sticky="nsew")
             
             # QR Code URL (from backend)
             qrcode_label = tk.Label(self.table_frame, text=item["QrCodeUrl"], 
                                   borderwidth=1, relief="solid", padx=5, pady=5)
-            qrcode_label.grid(row=row, column=4, sticky="nsew")
+            qrcode_label.grid(row=row, column=5, sticky="nsew")
             
             # Configure row to expand
             self.table_frame.grid_rowconfigure(row, weight=1)
@@ -138,6 +162,21 @@ class RevealQrAndBarcodeWindow:
         # Update the scroll region after adding data
         self.table_canvas.configure(scrollregion=self.table_canvas.bbox('all'))
 
+    def select_item(self, row, item):
+        """Handle item selection"""
+        self.selected_item = item
+        self.image_view_button.config(state=tk.NORMAL)
+        
     def fetch_data_from_backend(self):
         """Fetch data using list_barcode_qrcode function"""
         return list_barcode_qrcode()
+
+    def open_image_view(self):
+        """Open the Image View window for the selected item"""
+        if not self.selected_item:
+            messagebox.showerror("Error", "Please select an item first")
+            return
+            
+        # Open the image view window with the selected item
+        image_viewer = ImageViewWindow(self.root, self.selected_item)
+        image_viewer.open_image_view()
