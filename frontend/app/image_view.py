@@ -11,6 +11,7 @@ class ImageViewWindow:
         self.qr_image = None
         self.barcode_image = None
         self.selected_item = selected_item  # Store the selected inventory item
+        self.name = selected_item.get('Name', 'item') if selected_item else 'item'
 
     def open_image_view(self):
         """Open the Image View window with the specified layout"""
@@ -115,19 +116,19 @@ class ImageViewWindow:
             if not qr_url or not barcode_url:
                 raise ValueError("Missing image URLs in selected item")
             
-            # Fetch QR code image
+            # Fetch QR code image and store original
             qr_response = requests.get(qr_url)
             qr_response.raise_for_status()
-            qr_image = Image.open(BytesIO(qr_response.content))
-            qr_image = qr_image.resize((300, 300), Image.Resampling.LANCZOS)
+            self.original_qr_image = Image.open(BytesIO(qr_response.content))  # Store original
+            qr_image = self.original_qr_image.resize((300, 300), Image.Resampling.LANCZOS)
             self.qr_image = ImageTk.PhotoImage(qr_image)
             self.qr_label.config(image=self.qr_image, text="")
             
-            # Fetch Barcode image
+            # Fetch Barcode image and store original
             barcode_response = requests.get(barcode_url)
             barcode_response.raise_for_status()
-            barcode_image = Image.open(BytesIO(barcode_response.content))
-            barcode_image = barcode_image.resize((300, 100), Image.Resampling.LANCZOS)
+            self.original_barcode_image = Image.open(BytesIO(barcode_response.content))  # Store original
+            barcode_image = self.original_barcode_image.resize((300, 100), Image.Resampling.LANCZOS)
             self.barcode_image = ImageTk.PhotoImage(barcode_image)
             self.barcode_label.config(image=self.barcode_image, text="")
             
@@ -140,6 +141,44 @@ class ImageViewWindow:
             self.qr_label.config(text="Error loading QR code")
             self.barcode_label.config(text="Error loading barcode")
 
+    def download_image(self, image_type):
+        """Generic download method for both QR and barcode"""
+        try:
+            # Determine image-specific parameters
+            if image_type == 'qr':
+                if not hasattr(self, 'original_qr_image'):
+                    raise ValueError("No QR code to download")
+                img = self.original_qr_image  # Use stored original image
+                suffix = 'qrcode'
+            else:
+                if not hasattr(self, 'original_barcode_image'):
+                    raise ValueError("No barcode to download")
+                img = self.original_barcode_image  # Use stored original image
+                suffix = 'brcode'
+
+            # Get the downloads folder path
+            downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+            
+            # Create filename with requested format
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{self.name}_{timestamp}_{suffix}.png"
+            filepath = os.path.join(downloads_path, filename)
+            
+            # Save the image (no need to re-download)
+            img.save(filepath, 'PNG')
+            messagebox.showinfo("Success", f"Image saved to:\n{filepath}")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to download image: {str(e)}")
+
+    def download_qr(self):
+        """Download QR code to default downloads folder"""
+        self.download_image('qr')
+
+    def download_barcode(self):
+        """Download Barcode to default downloads folder"""
+        self.download_image('barcode')
+
     # Button action methods
     def print_qr(self):
         """Print QR code"""
@@ -148,14 +187,6 @@ class ImageViewWindow:
             # Actual print implementation would go here
         else:
             messagebox.showerror("Error", "No QR code to print")
-
-    def download_qr(self):
-        """Download QR code"""
-        if self.qr_image:
-            messagebox.showinfo("Download", "Downloading QR code...")
-            # Actual download implementation would go here
-        else:
-            messagebox.showerror("Error", "No QR code to download")
 
     def share_qr(self):
         """Share QR code"""
@@ -172,14 +203,6 @@ class ImageViewWindow:
             # Actual print implementation would go here
         else:
             messagebox.showerror("Error", "No barcode to print")
-
-    def download_barcode(self):
-        """Download Barcode"""
-        if self.barcode_image:
-            messagebox.showinfo("Download", "Downloading barcode...")
-            # Actual download implementation would go here
-        else:
-            messagebox.showerror("Error", "No barcode to download")
 
     def share_barcode(self):
         """Share Barcode"""
