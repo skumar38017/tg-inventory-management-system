@@ -127,7 +127,7 @@ class ImageViewWindow:
             barcode_response = requests.get(barcode_url)
             barcode_response.raise_for_status()
             barcode_image = Image.open(BytesIO(barcode_response.content))
-            barcode_image = barcode_image.resize((400, 150), Image.Resampling.LANCZOS)
+            barcode_image = barcode_image.resize((300, 100), Image.Resampling.LANCZOS)
             self.barcode_image = ImageTk.PhotoImage(barcode_image)
             self.barcode_label.config(image=self.barcode_image, text="")
             
