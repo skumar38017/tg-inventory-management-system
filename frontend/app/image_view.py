@@ -190,54 +190,128 @@ class ImageViewWindow:
         """Download Barcode to default downloads folder"""
         self.download_image('barcode')
 
-    def print_image(self, image_type):
-        """Generic print method for both QR and barcode"""
+    def get_available_printers(self):
+        """Get list of available printers on the system"""
         try:
+            if os.name == 'nt':  # Windows
+                import win32print
+                printers = [printer[2] for printer in win32print.EnumPrinters(2)]
+            elif sys.platform == 'darwin':  # macOS
+                import subprocess
+                output = subprocess.check_output(['lpstat', '-a']).decode('utf-8')
+                printers = [line.split()[0] for line in output.split('\n') if line]
+            else:  # Linux
+                import subprocess
+                output = subprocess.check_output(['lpstat', '-a']).decode('utf-8')
+                printers = [line.split()[0] for line in output.split('\n') if line]
+            return printers
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to get printer list: {str(e)}")
+            return []
+
+    def print_image(self, image_type):
+        """Generic print method with printer selection"""
+        try:
+            # Get available printers
+            printers = self.get_available_printers()
+            if not printers:
+                messagebox.showerror("Error", "No printers available")
+                return
+
+            # Create printer selection dialog
+            printer_window = tk.Toplevel(self.root)
+            printer_window.title("Select Printer")
+            printer_window.geometry("400x300")
+            
+            tk.Label(printer_window, 
+                    text="Select a printer:",
+                    font=('Helvetica', 12)).pack(pady=10)
+            
+            # Printer listbox
+            printer_list = tk.Listbox(printer_window)
+            for printer in printers:
+                printer_list.insert(tk.END, printer)
+            printer_list.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+            
+            # Print button
+            print_button = tk.Button(printer_window, text="Print",
+                                command=lambda: self.execute_print(
+                                    image_type, 
+                                    printer_list.get(tk.ACTIVE),
+                                    printer_window))
+            print_button.pack(pady=5)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to initialize printing: {str(e)}")
+
+    def execute_print(self, image_type, printer_name, window=None):
+        """Execute the actual printing to selected printer"""
+        try:
+            if not printer_name:
+                messagebox.showerror("Error", "No printer selected")
+                return
+                
             # Determine which image to print
             if image_type == 'qr':
                 if not hasattr(self, 'original_qr_image'):
                     raise ValueError("No QR code to print")
-                img = self.original_qr_image.copy()  # Use a copy to avoid modifying original
-                standard_size = (2, 2)  # Standard size in inches (2x2 inches for QR)
-                title = f"QR Code - {self.name}"
+                img = self.original_qr_image.copy()
+                standard_size = (2, 2)  # 2x2 inches for QR
             else:
                 if not hasattr(self, 'original_barcode_image'):
                     raise ValueError("No barcode to print")
-                img = self.original_barcode_image.copy()  # Use a copy to avoid modifying original
-                standard_size = (3, 1)  # Standard size in inches (3x1 inches for barcode)
-                title = f"Barcode - {self.name}"
+                img = self.original_barcode_image.copy()
+                standard_size = (3, 1)  # 3x1 inches for barcode
 
-            # Convert inches to pixels (assuming 300 DPI)
+            # Convert inches to pixels (300 DPI)
             dpi = 300
             size_in_pixels = (int(standard_size[0] * dpi), (int(standard_size[1] * dpi)))
             
-            # Resize image to standard print size while maintaining aspect ratio
+            # Resize image while maintaining aspect ratio
             img.thumbnail(size_in_pixels, Image.Resampling.LANCZOS)
             
-            # Create a new white background image at standard size
+            # Create white background
             background = Image.new('RGB', size_in_pixels, (255, 255, 255))
-            
-            # Calculate position to center the image
             x = (size_in_pixels[0] - img.size[0]) // 2
             y = (size_in_pixels[1] - img.size[1]) // 2
-            
-            # Paste the image onto the centered background
             background.paste(img, (x, y))
+
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                temp_path = tmp.name
+                background.save(temp_path, 'PNG')
+
+            # Platform-specific printing
+            if os.name == 'nt':  # Windows
+                import win32print
+                import win32api
+                win32api.ShellExecute(0, "print", temp_path, f'/d:"{printer_name}"', ".", 0)
+            elif sys.platform == 'darwin':  # macOS
+                import subprocess
+                subprocess.run(['lpr', '-P', printer_name, temp_path])
+            else:  # Linux
+                import subprocess
+                subprocess.run(['lp', '-d', printer_name, temp_path])
+                
+            messagebox.showinfo("Print", f"Print job sent to {printer_name}")
             
-            # Show print dialog
-            background.show(title)  # This will open the default image viewer with print option
+            # Clean up temp file after delay
+            self.root.after(10000, lambda: os.unlink(temp_path) if os.path.exists(temp_path) else None)
             
-            messagebox.showinfo("Print", "Please use the print option in the image viewer")
-            
+            if window:
+                window.destroy()
+                
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to prepare image for printing: {str(e)}")
+            messagebox.showerror("Error", f"Failed to print: {str(e)}")
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     def print_qr(self):
-        """Print QR code in standard size"""
+        """Print QR code with printer selection"""
         self.print_image('qr')
 
     def print_barcode(self):
-        """Print Barcode in standard size"""
+        """Print Barcode with printer selection"""
         self.print_image('barcode')
 
     def generate_share_link(self, image_type):
