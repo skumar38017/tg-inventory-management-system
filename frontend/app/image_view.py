@@ -5,6 +5,7 @@ from io import BytesIO
 import base64
 import tempfile
 import webbrowser
+from tkinter import filedialog
 from api_request.entry_inventory_api_request import list_barcode_qrcode
 
 class ImageViewWindow:
@@ -145,7 +146,7 @@ class ImageViewWindow:
             self.barcode_label.config(text="Error loading barcode")
 
     def download_image(self, image_type):
-        """Generic download method for both QR and barcode"""
+        """Generic download method for both QR and barcode - ensures local machine download"""
         try:
             # Determine image-specific parameters
             if image_type == 'qr':
@@ -159,15 +160,22 @@ class ImageViewWindow:
                 img = self.original_barcode_image  # Use stored original image
                 suffix = 'brcode'
 
-            # Get the downloads folder path
-            downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
-            
             # Create filename with requested format
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{self.name}_{timestamp}_{suffix}.png"
-            filepath = os.path.join(downloads_path, filename)
             
-            # Save the image (no need to re-download)
+            # Use a file dialog to ensure local machine download
+            filepath = filedialog.asksaveasfilename(
+                initialdir=os.path.expanduser('~'),
+                initialfile=filename,
+                defaultextension=".png",
+                filetypes=[("PNG files", "*.png"), ("All files", "*.*")]
+            )
+            
+            if not filepath:  # User cancelled the dialog
+                return
+                
+            # Save the image to the selected location
             img.save(filepath, 'PNG')
             messagebox.showinfo("Success", f"Image saved to:\n{filepath}")
             
