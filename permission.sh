@@ -42,5 +42,7 @@ echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-
 echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/start-frontend.sh
 echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/run-frontend.sh
 echo "$PASSWORD" | sudo -S chmod 777 /home/$USER/Videos/tg-inventory-management-system/install_docker_setup.sh
+echo "$PASSWORD" | sudo -S chmod 755 /home/$USER/Videos/tg-inventory-management-system/static/qrcodes/*
+echo "$PASSWORD" | sudo -S chmod 755 /home/$USER/Videos/tg-inventory-management-system/static/barcodes/*
 
 echo "✅ Permissions set successfully."
