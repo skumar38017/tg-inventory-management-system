@@ -146,7 +146,7 @@ class ImageViewWindow:
             self.barcode_label.config(text="Error loading barcode")
 
     def download_image(self, image_type):
-        """Generic download method with robust path handling"""
+        """Generic download method that always saves to QR_BARCODE subfolder"""
         try:
             # Determine image-specific parameters
             if image_type == 'qr':
@@ -166,129 +166,102 @@ class ImageViewWindow:
             
             # Enhanced environment detection
             def is_running_in_docker():
-                # Check multiple Docker indicators
                 path_checks = [
-                    '/.dockerenv',                    
-                    '/proc/self/cgroup',             
-                    '/host'                         
+                    '/.dockerenv',
+                    '/proc/self/cgroup',
+                    '/host'
                 ]
                 return any(os.path.exists(path) for path in path_checks)
             
             in_docker = is_running_in_docker()
             
-            # Set initial directory based on environment
+            # Set base directory based on environment
             if in_docker:
-                # For Docker, map to the user's home directory on host
                 username = os.getenv('USER') or os.getenv('USERNAME') or 'user'
-                initial_dir = f"/host/home/{username}"
-                
-                # Fallback to /host/tmp if home directory doesn't exist
-                if not os.path.exists(initial_dir):
-                    initial_dir = "/host/tmp"
+                base_dir = f"/host/home/{username}"
+                if not os.path.exists(base_dir):
+                    base_dir = "/host/tmp"
             else:
-                # Normal environment - use user's home directory
-                initial_dir = str(Path.home())
+                base_dir = str(Path.home())
             
-            # Verify initial directory exists
-            if not os.path.exists(initial_dir):
-                initial_dir = os.path.expanduser('~')
-                if not os.path.exists(initial_dir):
-                    initial_dir = os.getcwd()  # Fallback to current directory
-            
-            # Use file dialog with improved path handling
-            filepath = filedialog.asksaveasfilename(
-                initialdir=initial_dir,
-                initialfile=filename,
-                defaultextension=".png",
-                filetypes=[("PNG files", "*.png"), ("All files", "*.*")]
+            # Verify base directory exists
+            if not os.path.exists(base_dir):
+                base_dir = os.path.expanduser('~')
+                if not os.path.exists(base_dir):
+                    base_dir = os.getcwd()
+
+            # Use file dialog to let user select parent directory
+            parent_dir = filedialog.askdirectory(
+                title="Select parent directory for QR_BARCODE folder",
+                initialdir=base_dir
             )
             
-            if not filepath:  # User cancelled
+            if not parent_dir:  # User cancelled
                 return
                 
-            # Handle path conversion for Docker environment
+            # Handle Docker path conversion for the selected directory
             if in_docker:
-                # Convert the selected path to host path
-                if filepath.startswith('/host'):
-                    # Already in host path format
-                    host_path = filepath
+                if parent_dir.startswith('/host'):
+                    host_parent_dir = parent_dir
                 else:
-                    # Convert container path to host path
-                    host_path = f"/host{filepath}"
-                
-                # Verify the target directory exists on host
-                host_dir = os.path.dirname(host_path)
-                if not os.path.exists(host_dir):
-                    try:
-                        os.makedirs(host_dir, exist_ok=True)
-                    except Exception as e:
-                        messagebox.showerror(
-                            "Directory Creation Failed",
-                            f"Could not create directory on host:\n{host_dir}\n\nError: {str(e)}"
-                        )
-                        return
-                
-                try:
-                    img.save(host_path, 'PNG')
-                    display_path = host_path.replace('/host', '', 1)  # Show user path without /host prefix
-                except Exception as e:
-                    # Try saving to a known writable location if original fails
-                    fallback_dir = "/host/tmp"
-                    fallback_path = os.path.join(fallback_dir, filename)
-                    try:
-                        os.makedirs(fallback_dir, exist_ok=True)
-                        img.save(fallback_path, 'PNG')
-                        display_path = fallback_path.replace('/host', '', 1)
-                        messagebox.showwarning(
-                            "Fallback Location Used",
-                            f"Could not save to selected location. File saved to:\n{display_path}"
-                        )
-                    except Exception as fallback_e:
-                        messagebox.showerror(
-                            "Save Failed",
-                            f"Failed to save image:\nOriginal error: {str(e)}\nFallback error: {str(fallback_e)}"
-                        )
-                        return
+                    host_parent_dir = f"/host{parent_dir}"
             else:
-                # Normal save operation for non-Docker
-                try:
-                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                    img.save(filepath, 'PNG')
-                    display_path = filepath
-                except Exception as e:
-                    messagebox.showerror(
-                        "Save Failed",
-                        f"Failed to save image:\n{str(e)}"
-                    )
-                    return
+                host_parent_dir = parent_dir
+                
+            # Create QR_BARCODE subfolder in selected directory
+            target_dir = os.path.join(host_parent_dir, "QR_BARCODE")
+            try:
+                os.makedirs(target_dir, exist_ok=True)
+            except Exception as e:
+                messagebox.showerror(
+                    "Directory Creation Failed",
+                    f"Could not create QR_BARCODE directory at:\n{target_dir}\n\nError: {str(e)}"
+                )
+                return
+                
+            # Create full save path
+            save_path = os.path.join(target_dir, filename)
             
-            # Verify file was actually saved
-            verify_path = host_path if in_docker else filepath
-            if os.path.exists(verify_path):
-                messagebox.showinfo(
-                    "Success", 
-                    f"Image successfully saved to:\n{display_path}"
+            # Handle the actual file saving
+            try:
+                img.save(save_path, 'PNG')
+                
+                # Prepare display path (without /host prefix for Docker)
+                display_path = save_path.replace('/host', '', 1) if in_docker else save_path
+                
+                # Verify file was actually saved
+                if os.path.exists(save_path):
+                    messagebox.showinfo(
+                        "Success", 
+                        f"Image successfully saved to:\n{display_path}"
+                    )
+                else:
+                    messagebox.showwarning(
+                        "Verification Failed",
+                        f"Save operation completed but file not found at:\n{display_path}\n"
+                        "Please check the location manually."
+                    )
+                    
+            except PermissionError as e:
+                messagebox.showerror(
+                    "Permission Error", 
+                    f"Permission denied when saving file:\n{str(e)}\n\n"
+                    "Please choose a different location or check permissions."
                 )
-            else:
-                messagebox.showwarning(
-                    "Verification Failed",
-                    f"Save operation completed but file not found at:\n{display_path}\n"
-                    "Please check the location manually."
+            except Exception as e:
+                messagebox.showerror(
+                    "Error", 
+                    f"Failed to save image:\n{str(e)}\n\n"
+                    f"Error type: {type(e).__name__}"
                 )
                 
-        except PermissionError as e:
-            messagebox.showerror(
-                "Permission Error", 
-                f"Permission denied when saving file:\n{str(e)}\n\n"
-                "Please choose a different location or check permissions."
-            )
         except Exception as e:
             messagebox.showerror(
                 "Error", 
                 f"Unexpected error occurred:\n{str(e)}\n\n"
                 f"Error type: {type(e).__name__}"
             )
-                        
+
     def download_qr(self):
         """Download QR code to default downloads folder"""
         self.download_image('qr')
