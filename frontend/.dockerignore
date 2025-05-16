@@ -15,9 +15,7 @@ build/
 dist/
 
 # Environment files
-.env
-*.env
-
+ 
 # Git and other VCS
 .git/
 .gitignore
