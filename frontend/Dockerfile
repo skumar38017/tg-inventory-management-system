@@ -6,7 +6,9 @@
         PIP_NO_CACHE_DIR=1 \
         PIP_DISABLE_PIP_VERSION_CHECK=1 \
         PIP_DEFAULT_TIMEOUT=100 \
-        DISPLAY=host.docker.internal:0
+        DISPLAY=host.docker.internal:0 \
+        API_BASE_URL=${API_BASE_URL:-"http://localhost:8000/api/v1/"} \
+        BACKEND_URL=${BACKEND_URL:-"http://localhost:8000/api/v1/"}
     
     WORKDIR /app
     
@@ -45,10 +47,18 @@
         xauth \
         && rm -rf /var/lib/apt/lists/*
     
+    # Create a user with the same UID as the host user
+    ARG USER_ID=1000
+    ARG GROUP_ID=1000
+    RUN groupadd -g ${GROUP_ID} appuser && \
+        useradd -u ${USER_ID} -g appuser -s /bin/sh -m appuser && \
+        chown -R appuser:appuser /app
+
     # Copy from builder
     COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
     COPY --from=builder /usr/local/bin /usr/local/bin
     COPY --from=builder /app /app
-    
-    # Set the working directory to the app location    
+
+    # Set the working directory to the app location
+    USER appuser
     CMD ["python", "entry_inventory.py"]
