@@ -1,120 +1,129 @@
-# backend/app/utils/barcode_generator.py
+# backend/app/utils/transparent_barcode.py
 
+from backend.app.utils.common_imports import *
 import uuid
 import hashlib
-from datetime import datetime, timezone
-from typing import Tuple, Dict, Any
-from sqlalchemy import event, select
-from backend.app.models.to_event_inventry_model import ToEventInventory
+import os
 import logging
+import random
+import string
+from typing import Tuple, Dict, Any
+from barcode.writer import ImageWriter
+import barcode
+from PIL import Image
+from io import BytesIO
+from backend.app import config
 
+# Initialize logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-class BarcodeGenerator:
+class TransparentBlackBarsWriter(ImageWriter):
+    """Writer that renders solid black bars on a fully transparent background without text."""
+
     def __init__(self):
-        pass  # No initialization needed for static methods
+        super().__init__()
+        self.background = None  # No background
+        self.foreground = 'black'  # Solid black bars
+        self.module_height = 15
+        self.quiet_zone = 6
+        self.font_size = 0  # No text
+        self.text_distance = 0  # No text
 
-    def generate_linked_codes(self, instance_data: Dict[str, Any]) -> Tuple[str, str]:
-        """
-        Generate cryptographically linked codes for Redis storage
-        Returns: (project_barcode, project_barcode_unique_code)
-        """
-        if 'uuid' not in instance_data or not instance_data['uuid']:
-            instance_data['uuid'] = str(uuid.uuid4())
-        
-        if 'created_at' not in instance_data or not instance_data['created_at']:
-            instance_data['created_at'] = datetime.now(timezone.utc).isoformat()
+    def render(self, code):
+        """Render barcode with transparent background and opaque black bars."""
+        img = super().render(code)
 
-        composite_data = (
-            f"{instance_data['uuid']}|{instance_data.get('project_id', '')}|"
-            f"{instance_data.get('name', '')[:20]}|{instance_data['created_at']}"
-        )
+        # Ensure image is in RGBA mode
+        img = img.convert('RGBA')
+        pixels = img.getdata()
 
-        hash_digest = hashlib.sha256(composite_data.encode()).hexdigest()
-        project_barcode = ''.join([d for d in hash_digest if d.isdigit()])[:12].ljust(12, '0')
+        # Convert white background to transparent, keep black bars opaque
+        new_pixels = []
+        for pixel in pixels:
+            if pixel[:3] == (255, 255, 255):
+                new_pixels.append((255, 255, 255, 0))  # Fully transparent
+            else:
+                new_pixels.append((0, 0, 0, 255))  # Fully opaque black
 
-        project_barcode_unique_code = hashlib.blake2b(
-            project_barcode.encode(),
-            key=instance_data['uuid'].encode(),
-            digest_size=8
-        ).hexdigest().upper()
+        img.putdata(new_pixels)
+        return img
 
-        return project_barcode, project_barcode_unique_code
+class DynamicBarcodeGenerator:
+    def __init__(self):
+        self.barcode_base_path = config.BARCODE_BASE_PATH
+        self.barcode_base_url = config.BARCODE_BASE_URL
+        self.public_api_url = config.PUBLIC_API_URL
+        os.makedirs(self.barcode_base_path, exist_ok=True)
+        self.barcode_type = 'code128'  # Using Code128 for best density
 
-    @staticmethod
-    def verify_code_relationship(instance) -> bool:
-        """Verify that project_barcode_unique_code correctly signs the project_barcode"""
-        expected_unique = hashlib.blake2b(
-            instance.project_barcode.encode(),
-            key=instance.uuid.encode(),
-            digest_size=8
-        ).hexdigest().upper()
-        return instance.project_barcode_unique_code == expected_unique
+    def _generate_alphanumeric_code(self, length: int = 8) -> str:
+        chars = string.ascii_uppercase + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
 
-    @staticmethod
-    def get_public_details(instance_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Return safe-to-share information for public scanning"""
-        return {
-            'company': "Tagglabs Experiential PVT. LTD.",
-            'name': instance_data.get('name'),
-            'project_id': instance_data.get('project_id'),
-            'employee_name': instance_data.get('employee_name'),
-            'status': instance_data.get('status'),
-            'contact': 'inventory@tagglabs.com',
-            'project_name': instance_data.get('project_name'),
-            'event_date': instance_data.get('event_date'),
-            'client_name': instance_data.get('client_name')
-        }
+    def generate_dynamic_barcode(self, record_data: Dict[str, Any]) -> Tuple[str, str, bytes]:
+        try:
+            # Deterministic 12-digit numeric code from hash
+            record_hash = hashlib.sha256(str(sorted(record_data.items())).encode()).hexdigest()
+            barcode_value = ''.join([c for c in record_hash if c.isdigit()])[:13]
 
-    @staticmethod
-    def get_private_details(instance, requester: Any) -> Dict[str, Any]:
-        """Return full details for authorized users"""
-        base_details = BarcodeGenerator.get_public_details(instance)
+            # Unique human-readable verification code
+            unique_code = self._generate_alphanumeric_code(13)
 
-        if requester.role in ['admin', 'owner']:
-            return {
-                **base_details,
-                'setup_date': str(instance.setup_date) if instance.setup_date else None,
-                'poc': instance.poc,
-                'location': instance.location,
-                'submitted_by': instance.submitted_by,
-                'system_ids': {
-                    'uuid': instance.uuid,
-                    'unique_code': instance.project_barcode_unique_code
-                }
-            }
-        elif requester.role == 'staff':
-            return {
-                **base_details,
-                'location': instance.location,
-                'last_updated': str(instance.updated_at),
-                'project_name': instance.project_name
-            }
-        return base_details
+            # Generate barcode using transparent writer
+            barcode_class = barcode.get_barcode_class(self.barcode_type)
+            writer = TransparentBlackBarsWriter()
+            barcode_obj = barcode_class(barcode_value, writer=writer)
 
-    @staticmethod
-    def validate_project_id(project_id: str) -> str:
-        """Validate project ID format"""
-        if not project_id:
-            raise ValueError("Project ID must be provided")
-        return project_id
+            # Render image to PNG bytes
+            img_bytes = BytesIO()
+            barcode_obj.write(img_bytes, options={
+                'module_width': 0.3,
+                'module_height': 15,
+                'quiet_zone': 6,
+                'format': 'PNG',
+                'dpi': 300
+            })
 
-# @event.listens_for(ToEventInventory, 'before_insert')
-# def generate_linked_codes(mapper, connection, target):
-#     """SQLAlchemy event listener to generate barcodes before insert"""
-#     project_barcode, project_barcode_unique_code = BarcodeGenerator.generate_linked_codes(target)
-    
-#     # Ensure uniqueness
-#     while connection.execute(
-#         select(ToEventInventory).where(
-#             (ToEventInventory.project_barcode == project_barcode) |
-#             (ToEventInventory.project_barcode_unique_code == project_barcode_unique_code)
-#         )
-#     ).first():
-#         target.uuid = str(uuid.uuid4())
-#         project_barcode, project_barcode_unique_code = BarcodeGenerator.generate_linked_codes(target)
-    
-#     # Assign codes
-#     target.project_barcode = project_barcode
-#     target.project_barcode_unique_code = project_barcode_unique_code
+            return barcode_value, unique_code, img_bytes.getvalue()
+
+        except Exception as e:
+            logger.error(f"Barcode generation failed: {str(e)}", exc_info=True)
+            raise ValueError(f"Barcode generation failed: {str(e)}")
+
+    def save_barcode_image(self, barcode_png: bytes, inventory_name: str, inventory_id: str) -> str:
+        try:
+            # Debug log to verify inputs (remove after testing)
+            logger.debug(f"Original inputs - name: '{inventory_name}', id: '{inventory_id}'")
+
+            # ----- DEFENSIVE CHECKS -----
+            # Auto-correct swapped parameters if detected
+            if inventory_id and isinstance(inventory_id, str) and inventory_id.lower().startswith(('wireless', 'microphone', 'plastic')):
+                # If inventory_id looks like a name, swap the parameters
+                inventory_name, inventory_id = inventory_id, inventory_name
+                logger.warning(f"Auto-corrected swapped parameters. New name: '{inventory_name}', id: '{inventory_id}'")
+
+            # ----- FORMATTING LOGIC -----
+            # Clean and format the inventory name (lowercase with underscores)
+            clean_name = inventory_name.replace(' ', '_').lower()
+            
+            # Force uppercase ID and strip invalid chars
+            clean_id = ''.join(c for c in inventory_id.upper() if c.isalnum())
+            
+            # Final filename format: wireless_microphoneINV00456.png
+            filename = f"{clean_name}{clean_id}.png"
+            
+            # Remove any remaining special characters (keeps only alnum, _, and .)
+            filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
+            
+            # ----- SAVE FILE -----
+            filepath = os.path.join(self.barcode_base_path, filename)
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+            with open(filepath, 'wb') as f:
+                f.write(barcode_png)
+
+            return f"{self.public_api_url}{self.barcode_base_url}/{filename}"
+
+        except Exception as e:
+            logger.error(f"Failed to save barcode image: {str(e)}", exc_info=True)
+            raise ValueError(f"Failed to save barcode image: {str(e)}")

@@ -1,23 +1,16 @@
 # backend/app/routers/entry_inventory_curd.py
+from backend.app.utils.common_imports import *
 
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from redis import asyncio as aioredis
-import redis.asyncio as redis
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from datetime import datetime, time, timedelta, timezone
 from backend.app.models.entry_inventory_model import EntryInventory
 from backend.app.schema.entry_inventory_schema import (
     EntryInventoryCreate, 
     EntryInventoryUpdate,
     EntryInventoryOut,
-    EntryInventorySearch,
     InventoryRedisOut,
     StoreInventoryRedis,
     DateRangeFilter
 )
+
 # Google Sheets API
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -28,29 +21,7 @@ import gspread
 import requests
 from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
-
-
-from sqlalchemy.exc import SQLAlchemyError
 from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
-import logging
-from sqlalchemy import insert, update 
-import uuid
-from fastapi import HTTPException
-from typing import List, Optional
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
-from pydantic import ValidationError
-import random
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-
-from typing import Union
-import json
-from backend.app.utils.date_utils import UTCDateUtils
-from backend.app.utils.field_validators import BaseValidators
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # ------------------------
 # CRUD OPERATIONS
@@ -60,11 +31,12 @@ class EntryInventoryService(EntryInventoryInterface):
     """Implementation of EntryInventoryInterface with async operations"""
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
-        self.barcode_generator = BarcodeGenerator()
+        self.qr_generator = QRCodeGenerator()
+        self.barcode_generator = DynamicBarcodeGenerator()
         self.base_url = config.BASE_URL
 
 
-    async def upload_from_event_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+    async def upload_entry_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
         """Upload all inventory entries from Redis to the database with proper PUT/PATCH handling."""
         try:
             await db.rollback()  # Start fresh
@@ -245,7 +217,7 @@ class EntryInventoryService(EntryInventoryInterface):
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Create new entry of inventory for to_event which is directly stored in redis
-    async def create_entry_inventory(self, db: AsyncSession, entry_data: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory(self, db: AsyncSession, inventory_type: str, entry_data: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new inventory entry stored permanently in Redis (no database storage).
         """
@@ -286,24 +258,59 @@ class EntryInventoryService(EntryInventoryInterface):
 
             # Generate barcode if not provided
             if not inventory_data.get('inventory_barcode'):
-                barcode_data = {
-                    'inventory_name': inventory_data['inventory_name'],
-                    'inventory_id': inventory_data['inventory_id'],
-                    'id': inventory_id 
-                }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
-                inventory_data.update({
-                    'inventory_barcode': barcode,
-                    'inventory_unique_code': unique_code,
-                    'inventory_barcode_url': inventory_data.get('inventory_barcode_url', "")
-                })
+                # Generate minimal barcode with only bars, code, and unique code
+                try:
+                    # Generate minimal barcode with only bars, code, and unique code
+                    barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
+                        'inventory_id': inventory_data.get('inventory_id', inventory_id),
+                        'inventory_name': inventory_data['inventory_name'],
+                        'type': inventory_type
+                    })
+                    
+                    # Save barcode image
+                    barcode_url = self.barcode_generator.save_barcode_image(
+                        barcode_img,
+                        inventory_data.get('inventory_id', inventory_id),
+                        inventory_data['inventory_name'],
+                        
+                    )
 
+                    inventory_data.update({
+                        'inventory_barcode': barcode_value,
+                        'inventory_unique_code': unique_code,
+                        'inventory_barcode_url': barcode_url,
+                    })
+                except ValueError as e:
+                    logger.error(f"Barcode generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+
+                try: 
+                    # Generate QR code content first
+                    qr_content = self.qr_generator.generate_qr_content(inventory_data)
+
+                    # Then generate QR code with the content
+                    qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
+                        data=qr_content,
+                        inventory_id=inventory_data['inventory_id'],
+                        inventory_name=inventory_data['inventory_name']
+                    )
+                
+                    # Add QR code URL to inventory data
+                    inventory_data['inventory_qrcode_url'] = qr_url
+                except ValueError as e:
+                    logger.error(f"QR code generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+                except Exception as e:
+                    logger.error(f"QR code generation failed: {str(e)}", exc_info=True)
+                    raise HTTPException(status_code=500, detail=str(e)) 
+                
             # Permanent Redis storage (no expiration)
             redis_key = f"inventory:{inventory_data['inventory_name']}{inventory_data['inventory_id']}"
             await self.redis.set(
                 redis_key,
                 json.dumps(inventory_data, default=str)
             )
+
             return EntryInventory(**inventory_data)
 
         except KeyError as ke:

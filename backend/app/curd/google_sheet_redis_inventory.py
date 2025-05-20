@@ -1,43 +1,24 @@
-import gspread
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from google.oauth2.service_account import Credentials
-from fastapi import HTTPException, Request
-from typing import List, Optional
-import json
-import random
-import logging
-from typing import List, Optional, Dict, Any, Union
-from fastapi import Request
-from starlette.requests import Request as StarletteRequest
+# backend/app/curd/google_sheet_curd.py
+from backend.app.utils.common_imports import *
 
-import uuid
-from datetime import datetime
-from pydantic import BaseModel
-from backend.app.utils.date_utils import UTCDateUtils
+import gspread
+from google.oauth2.service_account import Credentials
+from starlette.requests import Request as StarletteRequest
 from backend.app.schema.entry_inventory_schema import (
-    EntryInventoryBase,
     GoogleSyncInventoryCreate,
     InventoryRedisOut
 )
-import os
-from backend.app.utils.field_validators import BaseValidators
 from backend.app.interface.entry_inverntory_interface import GoogleSyncInventoryInterface
-import redis.asyncio as redis
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
 from google.oauth2 import service_account
 from dotenv import load_dotenv
-
-logger = logging.getLogger(__name__)
 
 class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
     """Implementation of GoogleSyncInventoryInterface with async operations"""
 
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
-        self.barcode_generator = BarcodeGenerator()
+        self.barcode_generator = DynamicBarcodeGenerator()
+        self.qr_generator = QRCodeGenerator()
         self.base_url = config.BASE_URL
         self.spreadsheet_url = config.SPREADSHEET_URL
         self.sheet_name = config.SHEET_NAME
@@ -139,7 +120,7 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                 return 0
         return 0
 
-    async def _process_sheet_row(self, record: dict, idx: int) -> Optional[GoogleSyncInventoryCreate]:
+    async def _process_sheet_row(self, record: dict, idx: int, inventory_type: str) -> Optional[GoogleSyncInventoryCreate]:
         """Process a single row from Google Sheets into GoogleSyncInventoryCreate"""
         try:
             # Skip if no material name
@@ -201,15 +182,42 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
 
             # Generate barcode if not provided
             if not inventory_data.inventory_barcode:
-                barcode_data = {
-                    'inventory_name': inventory_data.inventory_name,
-                    'inventory_id': inventory_data.inventory_id,
-                    'id': id
-                }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
-                inventory_data.inventory_barcode = barcode
-                inventory_data.inventory_unique_code = unique_code
-                inventory_data.inventory_barcode_url = ""
+                try:
+                    # Generate minimal barcode with only bars, code, and unique code
+                    barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
+                        'inventory_name': inventory_data.inventory_name,
+                        'inventory_id': inventory_data.inventory_id,
+                        'type': inventory_type
+                    })
+                    
+                    # Save barcode image
+                    barcode_url = self.barcode_generator.save_barcode_image(
+                        barcode_img,
+                        inventory_data.inventory_name,
+                        inventory_data.inventory_id,
+                    )
+
+                    # Update inventory data with barcode information
+                    inventory_data.inventory_barcode = barcode_value
+                    inventory_data.inventory_unique_code = unique_code
+                    inventory_data.inventory_barcode_url = barcode_url
+
+                except ValueError as e:
+                    logger.error(f"Barcode generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+
+                # Generate QR code content first
+                qr_content = self.qr_generator.generate_qr_content(inventory_data)
+
+                # Then generate QR code with the content
+                qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
+                    data=qr_content,
+                    inventory_id=inventory_data.inventory_id,
+                    inventory_name=inventory_data.inventory_name
+                )
+
+                # Add QR code URL to inventory data
+                inventory_data.inventory_qrcode_url = qr_url
 
             return inventory_data
 
@@ -217,7 +225,7 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
             logger.error(f"Error processing row {idx}: {str(e)}", exc_info=True)
             return None
 
-    async def sync_inventory_from_google_sheets(self, request: Request) -> List[InventoryRedisOut]:
+    async def sync_inventory_from_google_sheets(self, request: Request, inventory_type: str,) -> List[InventoryRedisOut]:
         try:
             logger.info("Starting Google Sheets sync")
             records = await self._fetch_sheet_data()
@@ -237,7 +245,7 @@ class GoogleSheetsToRedisSyncService(GoogleSyncInventoryInterface):
                         logger.warning(f"Skipping row {idx} - missing material name")
                         continue
 
-                    inventory_data = await self._process_sheet_row(record, idx)
+                    inventory_data = await self._process_sheet_row(record, idx, inventory_type=inventory_type)
                     if not inventory_data:
                         logger.warning(f"Skipping row {idx} - failed to process")
                         continue

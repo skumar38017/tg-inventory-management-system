@@ -15,6 +15,7 @@ from from_event import FromEventWindow
 from assign_inventory import AssignInventoryWindow
 from damage_inventory import DamageWindow
 from entry_update_pop_window import *
+from reveal_qr_barcode_window import *
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
@@ -126,22 +127,22 @@ def display_inventory_items(items):
 
         # Define the column headers and their display widths
         headers = [
-            ("ID", 45),
+            ("ID", 50),
             ("Serial No.", 10),
-            ("InventoryID", 25),
-            ("Product ID", 25),
-            ("Name", 40),
-            ("Material", 40),
-            ("Total Quantity", 25),
+            ("InventoryID", 15),
+            ("Product ID", 15),
+            ("Name", 50),
+            ("Material", 25),
+            ("Total Quantity", 15),
             ("Manufacturer", 25),
-            ("Purchase Dealer", 30),
+            ("Purchase Dealer", 35),
             ("Purchase Date", 25),
-            ("Purchase Amount", 25),
-            ("Repair Quantity", 25),
-            ("Repair Cost", 20),
+            ("Purchase Amount", 20),
+            ("Repair Quantity", 15),
+            ("Repair Cost", 15),
             ("On Rent", 10),
-            ("Vendor Name", 25),
-            ("Total Rent", 20),
+            ("Vendor Name", 35),
+            ("Total Rent", 15),
             ("Rented Inventory Returned", 25),
             ("Returned Date", 25),
             ("On Event", 10),
@@ -152,7 +153,7 @@ def display_inventory_items(items):
             ("Submitted By", 20),
             ("Created At", 35),
             ("Updated At", 35),
-            ("BarCode", 25),
+            ("BarCode", 20),
             ("BacodeUrl", 100)
         ]
 
@@ -252,12 +253,12 @@ def perform_search():
             # Define inventory item headers
             item_headers = [
                 ("S.No", 8),
-                ("Name", 40),
+                ("Name", 50),
                 ("Description", 25),
                 ("Qty", 6),
                 ("Zone", 12),
                 ("Material", 25),
-                ("Comments", 25),
+                ("Comments", 20),
                 ("Total", 8),
                 ("Unit", 8),
                 ("Per Unit Power", 25),
@@ -322,22 +323,22 @@ def perform_search():
                 
             # Define the column headers and their display widths
             headers = [
-                ("ID", 10),
-                ("Serial No.", 25),
-                ("InventoryID", 25),
-                ("Product ID", 25),
-                ("Name", 40),
+                ("ID", 50),
+                ("Serial No.", 10),
+                ("InventoryID", 15),
+                ("Product ID", 15),
+                ("Name", 50),
                 ("Material", 25),
-                ("Total Quantity", 25),
+                ("Total Quantity", 15),
                 ("Manufacturer", 25),
-                ("Purchase Dealer", 30),
+                ("Purchase Dealer", 35),
                 ("Purchase Date", 25),
-                ("Purchase Amount", 25),
-                ("Repair Quantity", 25),
-                ("Repair Cost", 20),
+                ("Purchase Amount", 20),
+                ("Repair Quantity", 15),
+                ("Repair Cost", 15),
                 ("On Rent", 10),
-                ("Vendor Name", 25),
-                ("Total Rent", 20),
+                ("Vendor Name", 35),
+                ("Total Rent", 15),
                 ("Rented Inventory Returned", 25),
                 ("Returned Date", 25),
                 ("On Event", 10),
@@ -348,7 +349,7 @@ def perform_search():
                 ("Submitted By", 20),
                 ("Created At", 35),
                 ("Updated At", 35),
-                ("BarCode", 25),
+                ("BarCode", 20),
                 ("BacodeUrl", 100)
             ]
 
@@ -648,6 +649,9 @@ def setup_main_window():
     
     return root
 
+def open_reveal_window():
+    """Open the Reveal QR & Barcode window"""
+    RevealQrAndBarcodeWindow(root).open_reveal_qr_and_barcode_pop_up()
 
 #  Create and configure the header frame with clock and company info
 def create_header_frame(root):
@@ -1065,6 +1069,17 @@ def create_list_frames(root):
                         font=('Helvetica', 9, 'bold'))
     search_btn.grid(row=0, column=6, sticky='e', padx=5)
 
+    # Add Reveal QR & Barcode button in top-right corner of search tab
+    reveal_btn = tk.Button(
+        search_fields_frame,
+        text="Reveal QR & Barcode", 
+        font=('Helvetica', 9),
+        width=20,
+        command=open_reveal_window 
+    )
+    reveal_btn.grid(row=0, column=7, sticky='e', padx=5, pady=5)
+    # Make sure to adjust the column weights so the button stays on the right
+    search_fields_frame.grid_columnconfigure(7, weight=1)
 
     # Separator line
     ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
@@ -1145,6 +1160,7 @@ def configure_grid(root):
     root.grid_rowconfigure(2, weight=0)  # Bottom buttons
     root.grid_columnconfigure(0, weight=1)
     root.grid_columnconfigure(1, weight=1)
+    root.grid_columnconfigure(2, weight=1)
 
 def main():
     """Main application entry point"""

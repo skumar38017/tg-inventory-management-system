@@ -1,47 +1,19 @@
 # backend/app/crud/assign_inventory_crud.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from datetime import datetime, timezone, date
-from typing import List, Optional
-import json
-import logging
-import uuid
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import update
-
-from fastapi import HTTPException, Depends
-from pydantic import ValidationError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-import redis.asyncio as redis
+from backend.app.utils.common_imports import *
 
 from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.schema.assign_inventory_schema import (
     AssignmentInventoryCreate,
-    AssignmentInventoryOut,
-    AssignmentInventoryUpdate,
-    AssignmentInventoryRedisIn,
     AssignmentInventoryRedisOut,
-    AssignmentInventorySearch,
     RedisSearchResult
 )
-from backend.app import config
-from backend.app.utils.barcode_generator import BarcodeGenerator
-from backend.app.utils.inventory_updater import InventoryUpdater
-from typing import Union
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-from backend.app.database.redisclient import get_redis
 
 class AssignInventoryService(AssignmentInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.InventoryUpdater = InventoryUpdater(redis_client)
-        self.barcode_generator = BarcodeGenerator()
+        self.barcode_generator = DynamicBarcodeGenerator()
         self.base_url = config.BASE_URL
 
     async def upload_from_event_inventory(self, db: AsyncSession) -> List[AssignmentInventoryRedisOut]:
@@ -138,7 +110,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
             )
     
 # Create new entry of inventory for to_event which is directly stored in redis
-    async def create_assignment_inventory(self, db: AsyncSession, item: Union[AssignmentInventoryCreate, dict]) -> AssignmentInventory:
+    async def create_assignment_inventory(self, db: AsyncSession, inventory_type: str, item: Union[AssignmentInventoryCreate, dict]) -> AssignmentInventory:
         try:
             if isinstance(item, AssignmentInventoryCreate):
                 inventory_data = item.model_dump(exclude_unset=True)
@@ -163,19 +135,31 @@ class AssignInventoryService(AssignmentInventoryInterface):
             except (ValueError, TypeError):
                 raise ValueError("quantity must be a valid number")
             
-            if not inventory_data.get('assignment_barcode'):
-                barcode_data = {
-                    'employee_name': inventory_data['employee_name'],
-                    'inventory_id': inventory_data['inventory_id'],
-                    'id': inventory_data['id']
-                }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
-                inventory_data.update({
-                    'assignment_barcode': barcode,
-                    'assignment_barcode_unique_code': unique_code,
-                    'assignment_barcode_image_url': inventory_data.get('assignment_barcode_image_url', "")
-                })
+            # # Generate barcode if not provided
+            # if not inventory_data.get('assignment_barcode'):
+            #     try:
+            #         # Generate minimal barcode with only bars, code, and unique code
+            #         barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
+            #             'employee_name': inventory_data['employee_name'],
+            #             'inventory_id': inventory_data['inventory_id'],
+            #             'type': inventory_type
+            #         })
 
+            #         # Save barcode image
+            #         barcode_url = self.barcode_generator.save_barcode_image(
+            #             barcode_img,
+            #             inventory_data.get('employee_name'),
+            #             inventory_data['inventory_id'],
+            #         )
+            #         inventory_data.update({
+            #             'assignment_barcode': barcode_value,
+            #             'assignment_barcode_unique_code': unique_code,
+            #             'assignment_barcode_image_url': barcode_url
+            #         })
+            #     except ValueError as e:
+            #         logger.error(f"Barcode generation failed: {str(e)}")
+            #         raise HTTPException(status_code=400, detail=str(e))
+                
             # Update inventory quantities
             try:
                 await self.InventoryUpdater.handle_assign_inventory({

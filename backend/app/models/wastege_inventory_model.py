@@ -18,7 +18,7 @@ class WastageInventory(Base):
     product_id = Column(String, nullable=True)
     inventory_name = Column(String, nullable=True)
     description = Column(String, nullable=True)
-    quantity = Column(Integer, nullable=True)
+    quantity = Column(String, nullable=True)
     status = Column(String, nullable=True)
     receive_date = Column(Date, nullable=True)
     event_date = Column(Date, nullable=True)

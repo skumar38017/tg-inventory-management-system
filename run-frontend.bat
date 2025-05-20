@@ -28,9 +28,13 @@ REM Run Docker container
 echo 🚀 Starting frontend container...
 docker run -it --rm ^
   --network host ^
-  -v %cd%:/app ^
+  -e DISPLAY=$DISPLAY ^
+  -e PYTHONPATH=/app ^
+  -e USER_ID=$(id -u) ^
+  -e GROUP_ID=$(id -g) ^
   -v /tmp/.X11-unix:/tmp/.X11-unix ^
-  -e DISPLAY=host.docker.internal:0 ^
-  -e BACKEND_URL=%BACKEND_URL% ^
+  -v /home/$USER:/host/home/$USER ^
+  -v /tmp:/host/tmp ^
     891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
     python app/entry_inventory.py
+

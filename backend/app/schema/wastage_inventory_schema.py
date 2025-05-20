@@ -1,14 +1,7 @@
 #  backend/app/schema/wastage_inventory_schema
 
-from pydantic import BaseModel, field_validator, ConfigDict, Field
-from datetime import datetime, date, timezone
-from typing import Optional, Union, Dict, Any, List
-import uuid
-import json
-import re
-from typing import Union
-from enum import Enum
-from pydantic import ValidationError
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
 from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
 from backend.app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
@@ -18,12 +11,12 @@ class WastageInventoryBase(BaseModel):
     assign_to: Optional[str] = None
     sno: Optional[str] = None
     employee_name: Optional[str] = None
-    inventory_id: Optional[str] = None
-    project_id: Optional[str] = None
-    product_id: Optional[str] = None
+    inventory_id: Optional[Union[str, float, int]] = None
+    project_id: Optional[Union[str, float, int]] = None
+    product_id: Optional[Union[str, float, int]] = None
     inventory_name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[Union[str, int]] = None
+    quantity: Optional[Union[str, float, int]] = None
     status: Optional[str] = None
     receive_date: Optional[Union[date, str]] = None
     receive_by: Optional[str] = None
@@ -116,14 +109,14 @@ class WastageInventoryCreate(WastageInventoryBase):
 class WastageInventoryOut(BaseModel):
     id: Optional[str]  = Field(None, frozen=True) 
     assign_to: Optional[str] = None
-    sno: Optional[str] = None
+    sno: Optional[Union[str, int, str]] = None
     employee_name: Optional[str] = None
     inventory_id: Optional[str] = None
     project_id: Optional[str] = None
     product_id: Optional[str] = None
     inventory_name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[Union[str, int]] = None
+    quantity: Optional[Union[str, float, int]] = None
     status: Optional[str] = None
     receive_date: Optional[Union[date, str]] = None
     receive_by: Optional[str] = None
@@ -170,14 +163,14 @@ class WastageInventoryOut(BaseModel):
 class WastageInventoryRedisIn(BaseModel):
     id: Optional[str]  = Field(None, frozen=True) 
     assign_to: Optional[str] = None
-    sno: Optional[str] = None
+    sno: Optional[Union[str, float, int]] = None
     employee_name: Optional[str] = None
     inventory_id: Optional[str] = None
     project_id: Optional[str] = None
     product_id: Optional[str] = None
     inventory_name: Optional[str] = None
     description: Optional[str] = None
-    quantity: Optional[Union[str, int]] = None
+    quantity: Optional[Union[str, float, int]] = None
     status: Optional[str] = None
     receive_date: Optional[Union[date, str]] = None
     receive_by: Optional[str] = None
@@ -257,9 +250,9 @@ class WastageInventorySearch(BaseModel):
 
 class WastageInventoryUpdate(BaseModel):
     assign_to: Optional[str] = None
-    sno: Optional[str] = None
+    sno: Optional[Union[str, float, int]] = None
     description: Optional[str] = None
-    quantity: Optional[Union[str, int]] = None
+    quantity: Optional[Union[str, float, int]] = None
     status: Optional[str] = None
     receive_date: Optional[Union[date, str]] = None
     receive_by: Optional[str] = None

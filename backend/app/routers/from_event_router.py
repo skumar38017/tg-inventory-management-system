@@ -1,25 +1,10 @@
 #  backend/app/routers/from_event_routes.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-import logging
-import re
-from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime, date, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, HTTPException, Depends
-from backend.app.database.database import get_async_db
-from datetime import datetime
-from pydantic import ValidationError
+
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate,
-    ToEventInventoryUpdate,
-    ToEventInventoryOut,
-    ToEventInventoryBase,
-    ToEventInventorySearch,
     ToEventUploadResponse,
-    ToEventRedis,
     ToEventRedisOut,
     ToEventRedisUpdateOut,
     ToEventRedisUpdateIn
@@ -35,15 +20,9 @@ def get_to_event_service(
 
 # Set up the router
 router = APIRouter()
-
-# Setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 # --------------------------
 # Asynchronous Endpoints
 # --------------------------
-
 
 #  Upload all `to_event_inventory` entries from local Redis to the database after click on `upload data` button
 @router.post(

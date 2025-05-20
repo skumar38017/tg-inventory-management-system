@@ -1,57 +1,24 @@
 #  backend/app/curd/from_event_inventry_curd.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from datetime import datetime, time, timedelta, timezone, date
-import re
-from enum import Enum
-from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
-from backend.app.models.to_event_inventry_model import ToEventInventory
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate, 
-    ToEventInventoryBase,
-    ToEventInventoryOut,
-    ToEventInventoryBase,
-    ToEventInventoryUpdate,
-    ToEventInventoryUpdateOut,
-    ToEventInventorySearch,
     ToEventRedisUpdateOut,
     ToEventRedisUpdateIn,
     ToEventUploadResponse,
-    InventoryItemBase,
     ToEventUploadSchema,
     RedisInventoryItem,
-    ToEventRedis,
     ToEventRedisOut,
 )
-from sqlalchemy import select, delete, update, insert
-from sqlalchemy.exc import SQLAlchemyError
+
 from backend.app.models.to_event_inventry_model import InventoryItem, ToEventInventory
 from backend.app.interface.from_event_interface import FromEventInventoryInterface
-import logging
-from fastapi import HTTPException
-from typing import List, Optional, Dict, Any
-from backend.app import config
-import uuid
-import redis.asyncio as redis
-from typing import List, Optional
-from fastapi import HTTPException
-from pydantic import ValidationError
-import json
-from sqlalchemy import select, delete
-from backend.app.utils.barcode_generator import BarcodeGenerator  # Import the BarcodeGenerator class
-from backend.app.utils.inventory_updater import InventoryUpdater
-from backend.app.database.redisclient import get_redis
-redis_client=get_redis()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # ------------------------
 # CRUD OPERATIONS
 # ------------------------ 
 
+redis_client=get_redis()
 class FromEventInventoryService(FromEventInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.InventoryUpdater = InventoryUpdater(redis_client)

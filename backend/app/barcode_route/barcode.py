@@ -1,65 +1,105 @@
-#  backend/app/models/barcode.py
+# backend/app/api/endpoints/barcode.py
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-# from backend.app.auth import get_current_user
-from backend.app.models.entry_inventory_model import EntryInventory
-from backend.app.database.base import get_db
-from fastapi_limiter.depends import RateLimiter
-import secrets
-import hashlib
-from datetime import datetime, timezone
+from backend.app.utils.common_imports import *
+from fastapi import APIRouter, Depends, HTTPException, Request
+from backend.app.services.barcode_scanner_service import BarcodeScannerService
+from backend.app.schema.qrcode_barcode_schema import BarcodeScanResponse, BarcodeScan
+from pydantic import ValidationError
+from fastapi import UploadFile, File
+from PIL import Image
+from io import BytesIO
+import pyzbar.pyzbar as pyzbar
+
+def get_barcode_scanner_service(
+        redis: aioredis.Redis = Depends(get_redis_dependency)
+)-> BarcodeScannerService:
+    return BarcodeScannerService(redis)
 
 router = APIRouter()
 
-@router.get("/scan/{barcode}", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@router.get(
+        "/scan-barcode/{barcode_value}", 
+        response_model=BarcodeScanResponse,
+        status_code=200,
+        summary="Scan barcode and return all matching records",
+        description="Scan barcode and return all matching records from Redis",
+        responses={
+            200: {"description": "Successfully scanned barcode and returned records"},
+            404: {"description": "No records found for the barcode"},
+            500: {"description": "Internal server error during scanning"}
+        },
+        tags=["Scan Code (Redis)"]
+        )
 async def scan_barcode(
-    barcode: str,
-    # current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    barcode_value: str,
+    db: AsyncSession = Depends(get_async_db),
+    scanner: BarcodeScannerService = Depends(get_barcode_scanner_service)
+):
+    """Scan barcode and return all matching record data from Redis"""
+    return await scanner.scan_and_fill_details(db,barcode_value)
+
+@router.post(
+    "/upload-barcode/", 
+    response_model=BarcodeScanResponse,
+    status_code=200,
+    summary="Upload barcode image",
+    description="Upload barcode image and return matching records from Redis",
+    responses={
+        200: {"description": "Successfully decoded barcode and returned records"},
+        400: {"description": "Invalid image or no barcode found"},
+        404: {"description": "No records found for the decoded barcode"},
+        500: {"description": "Internal server error during processing"}
+    },
+    tags=["Upload code image (Redis)"]
+)
+async def upload_barcode_image(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db),
+    file: UploadFile = File(...),
+    scanner: BarcodeScannerService = Depends(get_barcode_scanner_service)
 ):
     """
-    Endpoint for barcode scanning with access control. The rate limit is 5 scans per minute.
-    This endpoint scans a barcode and verifies its authenticity. Returns the details of the
-    item associated with the barcode after verifying its signature and access level.
+    Process uploaded barcode image, decode it, and return matching records from Redis
     """
-    # Query the database for the entry by barcode
-    item = await db.execute(
-        select(EntryInventory).where(EntryInventory.bar_code == barcode)
-    )
-    item = item.scalars().first()  # Get the first matching item
-    
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    
-    # Verify the barcode relationship (e.g., check signature)
-    if not item.verify_code_relationship():
-        raise HTTPException(status_code=400, detail="Invalid barcode signature")
-    
-    # Return the private details of the item to the current user based on access control
-    # return item.get_private_details(current_user)
-
-def generate_qr_code(item, access_level='public'):
-    """
-    Generates a QR code URL for the item. 
-    - 'public' access level: Public QR link to scan the item
-    - 'internal' access level: Internal QR link with an access token for more sensitive info.
-    """
-    # Construct the appropriate URL for the QR code based on access level
-    qr_data = {
-        'public': f"https://api.example.com/scan/{item.bar_code}",
-        'internal': f"https://internal.example.com/scan/{item.bar_code}?token={generate_scan_token(item)}"
-    }
-    
-    return qr_data.get(access_level, qr_data['public'])  # Return the corresponding URL
-
-def generate_scan_token(item):
-    """
-    Generates a secure token for internal access to the item.
-    This token should be used to validate access to sensitive item details.
-    """
-    # For example, create a secure token using the item ID and a secret
-    token_data = f"{item.bar_code}-{secrets.token_hex(16)}"
-    return hashlib.sha256(token_data.encode('utf-8')).hexdigest()  # Return hashed token
-
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(400, "Invalid file type - only images are accepted")
+        
+        # Read and process image
+        contents = await file.read()
+        
+        try:
+            # Decode barcode from image
+            img = Image.open(BytesIO(contents))
+            decoded_objects = pyzbar.decode(img)
+            
+            if not decoded_objects:
+                raise HTTPException(400, "No barcode found in the image")
+            
+            # Get the first barcode value
+            barcode_value = decoded_objects[0].data.decode('utf-8')
+            
+            if not barcode_value:
+                raise HTTPException(400, "Could not decode barcode value")
+            
+            logger.info(f"Decoded barcode: {barcode_value}")
+            
+            # Search Redis for matching records
+            return await scanner.scan_and_fill_details(db, barcode_value)
+            
+        except HTTPException:
+            raise
+        except Exception as decode_error:
+            logger.error(f"Barcode decoding failed: {str(decode_error)}")
+            raise HTTPException(400, "Failed to process barcode image")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing barcode upload: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )

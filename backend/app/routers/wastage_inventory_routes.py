@@ -1,27 +1,12 @@
 #  backend/app/routers/wastage_inventory_routes.py
-from backend.app.database.redisclient import get_redis_dependency
-from redis import asyncio as aioredis
-from fastapi import APIRouter, HTTPException, Depends
-import logging
-import requests
-from fastapi import Response
-from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query
-from datetime import datetime, date
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.app.database.database import get_async_db
-from datetime import datetime
+from backend.app.utils.common_imports import *
+
 from backend.app.schema.wastage_inventory_schema import (
     WastageInventoryCreate,
-    WastageInventoryOut,
-    WastageInventoryUpdate,
-    WastageInventoryRedisIn,
     WastageInventoryRedisOut,
-    WastageInventorySearch,
+    WastageInventoryUpdate,
     RedisSearchResult
 )
-from typing import Optional, Union, Dict, Any
-from pydantic import ValidationError
 from backend.app.models.wastege_inventory_model import WastageInventory
 from backend.app.curd.wastage_inventory_curd import WastageInventoryService
 from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
@@ -35,11 +20,6 @@ def get_Wastage_inventory_service(
 
 # Set up the router
 router = APIRouter()
-
-# Setup logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 # --------------------------
 # Asynchronous Endpoints
 # --------------------------

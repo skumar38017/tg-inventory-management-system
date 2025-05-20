@@ -48,6 +48,7 @@ class EntryInventory(Base):
     inventory_barcode = Column(String, unique=True, nullable=False)
     inventory_unique_code = Column(String, unique=True, nullable=False)
     inventory_barcode_url = Column(String, nullable=True, default=None)
+    inventory_qrcode_url = Column(String, nullable=True, default=None)
     
     __table_args__ = (
         Index('ix_entry_inventory_created_at', 'created_at'),

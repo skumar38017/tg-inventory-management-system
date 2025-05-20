@@ -13,9 +13,6 @@ Base = declarative_base()
 # Google Sheets Configuration
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
-
-
 # Redis Configuration
 REDIS_USERNAME = os.getenv("REDIS_USERNAME", "")  # empty fallback
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
@@ -46,9 +43,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "your_email@gmail.com")
 CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "your_email@gmail.com")
 
-# Server IP Configuration
-SERVER_IP = os.getenv("SERVER_IP", "localhost")
-
 # Optional: PostgreSQL connection details for admin operations (if separate)
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
@@ -57,8 +51,6 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", 5432))
 SYNC_DB_URL=f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 ASYNC_DB_URL=f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-
-
 
 # Build the full path to credentials file
 credentials_path = os.getenv("GOOGLE_SERVICE_ACCOUNT", "app/credentials/users/office-inventory-457815-933d2b7634a8.json")
@@ -75,3 +67,36 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
+
+# Barcode Generator Configuration
+BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/static/barcodes")
+BARCODE_BASE_URL = os.getenv("BARCODE_BASE_URL", "/static/barcodes")
+
+# QR Code Configuration
+QRCODE_BASE_PATH = os.getenv('QRCODE_BASE_PATH', "./static/qrcodes")
+QRCODE_BASE_URL = os.getenv('QRCODE_BASE_URL', "/static/qrcodes")
+# Handle multiple PUBLIC_API_URL options
+PUBLIC_API_URLS = [
+    url.strip() 
+    for url in os.getenv('PUBLIC_API_URL', 'http://localhost:8000').split(',')
+    if url.strip()
+]
+PUBLIC_API_URL = PUBLIC_API_URLS[0]  # Default to first URL
+
+# Server IP Configuration
+SERVER_IP = [
+    url.strip() 
+    for url in os.getenv('PUBLIC_API_URL', 'http://localhost:8000').split(',')
+    if url.strip()
+]
+SERVER_IP = SERVER_IP[0]  # Default to first URL
+
+BASE_URL = [
+    url.strip() 
+    for url in os.getenv('PUBLIC_API_URL', 'http://localhost:8000').split(',')
+    if url.strip()
+]
+BASE_URL = BASE_URL[0]  # Default to first URL
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+PORT=int(os.getenv("PORT", 8000))

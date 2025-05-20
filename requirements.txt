@@ -61,7 +61,7 @@ olefile==0.47
 packageurl-python==0.16.0
 packaging==24.2
 pandas==2.2.3
-pillow==11.1.0
+pillow==11.2.1
 pip-api==0.0.34
 pip-requirements-parser==32.0.1
 pip_audit==2.9.0
