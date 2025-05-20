@@ -69,6 +69,7 @@ docker run -it --rm \
   -e PYTHONPATH=/app \
   -e USER_ID=$(id -u) \
   -e GROUP_ID=$(id -g) \
+  -e BACKEND_URL=$BACKEND_URL \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v /home/$USER:/host/home/$USER \
   -v /tmp:/host/tmp \
