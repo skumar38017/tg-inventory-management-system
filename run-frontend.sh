@@ -94,7 +94,13 @@ else
     --network host \
     -e DISPLAY=$DISPLAY \
     -e PYTHONPATH=/app \
+    -e USER_ID=$(id -u) \
+    -e GROUP_ID=$(id -g) \
+    -e BACKEND_URL=$BACKEND_URL \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v /home/$USER:/host/home/$USER \
+    -v /tmp:/host/tmp \
     891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
     python app/entry_inventory.py
+
 fi
