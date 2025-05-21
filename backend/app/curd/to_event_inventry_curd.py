@@ -23,7 +23,8 @@ redis_client=get_redis()
 class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
-        self.barcode_generator = BarcodeGenerator()
+        self.qr_generator = QRCodeGenerator()
+        self.barcode_generator = DynamicBarcodeGenerator()
         self.InventoryUpdater = InventoryUpdater(redis_client)
         self.base_url = config.BASE_URL
 
@@ -276,19 +277,7 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
                 'uuid': inventory_id,
                 'updated_at': current_time   # Timestamp only in main record
             })
-    
-            # Generate barcodes if not provided
-            if not inventory_data.get('project_barcode'):
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(inventory_data)
-                inventory_data.update({
-                    'project_barcode': barcode,
-                    'project_barcode_unique_code': unique_code
-                })
-    
-                # Set an empty image URL if not provided
-                if not inventory_data.get('project_barcode_image_url'):
-                    inventory_data['project_barcode_image_url'] = ""
-    
+        
             # Process multiple inventory items (without timestamps)
             inventory_items = []
             for item_data in inventory_data.get('inventory_items', []):

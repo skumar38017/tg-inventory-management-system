@@ -272,6 +272,7 @@ class EntryInventoryService(EntryInventoryInterface):
                         barcode_img,
                         inventory_data.get('inventory_id', inventory_id),
                         inventory_data['inventory_name'],
+                        inventory_type=inventory_type
                         
                     )
 

@@ -2,6 +2,9 @@
 
 from common_imports import *
 from utils.inventory_utils import format_wastage_inventory_item
+import logging
+
+logger = logging.getLogger(__name__)
 
 def search_wastage_inventory_by_id(
     inventory_id: str = None, 

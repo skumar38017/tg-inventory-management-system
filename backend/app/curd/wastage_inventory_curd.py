@@ -13,6 +13,7 @@ class WastageInventoryService(WastageInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.base_url = config.BASE_URL
+        self.qr_generator = QRCodeGenerator()
         self.barcode_generator = DynamicBarcodeGenerator()
 
     # Upload all `wastage_inventory` entries from local Redis to the database after click on `upload data` button
@@ -182,18 +183,6 @@ class WastageInventoryService(WastageInventoryInterface):
                 except Exception as e:
                     logger.error(f"Failed to update inventory quantities: {str(e)}")
                     raise ValueError(f"Failed to process wastage: {str(e)}")
-
-            # Generate barcode if not provided
-            if not wastage_data.get('wastage_barcode'):
-                barcode_data = {
-                    'employee_name': wastage_data['employee_name'],
-                    'inventory_id': wastage_data['inventory_id'],
-                    'id': wastage_data['id']
-                }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
-                wastage_data['wastage_barcode'] = barcode
-                wastage_data['wastage_barcode_unique_code'] = unique_code
-                wastage_data['wastage_barcode_image_url'] = wastage_data.get('wastage_barcode_image_url', "")
 
             # Store in Redis
             redis_key = f"wastage_inventory:{wastage_data['employee_name']}{wastage_data['inventory_id']}"

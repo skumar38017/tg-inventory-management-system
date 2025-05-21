@@ -1,6 +1,9 @@
 # backend/app/utils/inventory_updater.py
 from backend.app.utils.common_imports import *
 from backend.app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
+import logging
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 class InventoryUpdater:
     """Implementation of EntryInventoryInterface with async operations"""

@@ -90,27 +90,32 @@ class DynamicBarcodeGenerator:
             logger.error(f"Barcode generation failed: {str(e)}", exc_info=True)
             raise ValueError(f"Barcode generation failed: {str(e)}")
 
-    def save_barcode_image(self, barcode_png: bytes, inventory_name: str, inventory_id: str) -> str:
+    def save_barcode_image(self, barcode_png: bytes, primary_identifier: str, secondary_identifier: str, inventory_type: str = None) -> str:
         try:
-            # Debug log to verify inputs (remove after testing)
-            logger.debug(f"Original inputs - name: '{inventory_name}', id: '{inventory_id}'")
+            # Debug log to verify inputs
+            logger.debug(f"Original inputs - primary: '{primary_identifier}', secondary: '{secondary_identifier}', type: '{inventory_type}'")
 
             # ----- DEFENSIVE CHECKS -----
-            # Auto-correct swapped parameters if detected
-            if inventory_id and isinstance(inventory_id, str) and inventory_id.lower().startswith(('wireless', 'microphone', 'plastic')):
-                # If inventory_id looks like a name, swap the parameters
-                inventory_name, inventory_id = inventory_id, inventory_name
-                logger.warning(f"Auto-corrected swapped parameters. New name: '{inventory_name}', id: '{inventory_id}'")
+            # Auto-correct swapped parameters if detected (only for regular inventory)
+            if (inventory_type == 'inventory' and 
+                secondary_identifier and 
+                isinstance(secondary_identifier, str) and 
+                secondary_identifier.lower().startswith(('wireless', 'microphone', 'plastic'))):
+                # If secondary identifier looks like a name, swap the parameters
+                primary_identifier, secondary_identifier = secondary_identifier, primary_identifier
+                logger.warning(f"Auto-corrected swapped parameters. New primary: '{primary_identifier}', secondary: '{secondary_identifier}'")
 
             # ----- FORMATTING LOGIC -----
-            # Clean and format the inventory name (lowercase with underscores)
-            clean_name = inventory_name.replace(' ', '_').lower()
+            # Clean and format the identifiers
+            clean_primary = primary_identifier.replace(' ', '_').lower()
+            clean_secondary = ''.join(c for c in secondary_identifier.upper() if c.isalnum())
             
-            # Force uppercase ID and strip invalid chars
-            clean_id = ''.join(c for c in inventory_id.upper() if c.isalnum())
-            
-            # Final filename format: wireless_microphoneINV00456.png
-            filename = f"{clean_name}{clean_id}.png"
+            # Determine filename based on inventory type
+            if inventory_type == 'assignment_inventory':
+                filename = f"assignment_{clean_primary}_{clean_secondary}.png"
+            else:
+                # Default case for regular inventory
+                filename = f"{clean_primary}{clean_secondary}.png"
             
             # Remove any remaining special characters (keeps only alnum, _, and .)
             filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
@@ -127,3 +132,4 @@ class DynamicBarcodeGenerator:
         except Exception as e:
             logger.error(f"Failed to save barcode image: {str(e)}", exc_info=True)
             raise ValueError(f"Failed to save barcode image: {str(e)}")
+        

@@ -10,6 +10,9 @@ from api_request.assign_inventory_api_request import (
     delete_assigned_inventory
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 class AssignInventoryWindow:
     def __init__(self, parent):
         self.parent = parent
