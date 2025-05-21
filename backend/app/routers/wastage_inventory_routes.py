@@ -135,9 +135,13 @@ async def create_wastage_inventory(
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
     try:
-        item_data = item.dict(exclude_unset=True)
-        logger.info(f"New item created: {item_data}")
-        return await service.create_wastage_inventory(db, item_data)
+        logger.info(f"New item created: {item.dict()}")
+        inventory_type = "wastage_inventory"
+        return await service.create_wastage_inventory(
+            db=db,
+            inventory_type=inventory_type,
+            item=item  # Pass the Pydantic model directly
+        )
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))

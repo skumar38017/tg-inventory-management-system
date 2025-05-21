@@ -113,6 +113,8 @@ class DynamicBarcodeGenerator:
             # Determine filename based on inventory type
             if inventory_type == 'assignment_inventory':
                 filename = f"assignment_{clean_primary}_{clean_secondary}.png"
+            elif inventory_type == 'wastage_inventory':
+                filename = f"wastage_{clean_primary}_{clean_secondary}.png"
             else:
                 # Default case for regular inventory
                 filename = f"{clean_primary}{clean_secondary}.png"

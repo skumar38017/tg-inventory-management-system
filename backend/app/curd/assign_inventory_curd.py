@@ -132,7 +132,7 @@ class AssignInventoryService(AssignmentInventoryInterface):
                 raise ValueError("employee_name is required")
             if not inventory_data.get('inventory_id'):
                 raise ValueError("inventory_id is required")
-
+ 
             # Convert quantity to integer
             try:
                 quantity = int(inventory_data['quantity'])
