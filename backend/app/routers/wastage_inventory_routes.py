@@ -294,14 +294,12 @@ async def get_wastage_inventory_by_id(
 )
 async def inventory_ComboBox(
     search_term: Optional[str] = None,
-    skip: int = 0,
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
     """Search inventory items by name across multiple key patterns"""
     try:
         return await service.inventory_ComboBox(
-            search_term=search_term,
-            skip=skip
+            search_term=search_term
         )
     except HTTPException:
         raise

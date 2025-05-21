@@ -587,7 +587,7 @@ class WastageInventoryService(WastageInventoryInterface):
             )
         
     #  Drop Down search list option  ComboBox Widget for wastage inventory directly from redis
-    async def inventory_ComboBox(self, search_term: str = None, skip: int = 0) -> InventoryComboBoxResponse:
+    async def inventory_ComboBox(self, search_term: str = None) -> InventoryComboBoxResponse:
         try:
             key_patterns = [
                 "inventory:*",
@@ -625,7 +625,7 @@ class WastageInventoryService(WastageInventoryInterface):
                             if inventory_name and search_term.lower() in inventory_name.lower():
                                 results.append({
                                     "key_type": pattern.split(":")[0],
-                                    **item_data  # Include all item data
+                                    **item_data
                                 })
                         else:
                             results.append({
@@ -633,14 +633,18 @@ class WastageInventoryService(WastageInventoryInterface):
                                 **item_data
                             })
             
-            paginated_items = results[skip : skip + 1000]
+            # Sort results alphabetically by inventory_name (case-insensitive)
+            sorted_results = sorted(
+                results,
+                key=lambda x: (x.get("inventory_name") or x.get("name", "")).lower()
+            )
             
             return InventoryComboBoxResponse(
-                items=paginated_items,
-                total_count=len(results)
+                items=sorted_results,
+                total_count=len(sorted_results)
             )
             
         except Exception as e:            
             logger.error(f"Redis search error: {e}")            
             raise ValueError(f"Error searching inventory: {e}")
-        
+    
