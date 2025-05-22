@@ -90,7 +90,7 @@ class DynamicBarcodeGenerator:
             logger.error(f"Barcode generation failed: {str(e)}", exc_info=True)
             raise ValueError(f"Barcode generation failed: {str(e)}")
 
-    def save_barcode_image(self, barcode_png: bytes, primary_identifier: str, secondary_identifier: str, inventory_type: str = None) -> str:
+    def save_barcode_image(self, barcode_png: bytes, primary_identifier: str, secondary_identifier: str, inventory_type: str = None) -> str:    
         try:
             # Debug log to verify inputs
             logger.debug(f"Original inputs - primary: '{primary_identifier}', secondary: '{secondary_identifier}', type: '{inventory_type}'")
@@ -115,6 +115,10 @@ class DynamicBarcodeGenerator:
                 filename = f"assignment_{clean_primary}_{clean_secondary}.png"
             elif inventory_type == 'wastage_inventory':
                 filename = f"wastage_{clean_primary}_{clean_secondary}.png"
+            elif inventory_type == 'to_event_inventory':
+                filename = f"to_event_{clean_primary}_{clean_secondary}.png"
+            elif inventory_type == 'from_event_inventory':
+                filename = f"from_event_{clean_primary}_{clean_secondary}.png"
             else:
                 # Default case for regular inventory
                 filename = f"{clean_primary}{clean_secondary}.png"

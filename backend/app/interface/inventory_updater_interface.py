@@ -90,3 +90,7 @@ class InventoryUpdaterInterface:
             ValueError: If inventory_name is not provided
         """ 
         pass
+
+    async def handle_update_entry(self, data: dict) -> InventoryRedisOut:
+        """Update an existing inventory entry with new quantity values"""   
+        pass

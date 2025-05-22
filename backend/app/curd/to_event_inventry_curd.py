@@ -261,7 +261,7 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
             
 # ------------------------------------------------------------------------------------------------
     #  Create new entry of inventory for to_event which is directly stored in redis
-    async def create_to_event_inventory(self, item: ToEventInventoryCreate) -> ToEventRedisOut:
+    async def create_to_event_inventory(self,  db: AsyncSession, item: ToEventInventoryCreate, inventory_type: str) -> ToEventRedisOut:
         try:
             """Create inventory with multiple items directly in Redis"""
             # Convert to dict and clean data
@@ -286,7 +286,6 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
                     **item_data,
                     'id': item_id,
                     'project_id': inventory_data['project_id']  # Only include project_id
-                    # Removed created_at and updated_at from items
                 })
     
             # Prepare complete Redis data structure
@@ -294,7 +293,39 @@ class ToEventInventoryService(ToEventInventoryInterface, InventoryUpdaterInterfa
                 **inventory_data,
                 'inventory_items': inventory_items
             }
-    
+
+            # Generate barcode if not provided
+            if not inventory_data.get('to_event'):
+                try:
+                    # Generate minimal barcode with only bars, code, and unique code
+                    barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
+                        'project_name': inventory_data['project_name'],
+                        'project_id': inventory_data['project_id'],
+                        'type': inventory_data
+                    })
+
+                    # Save barcode image
+                    barcode_url = self.barcode_generator.save_barcode_image(
+                        barcode_img,
+                        inventory_data.get('project_name'),
+                        inventory_data.get('project_id'),
+                        inventory_type=inventory_type 
+                    )
+                    inventory_data.update({
+                        'project_barcode': barcode_value,
+                        'project_barcode_unique_code': unique_code,
+                        'project_barcode_image_url': barcode_url
+                    })
+                except ValueError as e:
+                    logger.error(f"Barcode generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+            
+            # Prepare complete Redis data structure (AFTER barcode generation)
+            redis_data = {
+                **inventory_data,  # This now includes barcode info
+                'inventory_items': inventory_items
+            }
+
             # Store main inventory in Redis
             await self.redis.set(
                 f"to_event_inventory:{inventory_data['project_id']}",

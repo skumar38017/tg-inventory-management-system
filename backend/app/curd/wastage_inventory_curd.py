@@ -633,18 +633,11 @@ class WastageInventoryService(WastageInventoryInterface):
                                 **item_data
                             })
             
-            # Sort results alphabetically by inventory_name (case-insensitive)
-            sorted_results = sorted(
-                results,
-                key=lambda x: (x.get("inventory_name") or x.get("name", "")).lower()
-            )
-            
             return InventoryComboBoxResponse(
-                items=sorted_results,
-                total_count=len(sorted_results)
+                items=results,
+                total_count=len(results)
             )
             
         except Exception as e:            
             logger.error(f"Redis search error: {e}")            
             raise ValueError(f"Error searching inventory: {e}")
-    

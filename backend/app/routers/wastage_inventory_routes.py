@@ -140,7 +140,7 @@ async def create_wastage_inventory(
         return await service.create_wastage_inventory(
             db=db,
             inventory_type=inventory_type,
-            item=item  # Pass the Pydantic model directly
+            item=item  
         )
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")

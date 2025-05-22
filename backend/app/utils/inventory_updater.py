@@ -326,3 +326,26 @@ class InventoryUpdater:
         await self.redis.set(key, inventory.model_dump_json())
         
         return InventoryRedisOut(**inventory.model_dump())
+    
+    async def handle_update_entry(self, data: dict) -> InventoryRedisOut:
+        """Simplified handler that leverages update_inventory's adjustment mode"""
+        try:
+            if not data.get('inventory_name'):
+                raise ValueError("Inventory name is required")
+
+            # Get incremental changes from user input
+            total_change = int(data.get('total_quantity', 0))
+            issued_change = int(data.get('issued_qty', 0))
+
+            # Let update_inventory handle the calculations and validation
+            return await self.update_inventory(
+                inventory_name=data['inventory_name'],
+                total_quantity=total_change, 
+                issued_qty=issued_change,    
+                operation="Manual Adjustment",
+                adjustment_mode=True  # This tells update_inventory to treat as increments
+            )
+
+        except Exception as e:
+            logger.error(f"Update failed for {data.get('inventory_name')}: {str(e)}")
+            raise
