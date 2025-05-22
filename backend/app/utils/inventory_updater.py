@@ -1,6 +1,9 @@
 # backend/app/utils/inventory_updater.py
 from backend.app.utils.common_imports import *
 from backend.app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
+import logging
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 class InventoryUpdater:
     """Implementation of EntryInventoryInterface with async operations"""
@@ -272,29 +275,29 @@ class InventoryUpdater:
             current_issued = int(current.get('issued_qty', 0))
             current_balance = current_total - current_issued
 
-            # Check if wastage would make balance negative
-            if (current_total - quantity) < current_issued:
-                # First return all issued items before marking as wastage
-                if current_issued > 0:
-                    await self.update_inventory(
-                        inventory_name=data['name'],
-                        issued_qty=-current_issued,  # Return all issued items
-                        operation="Return Before Wastage"
+            # Check if we have enough items to mark as wastage
+            if quantity > current_balance:
+                # First return the difference from issued items
+                return_qty = quantity - current_balance
+                if return_qty > current_issued:
+                    raise ValueError(
+                        f"Invalid quantities would result in negative values: "
+                        f"Total={current_total}, "
+                        f"Issued={current_issued - return_qty}, "
+                        f"Balance={current_balance - quantity}"
                     )
                 
-                # Verify we can now perform wastage
-                current_total = int(current.get('total_quantity', 0)) - current_issued
-                if (current_total - quantity) < 0:
-                    raise ValueError(
-                        f"Cannot mark {quantity} as wastage. Only {current_total} items available after returns"
-                    )
+                # Return the needed quantity from issued items
+                await self.update_inventory(
+                    inventory_name=data['name'],
+                    issued_qty=-return_qty,  # Negative to return items
+                    operation="Return for Wastage"
+                )
 
-            logger.info(f"Processing wastage for {data['name']} (Qty: {quantity})")
-
-            # Update inventory - decrease total quantity
+            # Now mark the wastage
             result = await self.update_inventory(
                 inventory_name=data['name'],
-                total_quantity=quantity,  # Negative to decrease total
+                total_quantity=-quantity,  # Negative to decrease total
                 operation="Wastage"
             )
 
@@ -308,7 +311,6 @@ class InventoryUpdater:
         except Exception as e:
             logger.error(f"Failed to process wastage for {data.get('name')}: {str(e)}")
             raise
-
 
     async def create_inventory(self, inventory_data: Dict[str, Any]) -> InventoryRedisOut:
         """Create new inventory record in Redis"""
@@ -324,3 +326,26 @@ class InventoryUpdater:
         await self.redis.set(key, inventory.model_dump_json())
         
         return InventoryRedisOut(**inventory.model_dump())
+    
+    async def handle_update_entry(self, data: dict) -> InventoryRedisOut:
+        """Simplified handler that leverages update_inventory's adjustment mode"""
+        try:
+            if not data.get('inventory_name'):
+                raise ValueError("Inventory name is required")
+
+            # Get incremental changes from user input
+            total_change = int(data.get('total_quantity', 0))
+            issued_change = int(data.get('issued_qty', 0))
+
+            # Let update_inventory handle the calculations and validation
+            return await self.update_inventory(
+                inventory_name=data['inventory_name'],
+                total_quantity=total_change, 
+                issued_qty=issued_change,    
+                operation="Manual Adjustment",
+                adjustment_mode=True  # This tells update_inventory to treat as increments
+            )
+
+        except Exception as e:
+            logger.error(f"Update failed for {data.get('inventory_name')}: {str(e)}")
+            raise

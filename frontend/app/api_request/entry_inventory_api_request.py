@@ -1,5 +1,8 @@
 #  frontend/app/entry_inventory_functions_request.py
 from common_imports import *
+import logging
+
+logger = logging.getLogger(__name__)
 
 def format_inventory_item(item: Dict[str, Any]) -> Dict[str, str]:
     """Helper function to format inventory item data consistently across all functions."""

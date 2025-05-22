@@ -135,9 +135,13 @@ async def create_wastage_inventory(
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
     try:
-        item_data = item.dict(exclude_unset=True)
-        logger.info(f"New item created: {item_data}")
-        return await service.create_wastage_inventory(db, item_data)
+        logger.info(f"New item created: {item.dict()}")
+        inventory_type = "wastage_inventory"
+        return await service.create_wastage_inventory(
+            db=db,
+            inventory_type=inventory_type,
+            item=item  
+        )
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -290,14 +294,12 @@ async def get_wastage_inventory_by_id(
 )
 async def inventory_ComboBox(
     search_term: Optional[str] = None,
-    skip: int = 0,
     service: WastageInventoryService = Depends(get_Wastage_inventory_service)
 ):
     """Search inventory items by name across multiple key patterns"""
     try:
         return await service.inventory_ComboBox(
-            search_term=search_term,
-            skip=skip
+            search_term=search_term
         )
     except HTTPException:
         raise

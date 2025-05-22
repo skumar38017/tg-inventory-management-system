@@ -1,6 +1,9 @@
 #  frontend/app/to_event_functions_request.py
 
 from common_imports import *
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Search for Project with there inventory list by [Project_id] by clicking search
 DEFAULT_SUBMITTED_BY = "inventory-admin"

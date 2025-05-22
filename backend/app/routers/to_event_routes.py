@@ -115,13 +115,19 @@ async def upload_to_event_data(
 )
 async def create_inventory_item_route(
     item: ToEventInventoryCreate,
+    db: AsyncSession = Depends(get_async_db),
     service: ToEventInventoryService = Depends(get_to_event_service)
 ):
     try:
         logger.info(f"New inventory creation request received for project: {item.project_id}")
         
         # Remove db parameter since we're storing in Redis directly
-        created_item = await service.create_to_event_inventory(item)
+        inventory_type="to_event_inventory"
+        created_item = await service.create_to_event_inventory(
+            db=db,
+            item=item,
+            inventory_type=inventory_type
+        )
         
         logger.info(f"Successfully created inventory in Redis for project: {item.project_id}")
         return created_item

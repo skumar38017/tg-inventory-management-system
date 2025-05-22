@@ -7,12 +7,16 @@ from backend.app.schema.wastage_inventory_schema import *
 from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
 from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
+logger = logging.getLogger(__name__)
+
 redis_client=get_redis()
 
 class WastageInventoryService(WastageInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.base_url = config.BASE_URL
+        self.InventoryUpdater = InventoryUpdater(redis_client)
+        self.qr_generator = QRCodeGenerator()
         self.barcode_generator = DynamicBarcodeGenerator()
 
     # Upload all `wastage_inventory` entries from local Redis to the database after click on `upload data` button
@@ -142,7 +146,7 @@ class WastageInventoryService(WastageInventoryInterface):
             raise
 
 # Create new entry of wastage inventory for to_event which is directly stored in redis
-    async def create_wastage_inventory(self,  db: AsyncSession, item: Union[WastageInventoryCreate, dict]) -> WastageInventory:
+    async def create_wastage_inventory(self,  db: AsyncSession, inventory_type: str, item: Union[WastageInventoryCreate, dict]) -> WastageInventory:
         try:
             if isinstance(item, WastageInventoryCreate):
                 wastage_data = item.model_dump(exclude_unset=True)
@@ -171,6 +175,32 @@ class WastageInventoryService(WastageInventoryInterface):
             except (ValueError, TypeError):
                 raise ValueError("Quantity must be a valid positive number")
         
+            # Generate barcode if not provided
+            if not wastage_data.get('wastage_barcode'):
+                try:
+                    # Generate minimal barcode with only bars, code, and unique code
+                    barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
+                        'inventory_name': wastage_data['inventory_name'],
+                        'inventory_id': wastage_data['inventory_id'],
+                        'type': wastage_data
+                    })
+
+                    # Save barcode image
+                    barcode_url = self.barcode_generator.save_barcode_image(
+                        barcode_img,
+                        wastage_data.get('inventory_name'),
+                        wastage_data['inventory_id'],
+                        inventory_type=inventory_type 
+                    )
+                    wastage_data.update({
+                        'wastage_barcode': barcode_value,
+                        'wastage_barcode_unique_code': unique_code,
+                        'wastage_barcode_image_url': barcode_url
+                    })
+                except ValueError as e:
+                    logger.error(f"Barcode generation failed: {str(e)}")
+                    raise HTTPException(status_code=400, detail=str(e))
+                
             # Check if status requires wastage processing
             wastage_statuses = ["Approved", "appeal_approved", "Approved By Higher Authority", "Returned"]
             if wastage_data.get('status') in wastage_statuses:
@@ -182,18 +212,6 @@ class WastageInventoryService(WastageInventoryInterface):
                 except Exception as e:
                     logger.error(f"Failed to update inventory quantities: {str(e)}")
                     raise ValueError(f"Failed to process wastage: {str(e)}")
-
-            # Generate barcode if not provided
-            if not wastage_data.get('wastage_barcode'):
-                barcode_data = {
-                    'employee_name': wastage_data['employee_name'],
-                    'inventory_id': wastage_data['inventory_id'],
-                    'id': wastage_data['id']
-                }
-                barcode, unique_code = self.barcode_generator.generate_linked_codes(barcode_data)
-                wastage_data['wastage_barcode'] = barcode
-                wastage_data['wastage_barcode_unique_code'] = unique_code
-                wastage_data['wastage_barcode_image_url'] = wastage_data.get('wastage_barcode_image_url', "")
 
             # Store in Redis
             redis_key = f"wastage_inventory:{wastage_data['employee_name']}{wastage_data['inventory_id']}"
@@ -569,7 +587,7 @@ class WastageInventoryService(WastageInventoryInterface):
             )
         
     #  Drop Down search list option  ComboBox Widget for wastage inventory directly from redis
-    async def inventory_ComboBox(self, search_term: str = None, skip: int = 0) -> InventoryComboBoxResponse:
+    async def inventory_ComboBox(self, search_term: str = None) -> InventoryComboBoxResponse:
         try:
             key_patterns = [
                 "inventory:*",
@@ -607,7 +625,7 @@ class WastageInventoryService(WastageInventoryInterface):
                             if inventory_name and search_term.lower() in inventory_name.lower():
                                 results.append({
                                     "key_type": pattern.split(":")[0],
-                                    **item_data  # Include all item data
+                                    **item_data
                                 })
                         else:
                             results.append({
@@ -615,14 +633,11 @@ class WastageInventoryService(WastageInventoryInterface):
                                 **item_data
                             })
             
-            paginated_items = results[skip : skip + 1000]
-            
             return InventoryComboBoxResponse(
-                items=paginated_items,
+                items=results,
                 total_count=len(results)
             )
             
         except Exception as e:            
             logger.error(f"Redis search error: {e}")            
             raise ValueError(f"Error searching inventory: {e}")
-        

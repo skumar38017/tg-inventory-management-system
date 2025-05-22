@@ -2,6 +2,10 @@
 
 from common_imports import *
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Format a single assigned inventory item to match the table headers
 def format_assigned_inventory_item(item: Dict, include_timestamps: bool = False) -> Dict:
     """Format a single assigned inventory item from Redis search result with enhanced field mapping."""

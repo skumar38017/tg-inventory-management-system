@@ -26,7 +26,7 @@ class ToEventInventoryInterface:
         raise NotImplementedError
    
    
-    async def create_to_event_inventory(self, db: AsyncSession, to_event_inventory: ToEventInventoryCreate) -> ToEventInventory:
+    async def create_inventory(self, db: AsyncSession, item: ToEventInventoryCreate, inventory_type: str) -> ToEventRedisOut:
         """
         Create a new ToEventInventory entry.
         This method will receive an ToEventInventoryCreate schema instance

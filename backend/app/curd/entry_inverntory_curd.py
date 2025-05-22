@@ -32,6 +32,7 @@ class EntryInventoryService(EntryInventoryInterface):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
         self.qr_generator = QRCodeGenerator()
+        self.InventoryUpdater = InventoryUpdater(redis_client)
         self.barcode_generator = DynamicBarcodeGenerator()
         self.base_url = config.BASE_URL
 
@@ -272,6 +273,7 @@ class EntryInventoryService(EntryInventoryInterface):
                         barcode_img,
                         inventory_data.get('inventory_id', inventory_id),
                         inventory_data['inventory_name'],
+                        inventory_type=inventory_type
                         
                     )
 
@@ -524,11 +526,11 @@ class EntryInventoryService(EntryInventoryInterface):
             
             # Convert update_data to dict and exclude unset fields
             update_dict = update_data.model_dump(exclude_unset=True)
-            
+                        
             # Define immutable fields that shouldn't be updated
             IMMUTABLE_FIELDS = {
                 'id', 'sno', 'inventory_id', 'product_id', 
-                'created_at', 'inventory_barcode', 
+                'created_at', 'inventory_barcode',  
                 'inventory_unique_code', 'inventory_barcode_url'
             }
 
@@ -541,6 +543,17 @@ class EntryInventoryService(EntryInventoryInterface):
             # Always update the timestamp with UTC timezone
             updated_dict['updated_at'] = UTCDateUtils.get_current_datetime().isoformat()
 
+            # Handle total_quantity update - add to existing value
+            try:
+                await self.InventoryUpdater.handle_update_entry({
+                    'inventory_name': updated_dict['inventory_name'] or updated_dict['name'],
+                    'total_quantity': updated_dict.get('total_quantity', 0),  
+                    'issued_qty': updated_dict.get('issued_qty', 0) 
+                })
+            except Exception as e:
+                logger.error(f"Failed to update inventory quantities: {str(e)}")
+                raise ValueError(f"Failed to process wastage: {str(e)}")
+            
             # Save back to Redis
             await self.redis.set(
                 redis_key,
@@ -548,7 +561,7 @@ class EntryInventoryService(EntryInventoryInterface):
             )
 
             return EntryInventoryOut(**updated_dict)
-
+        
         except HTTPException:
             raise
         except json.JSONDecodeError as je:

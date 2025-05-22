@@ -11,6 +11,10 @@ from backend.app.schema.assign_inventory_schema import (
 from backend.app.models.assign_inventory_model import AssignmentInventory
 from backend.app.curd.assign_inventory_curd import AssignInventoryService
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Dependency to get the Assign inventory service
 def get_Assign_inventory_service(
     redis: aioredis.Redis = Depends(get_redis_dependency)
@@ -147,14 +151,13 @@ async def create_inventory_item_route(
     service: AssignInventoryService = Depends(get_Assign_inventory_service)
 ):
     try:
-        item_data = item.dict(exclude_unset=True)
-        logger.info(f"New item created: {item_data}")
+        logger.info(f"New item created: {item.dict()}")
         inventory_type = "assignment_inventory" 
         return await service.create_assignment_inventory(
             db=db, 
-            item_data=item_data,
-            inventory_type=inventory_type
-            )
+            inventory_type=inventory_type,
+            item=item
+        )
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
