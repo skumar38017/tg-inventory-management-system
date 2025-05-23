@@ -114,6 +114,14 @@
             margin-top: 30px;
             text-align: right;
         }
+
+        .barcode {
+            position: absolute;
+            bottom: 5%;
+            right: 20px;
+            width: 300px;
+            height: 60px;
+        }
     </style>
 </head>
 <body>
@@ -229,7 +237,11 @@
         </div>
         {% endif %}
     </div>
-    
+    {% if barcode_url %}
+    <img class="barcode" src="{{ barcode_url }}" alt="Item Barcode" 
+         onerror="console.error('Failed to load Barcode:', this.src)" loading="lazy">
+    <div style="display:none;">Barcode URL: {{ barcode_url }}</div>
+    {% endif %}
     <div class="timestamp">
         Generated on {{ now }}
     </div>

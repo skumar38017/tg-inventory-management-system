@@ -123,9 +123,13 @@ async def scan_qrcode(
         # Verify the URL matches what's in Redis
         if 'inventory_qrcode_url' in item:
             qr_code_url = item['inventory_qrcode_url']
+
+        if 'inventory_barcode_url' in item:
+            barcode_url = item['inventory_barcode_url']
         
         logger.info(f"Using QR code URL: {qr_code_url}")
         response_data_dict["qr_code_url"] = qr_code_url
+        response_data_dict["barcode_url"] = barcode_url
 
         return templates.TemplateResponse(
             "record.html",
