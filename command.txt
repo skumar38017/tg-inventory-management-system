@@ -155,3 +155,15 @@ docker exec -it redisclient redis-cli --user ${REDIS_USER} --pass ${REDIS_PASSWO
 
 
 docker compose down -v && docker compose up -d
+
+
+##########################################################
+# S3
+#############################################################
+aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/barcode
+aws s3 ls s3://tg-inventory-management-management-system-prod-us-east-1/qrcode
+
+aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/barcode/assignment_2023-01-31_12-00-00.png
+
+aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/qrcode/assignment_2023-01-31_12-00-00.png
+

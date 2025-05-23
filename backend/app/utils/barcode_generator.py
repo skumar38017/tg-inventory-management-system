@@ -13,6 +13,8 @@ import barcode
 from PIL import Image
 from io import BytesIO
 from backend.app import config
+import boto3
+from botocore.exceptions import ClientError
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -50,10 +52,15 @@ class TransparentBlackBarsWriter(ImageWriter):
 
 class DynamicBarcodeGenerator:
     def __init__(self):
-        self.barcode_base_path = config.BARCODE_BASE_PATH
-        self.barcode_base_url = config.BARCODE_BASE_URL
+        self.s3_client = boto3.client(
+            's3',
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+            region_name=config.AWS_S3_REGION_NAME
+        )
+        self.bucket_name = config.AWS_STORAGE_BUCKET_NAME
+        self.barcode_folder = config.AWS_S3_BUCKET_FOLDER_PATH_BARCODE
         self.public_api_url = config.PUBLIC_API_URL
-        os.makedirs(self.barcode_base_path, exist_ok=True)
         self.barcode_type = 'code128'  # Using Code128 for best density
 
     def _generate_alphanumeric_code(self, length: int = 8) -> str:
@@ -106,7 +113,6 @@ class DynamicBarcodeGenerator:
                 logger.warning(f"Auto-corrected swapped parameters. New primary: '{primary_identifier}', secondary: '{secondary_identifier}'")
 
             # ----- FORMATTING LOGIC -----
-            # Clean and format the identifiers
             clean_primary = primary_identifier.replace(' ', '_').lower()
             clean_secondary = ''.join(c for c in secondary_identifier.upper() if c.isalnum())
             
@@ -120,21 +126,30 @@ class DynamicBarcodeGenerator:
             elif inventory_type == 'from_event_inventory':
                 filename = f"from_event_{clean_primary}_{clean_secondary}.png"
             else:
-                # Default case for regular inventory
                 filename = f"{clean_primary}{clean_secondary}.png"
             
-            # Remove any remaining special characters (keeps only alnum, _, and .)
             filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
             
-            # ----- SAVE FILE -----
-            filepath = os.path.join(self.barcode_base_path, filename)
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            # ----- SAVE TO S3 -----
+            s3_key = f"{self.barcode_folder}/{filename}"
+            
+            # Upload to S3
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=s3_key,
+                Body=barcode_png,
+                ContentType='image/png',
+                # ACL='public-read'  # Make the object publicly accessible
+            )
+            
+            # Generate public URL
+            s3_url = f"https://{self.bucket_name}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+            
+            return s3_url
 
-            with open(filepath, 'wb') as f:
-                f.write(barcode_png)
-
-            return f"{self.public_api_url}{self.barcode_base_url}/{filename}"
-
+        except ClientError as e:
+            logger.error(f"S3 upload failed: {str(e)}", exc_info=True)
+            raise ValueError(f"S3 upload failed: {str(e)}")
         except Exception as e:
             logger.error(f"Failed to save barcode image: {str(e)}", exc_info=True)
             raise ValueError(f"Failed to save barcode image: {str(e)}")

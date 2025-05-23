@@ -28,7 +28,7 @@ app = FastAPI(
 )
 # Mount static files directory
 # Mount both barcode and qrcode directories
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/public", StaticFiles(directory="backend/app/public"), name="public")
 app.mount("/templates", StaticFiles(directory="backend/app/templates"), name="templates")
 

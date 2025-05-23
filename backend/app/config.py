@@ -72,20 +72,17 @@ AWS_ARN = os.getenv("AWS_ARN")
 AWS_S3_BUCKET_FOLDER_PATH_QR = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_QR", "qrcode")
 AWS_S3_BUCKET_FOLDER_PATH_BARCODE = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_BARCODE", "barcode")
 
-# Barcode Generator Configuration
-BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/static/barcodes")
-BARCODE_BASE_URL = os.getenv("BARCODE_BASE_URL", "/static/barcodes")
-
 # QR Code Configuration
 QRCODE_BASE_PATH = os.getenv('QRCODE_BASE_PATH', "./static/qrcodes")
 QRCODE_BASE_URL = os.getenv('QRCODE_BASE_URL', "/static/qrcodes")
+
 # Handle multiple PUBLIC_API_URL options
 PUBLIC_API_URLS = [
     url.strip() 
     for url in os.getenv('PUBLIC_API_URL', 'http://localhost:8000').split(',')
     if url.strip()
 ]
-PUBLIC_API_URL = PUBLIC_API_URLS[0]  # Default to first URL
+PUBLIC_API_URL = PUBLIC_API_URLS[0] if PUBLIC_API_URLS else "http://localhost:8000"  # Default to first URL
 
 # Server IP Configuration
 SERVER_IP = [

@@ -9,6 +9,8 @@ attrs==25.3.0
 babel==2.17.0
 blinker==1.9.0
 boolean.py==5.0
+boto3==1.38.22
+botocore==1.38.22
 CacheControl==0.14.2
 cachetools==5.5.2
 certifi==2025.1.31
@@ -42,6 +44,7 @@ httpx==0.28.1
 idna==3.10
 itsdangerous==2.2.0
 Jinja2==3.1.6
+jmespath==1.0.1
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 Levenshtein==0.27.1
@@ -61,7 +64,7 @@ olefile==0.47
 packageurl-python==0.16.0
 packaging==24.2
 pandas==2.2.3
-pillow==11.1.0
+pillow==11.2.1
 pip-api==0.0.34
 pip-requirements-parser==32.0.1
 pip_audit==2.9.0
@@ -81,13 +84,15 @@ Pygments==2.19.1
 pyinstaller==6.13.0
 pyinstaller-hooks-contrib==2025.3
 pyparsing==3.2.3
-python-barcode==0.14.0
+python-barcode==0.15.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 python-Levenshtein==0.27.1
 python-multipart==0.0.20
 pytz==2025.2
 PyYAML==6.0.2
+pyzbar==0.1.9
+qrcode==8.1
 RapidFuzz==3.12.2
 ratelimiter==1.2.0.post0
 redis==5.2.1
@@ -98,6 +103,7 @@ rich==13.9.4
 rich-toolkit==0.13.2
 rpds-py==0.24.0
 rsa==4.9.1
+s3transfer==0.13.0
 setuptools==78.1.0
 shellingham==1.5.4
 six==1.17.0
