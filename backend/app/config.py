@@ -25,13 +25,6 @@ if REDIS_USERNAME:
 else:
     REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 
-# Load environment variables from .env file
-# AWS S3 Configuration
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
-
 # Email Settings
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
@@ -67,6 +60,17 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
+
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+AWS_ARN = os.getenv("AWS_ARN")
+
+# Folder configurations
+AWS_S3_BUCKET_FOLDER_PATH_QR = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_QR", "qrcode")
+AWS_S3_BUCKET_FOLDER_PATH_BARCODE = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_BARCODE", "barcode")
 
 # Barcode Generator Configuration
 BARCODE_BASE_PATH = os.getenv("BARCODE_BASE_PATH", "/static/barcodes")
