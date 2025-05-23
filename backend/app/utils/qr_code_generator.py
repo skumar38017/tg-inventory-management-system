@@ -5,15 +5,23 @@ import urllib.request
 from urllib.parse import urlparse
 from qrcode.image.svg import SvgImage
 import logging
+import boto3
+from botocore.exceptions import ClientError
+
 # Initialize logger
 logger = logging.getLogger(__name__)
 
 class QRCodeGenerator:
     def __init__(self):
-        self.qrcode_base_path = config.QRCODE_BASE_PATH
-        self.qrcode_base_url = config.QRCODE_BASE_URL
-        self.public_api_url = config.PUBLIC_API_URL 
-        os.makedirs(self.qrcode_base_path, exist_ok=True)
+        self.s3_client = boto3.client(
+            's3',
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+            region_name=config.AWS_S3_REGION_NAME
+        )
+        self.bucket_name = config.AWS_STORAGE_BUCKET_NAME
+        self.qr_folder = config.AWS_S3_BUCKET_FOLDER_PATH_QR
+        self.public_api_url = config.PUBLIC_API_URL
 
     def generate_qr_code(
         self,
@@ -40,56 +48,61 @@ class QRCodeGenerator:
         Returns:
             Tuple of (image_bytes, filename, qr_url)
         """
-        # Create basic QR code
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=getattr(qrcode.constants, f"ERROR_CORRECT_{error_correction}"),
-            box_size=size,
-            border=border,
-        )
-        qr.add_data(data)
-        qr.make(fit=True)
+        try:
+            # Create basic QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=getattr(qrcode.constants, f"ERROR_CORRECT_{error_correction}"),
+                box_size=size,
+                border=border,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
 
-        # Create solid color QR code with white background first
-        img = qr.make_image(fill_color=qr_color, back_color="white")
+            # Create solid color QR code with white background first
+            img = qr.make_image(fill_color=qr_color, back_color="white")
+            
+            # Convert to transparent background
+            img = img.convert("RGBA")
+            datas = img.getdata()
+            
+            new_data = []
+            for item in datas:
+                # Make white pixels transparent
+                if item[0] == 255 and item[1] == 255 and item[2] == 255:
+                    new_data.append((255, 255, 255, 0))
+                else:
+                    # Keep colored pixels fully opaque
+                    new_data.append(item)
+            
+            img.putdata(new_data)
+
+            # Save to bytes
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='PNG')
+            image_bytes = img_byte_arr.getvalue()
+
+            # Generate filename and URL
+            filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}_qr.png"
+            filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
+            
+            # Upload to S3
+            s3_key = f"{self.qr_folder}/{filename}"
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=s3_key,
+                Body=image_bytes,
+                ContentType='image/png'
+            )
+            
+            # Generate public URL
+            qr_url = f"https://{self.bucket_name}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+
+            return image_bytes, filename, qr_url
         
-        # Convert to transparent background
-        img = img.convert("RGBA")
-        datas = img.getdata()
-        
-        new_data = []
-        for item in datas:
-            # Make white pixels transparent
-            if item[0] == 255 and item[1] == 255 and item[2] == 255:
-                new_data.append((255, 255, 255, 0))
-            else:
-                # Keep colored pixels fully opaque
-                new_data.append(item)
-        
-        img.putdata(new_data)
-
-        # Save to bytes
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        image_bytes = img_byte_arr.getvalue()
-
-        # Generate filename and URL
-        filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}_qr.png"
-        filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
-        qr_url = f"{self.public_api_url}{self.qrcode_base_url}/{filename}"
-
-        # Save to disk if requested
-        if save_to_disk:
-            filepath = os.path.join(self.qrcode_base_path, filename)
-            try:
-                with open(filepath, 'wb') as f:
-                    f.write(image_bytes)
-                logger.info(f"QR code saved to {filepath}")
-            except Exception as e:
-                logger.error(f"Failed to save QR code: {str(e)}")
-                raise
-
-        return image_bytes, filename, qr_url
+        except Exception as e:
+            logger.error(f"QR code generation failed: {str(e)}", exc_info=True)
+            raise ValueError(f"QR code generation failed: {str(e)}")
 
     def generate_qr_content(self, instance_data: Union[Dict, object]) -> str:
         """Generate QR code content as a direct API URL"""
