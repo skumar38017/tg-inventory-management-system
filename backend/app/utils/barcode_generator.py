@@ -107,14 +107,16 @@ class DynamicBarcodeGenerator:
             if (inventory_type == 'inventory' and 
                 secondary_identifier and 
                 isinstance(secondary_identifier, str) and 
-                secondary_identifier.lower().startswith(('wireless', 'microphone', 'plastic'))):
+                secondary_identifier.upper().startswith(('wireless', 'microphone', 'plastic'))):
                 # If secondary identifier looks like a name, swap the parameters
                 primary_identifier, secondary_identifier = secondary_identifier, primary_identifier
                 logger.warning(f"Auto-corrected swapped parameters. New primary: '{primary_identifier}', secondary: '{secondary_identifier}'")
 
             # ----- FORMATTING LOGIC -----
-            clean_primary = primary_identifier.replace(' ', '_').upper()
-            clean_secondary = ''.join(c for c in secondary_identifier.lower() if c.isalnum())
+            # Format inventory name (lowercase with underscores)
+            clean_primary = primary_identifier.replace(' ', '_').lower()
+            # Format inventory ID (uppercase alphanumeric)
+            clean_secondary = ''.join(c for c in secondary_identifier.upper() if c.isalnum())
             
             # Determine filename based on inventory type
             if inventory_type == 'assignment_inventory':
@@ -126,8 +128,10 @@ class DynamicBarcodeGenerator:
             elif inventory_type == 'from_event_inventory':
                 filename = f"from_event_{clean_primary}_{clean_secondary}.png"
             else:
-                filename = f"{clean_secondary}{clean_primary}.png"
+                # Match QR code pattern exactly (just without "_qr" suffix)
+                filename = f"{clean_primary}{clean_secondary}.png"
             
+            # Final sanitization
             filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
             
             # ----- SAVE TO S3 -----
