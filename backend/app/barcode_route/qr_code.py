@@ -115,11 +115,18 @@ async def scan_qrcode(
         # Convert to dict and add timestamp
         response_data_dict = response_data.dict()
         response_data_dict["now"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Fix QR code URL generation - use S3 path directly
+        filename = f"{item['inventory_name'].replace(' ', '_').lower()}_{item['inventory_id']}_qr.png"
+        qr_code_url = f"https://{config.AWS_STORAGE_BUCKET_NAME}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{config.AWS_S3_BUCKET_FOLDER_PATH_QR}/{filename}"
         
-        # Add QR code URL - using dictionary access
-        response_data_dict["qr_code_url"] = f"{config.PUBLIC_API_URL}{config.QRCODE_BASE_URL}/{item['inventory_name'].replace(' ', '_').lower()}{item['inventory_id']}_qr.png"
-        logger.info(f"Successfully returned response for {qr_data}")
+        # Verify the URL matches what's in Redis
+        if 'inventory_qrcode_url' in item:
+            qr_code_url = item['inventory_qrcode_url']
         
+        logger.info(f"Using QR code URL: {qr_code_url}")
+        response_data_dict["qr_code_url"] = qr_code_url
+
         return templates.TemplateResponse(
             "record.html",
             {

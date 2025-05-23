@@ -9,8 +9,6 @@ class QRCodeService:
         # QR Code Configuration
         self.redis = redis_client
         self.base_url = config.BASE_URL
-        self.qrcode_base_path = config.QRCODE_BASE_PATH
-        self.qrcode_base_url = config.QRCODE_BASE_URL
         self.public_api_urls = config.PUBLIC_API_URLS
         self.public_api_url = config.PUBLIC_API_URL.rstrip('/')
         self.scan_endpoint = f"{self.public_api_url}/api/v1/scan/"
@@ -31,34 +29,33 @@ class QRCodeService:
                 return match.group(1)
         return None
 
+    # In your QRCodeService class
     def _extract_qr_data_from_url(self, url: str) -> Optional[str]:
-            """
-            Extract the inventory identifier from a QR code URL
-            Handles formats like:
-            - https://rwf1rlkq-8000.inc1.devtunnels.ms/api/v1/scan/SteelRodINV003
-            - http://localhost:8000/api/v1/scan/INV003
-            - Handles multiple possible public URLs
-            """
-            try:
-                parsed = urlparse(url)
-                
-                # Check against all possible public API URLs
-                for api_url in self.public_api_urls:
-                    api_parsed = urlparse(api_url)
-                    
-                    # Check if path starts with scan endpoint
-                    if parsed.path.startswith('/api/v1/scan/'):
-                        return parsed.path.split('/api/v1/scan/')[-1]
-                    
-                    # Match same netloc (domain) if full URL provided
-                    if parsed.netloc == api_parsed.netloc and '/api/v1/scan/' in parsed.path:
-                        return parsed.path.split('/api/v1/scan/')[-1]
-                
+        """
+        Enhanced to handle both API and direct S3 URLs
+        """
+        try:
+            # Handle S3 URLs first
+            if 'amazonaws.com' in url:
+                filename = url.split('/')[-1]
+                # Remove extensions and _qr suffix
+                base_name = filename.replace('_qr.png', '').replace('_qr.jpg', '').replace('.png', '').replace('.jpg', '')
+                # Extract inventory ID if present
+                inventory_id = self._extract_inventory_id(base_name)
+                if inventory_id:
+                    return base_name
                 return None
-            except Exception as e:
-                logger.warning(f"Failed to parse URL {url}: {str(e)}")
-                return None
-
+            
+            # Handle API URLs
+            parsed = urlparse(url)
+            for api_url in self.public_api_urls:
+                api_parsed = urlparse(api_url)
+                if parsed.netloc == api_parsed.netloc and '/api/v1/scan/' in parsed.path:
+                    return parsed.path.split('/api/v1/scan/')[-1]
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to parse URL {url}: {str(e)}")
+            return None
 
          # backend/app/services/qrcode_service.py
 

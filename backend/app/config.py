@@ -72,9 +72,7 @@ AWS_ARN = os.getenv("AWS_ARN")
 AWS_S3_BUCKET_FOLDER_PATH_QR = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_QR", "qrcode")
 AWS_S3_BUCKET_FOLDER_PATH_BARCODE = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_BARCODE", "barcode")
 
-# QR Code Configuration
-QRCODE_BASE_PATH = os.getenv('QRCODE_BASE_PATH', "./static/qrcodes")
-QRCODE_BASE_URL = os.getenv('QRCODE_BASE_URL', "/static/qrcodes")
+
 
 # Handle multiple PUBLIC_API_URL options
 PUBLIC_API_URLS = [

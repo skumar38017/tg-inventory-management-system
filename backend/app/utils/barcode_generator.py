@@ -113,8 +113,8 @@ class DynamicBarcodeGenerator:
                 logger.warning(f"Auto-corrected swapped parameters. New primary: '{primary_identifier}', secondary: '{secondary_identifier}'")
 
             # ----- FORMATTING LOGIC -----
-            clean_primary = primary_identifier.replace(' ', '_').lower()
-            clean_secondary = ''.join(c for c in secondary_identifier.upper() if c.isalnum())
+            clean_primary = primary_identifier.replace(' ', '_').upper()
+            clean_secondary = ''.join(c for c in secondary_identifier.lower() if c.isalnum())
             
             # Determine filename based on inventory type
             if inventory_type == 'assignment_inventory':
@@ -126,7 +126,7 @@ class DynamicBarcodeGenerator:
             elif inventory_type == 'from_event_inventory':
                 filename = f"from_event_{clean_primary}_{clean_secondary}.png"
             else:
-                filename = f"{clean_primary}{clean_secondary}.png"
+                filename = f"{clean_secondary}{clean_primary}.png"
             
             filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
             
