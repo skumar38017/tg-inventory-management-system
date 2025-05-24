@@ -3,7 +3,7 @@
 import uuid
 from sqlalchemy import Column, String, Date, DateTime, Index, Integer, ForeignKey
 from sqlalchemy.sql import func
-from backend.app.database.base import Base
+from app.database.base import Base
 from datetime import datetime, timezone
 from barcode import Code128
 from barcode.writer import ImageWriter

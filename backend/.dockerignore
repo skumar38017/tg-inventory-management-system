@@ -1,0 +1,54 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Distribution / packaging
+*.egg-info/
+build/
+dist/
+
+# Environment files
+ 
+# Git and other VCS
+.git/
+.gitignore
+frontend.spec
+
+# OS / Editor / IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker artifacts
+Dockerfile
+.dockerignore
+command.txt
+instructions
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Anything else you know isn't needed in the container
+tests/
+docs/
+
+docker-entrypoint.sh
+frontend.spec
+logo*
+version.txt
+README.md
+readme.MD
+readme.md

@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from datetime import datetime, date
 from enum import Enum as PyEnum
-from backend.app.database.base import Base  # Assuming you have a base class for your models
+from app.database.base import Base  
 
 class AssignmentInventory(Base):
     __tablename__ = "assignment_inventory"

@@ -58,7 +58,7 @@ backend/
 
 ````bash
 git clone [Repo](https://github.com/skumar38017/tg-inventory-management-system.git)
-cd tg-inventory-management-system
+cd tg-inventory-management-system/backend
 ````
 
 ## Step 2: Setup Database and Redis Server (Optional) if Required
@@ -263,6 +263,7 @@ pip install -r requirements.txt
 
 ```bash
 export PYTHONPATH=$(pwd)
+cd tg-inventory-management-system/backend
 PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
 PYTHONPATH=./ alembic upgrade head
 ```
@@ -282,7 +283,7 @@ psql -h `localhost` -p 5432 -U  `user name`-d `your password`
 ```bash
 cd tg-inventory-management-system
 export PYTHONPATH=$(pwd)
-uvicorn backend.app.main:app --reload
+uvicorn app.main:app --reload
 ```
 ## 📄 License
 

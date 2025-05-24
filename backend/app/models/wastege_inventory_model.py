@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Integer, Float, Date, DateTime, Enum, Ind
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, date, timezone
 from enum import Enum as PyEnum
-from backend.app.database.base import Base  # Assuming you have a base class for your models
+from app.database.base import Base  # Assuming you have a base class for your models
 
 class WastageInventory(Base):
     __tablename__ = "wastage_inventories"
