@@ -52,7 +52,7 @@ backend/
 
 
 
-## 🛠️ Setup Guide
+# 🛠️ Setup Guide
 
 ## Step 1: Clone the Repository
 
@@ -86,17 +86,17 @@ sudo -u postgres createdb -O tg-inventory tg-inventory
 4. ### Connect to PostgreSQL
 
 ```bash
-psql -h localhost -p 5432 -U postgres
+psql -h `localhost` -p 5432 -U postgres
 ```
 
 5. ### Inside psql:
 
 ```bash
-CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
-CREATE DATABASE "tg-inventory" OWNER "tg-inventory";
-GRANT ALL PRIVILEGES ON DATABASE "tg-inventory" TO "tg-inventory";
+CREATE ROLE "your username" WITH LOGIN PASSWORD 'your password';
+CREATE DATABASE "your database" OWNER "your username";
+GRANT ALL PRIVILEGES ON DATABASE "your database" TO "your username";
 
-ALTER ROLE "tg-inventory" WITH
+ALTER ROLE "your username" WITH
   SUPERUSER
   CREATEDB
   CREATEROLE
@@ -107,7 +107,7 @@ ALTER ROLE "tg-inventory" WITH
 6. ### Connect to PostgreSQL Database
 
 ```bash
-psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
+psql -h `localhost` -p 5432 -U  `user name`-d `your password`
 ```
 
 7. ### Install Redis
@@ -119,13 +119,13 @@ sudo apt-get install redis-server
 8. ### Connect to Redis
 
 ```bash
-redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
+redis-cli -h `localhost` -p 6379 -a `your password`
 ```
 
 9. ### Flush Redis
 
 ```bash
-redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25 FLUSHDB
+redis-cli -h `localhost` -p 6379 -a `your password` FLUSHDB
 ```
 
 ✅ For `Windows`
@@ -146,16 +146,16 @@ sudo -u postgres createdb -O tg-inventory tg-inventory
 
 4. ### Connect to PostgreSQL
 ```cmd
-psql -h localhost -p 5432 -U postgres
+psql -h `localhost` -p 5432 -U postgres
 ```
 
 5. ### Inside psql:
 ```cmd
-CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
-CREATE DATABASE "tg-inventory" OWNER "tg-inventory";
-GRANT ALL PRIVILEGES ON DATABASE "tg-inventory" TO "tg-inventory";
+CREATE ROLE "your username" WITH LOGIN PASSWORD 'your password';
+CREATE DATABASE "your database" OWNER "your username";
+GRANT ALL PRIVILEGES ON DATABASE "your database" TO "your username";
 
-ALTER ROLE "tg-inventory" WITH
+ALTER ROLE "your username" WITH
   SUPERUSER
   CREATEDB
   CREATEROLE
@@ -165,7 +165,7 @@ ALTER ROLE "tg-inventory" WITH
 
 6. ### Connect to PostgreSQL Database
 ```cmd
-psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
+psql -h `localhost` -p 5432 -U  `user name` -d `your password`
 ```
 
 7. ### Install Redis for Windows
@@ -189,7 +189,7 @@ third, open the Redis Desktop Manager and add a new server with the following se
 - Server name: Redis
 - Server IP: 127.0.0.1
 - Server port: 6379
-- Server password: Neon-Studioz-Holi-T25
+- Server password: password
 
 fourth, open the Redis Desktop Manager and click on the "Redis" server to connect to the server.
 
@@ -197,12 +197,12 @@ fifth, run the following command in the Redis Desktop Manager to flush the Redis
 
 8. ### Connect to Redis
 ```cmd
-redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
+redis-cli -h `localhost` -p 6379 -a password
 ```
 
 9. ### Flush Redis   
 ```cmd
-redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25 FLUSHDB
+redis-cli -h `localhost` -p 6379 -a password FLUSHDB
 ```
 
 ## Step 3: Set Up Python Environment
@@ -269,7 +269,7 @@ PYTHONPATH=./ alembic upgrade head
 2. ### Connect to PostgreSQL Database
 
 ```bash
-psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
+psql -h `localhost` -p 5432 -U  `user name`-d `your password`
 ```
 3. ### Inside psql to check migrate table
 
