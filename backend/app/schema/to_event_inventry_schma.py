@@ -1,5 +1,5 @@
 # backend/app/schema/to_event_inventry_schma.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
 class InventoryItemBase(BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")

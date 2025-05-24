@@ -1,8 +1,8 @@
 
 # backend/app/api/endpoints/list_barcode_qr_code.py
-from backend.app.utils.common_imports import *
-from backend.app.services.list_barcode_qrcode_service import BarcodeQrCodeService
-from backend.app.schema.qrcode_barcode_schema import BarcodeQrCodeResponse
+from app.utils.common_imports import *
+from app.services.list_barcode_qrcode_service import BarcodeQrCodeService
+from app.schema.qrcode_barcode_schema import BarcodeQrCodeResponse
 
 def get_barcode_qr_code_service(
         redis: aioredis.Redis = Depends(get_redis_dependency)

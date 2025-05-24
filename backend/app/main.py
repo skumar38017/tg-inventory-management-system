@@ -1,17 +1,17 @@
 # backend/app/main.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.database.database import (
+from app.database.database import (
     check_db_connectivity, 
     check_sync_db_connectivity_with_retry, 
     check_async_db_connectivity_with_retry
 )
-from backend.app.database.redisclient import (
+from app.database.redisclient import (
     init_redis,
     check_redis_connectivity_with_retry,
     close_redis
 )
-from backend.app.api_gateways import initialize_api_gateway
+from app.api_gateways import initialize_api_gateway
 redis_client: aioredis.Redis = Depends(get_redis_dependency)
 
 # Set up logging for the main script
@@ -29,8 +29,9 @@ app = FastAPI(
 # Mount static files directory
 # Mount both barcode and qrcode directories
 # app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/public", StaticFiles(directory="backend/app/public"), name="public")
-app.mount("/templates", StaticFiles(directory="backend/app/templates"), name="templates")
+app.mount("/public", StaticFiles(directory="app/public"), name="public")
+
+app.mount("/templates", StaticFiles(directory="app/templates"), name="templates")
 
 # Enable CORS for development only
 app.add_middleware(

@@ -1,8 +1,8 @@
 # backend/app/routers/entry_inventory_curd.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.models.entry_inventory_model import EntryInventory
-from backend.app.schema.entry_inventory_schema import (
+from app.models.entry_inventory_model import EntryInventory
+from app.schema.entry_inventory_schema import (
     EntryInventoryCreate, 
     EntryInventoryUpdate,
     EntryInventoryOut,
@@ -21,7 +21,7 @@ import gspread
 import requests
 from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
-from backend.app.interface.entry_inverntory_interface import EntryInventoryInterface
+from app.interface.entry_inverntory_interface import EntryInventoryInterface
 
 # ------------------------
 # CRUD OPERATIONS

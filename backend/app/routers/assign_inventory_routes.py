@@ -1,15 +1,15 @@
 # backend/app/routers/Assign_inventory_routes.py
 
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.assign_inventory_schema import (
+from app.schema.assign_inventory_schema import (
     AssignmentInventoryCreate,
     AssignmentInventoryUpdate,
     AssignmentInventoryRedisOut,
     RedisSearchResult
 )
-from backend.app.models.assign_inventory_model import AssignmentInventory
-from backend.app.curd.assign_inventory_curd import AssignInventoryService
+from app.models.assign_inventory_model import AssignmentInventory
+from app.curd.assign_inventory_curd import AssignInventoryService
 
 import logging
 

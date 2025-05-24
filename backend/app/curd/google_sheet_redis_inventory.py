@@ -1,14 +1,14 @@
 # backend/app/curd/google_sheet_curd.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
 import gspread
 from google.oauth2.service_account import Credentials
 from starlette.requests import Request as StarletteRequest
-from backend.app.schema.entry_inventory_schema import (
+from app.schema.entry_inventory_schema import (
     GoogleSyncInventoryCreate,
     InventoryRedisOut
 )
-from backend.app.interface.entry_inverntory_interface import GoogleSyncInventoryInterface
+from app.interface.entry_inverntory_interface import GoogleSyncInventoryInterface
 from google.oauth2 import service_account
 from dotenv import load_dotenv
 

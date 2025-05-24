@@ -1,9 +1,9 @@
 # backend/app/crud/assign_inventory_crud.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.interface.assign_inventory_interface import AssignmentInventoryInterface
-from backend.app.models.assign_inventory_model import AssignmentInventory
-from backend.app.schema.assign_inventory_schema import (
+from app.interface.assign_inventory_interface import AssignmentInventoryInterface
+from app.models.assign_inventory_model import AssignmentInventory
+from app.schema.assign_inventory_schema import (
     AssignmentInventoryCreate,
     AssignmentInventoryRedisOut,
     RedisSearchResult

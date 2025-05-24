@@ -1,6 +1,6 @@
 #  backend/app/interface/inventory_updater.py
 from typing import Dict, Any
-from backend.app.schema.entry_inventory_schema import InventoryRedisOut
+from app.schema.entry_inventory_schema import InventoryRedisOut
 
 class InventoryUpdaterInterface:
     """Interface for InventoryUpdater"""

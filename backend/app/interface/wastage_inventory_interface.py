@@ -2,16 +2,16 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
-from backend.app.models.assign_inventory_model import AssignmentInventory
-from backend.app.schema.wastage_inventory_schema import (
+from app.models.assign_inventory_model import AssignmentInventory
+from app.schema.wastage_inventory_schema import (
     WastageInventoryCreate,
     WastageInventoryUpdate,
     WastageInventoryRedisOut,
     WastageInventorySearch,
 
 )
-from backend.app.models.wastege_inventory_model import WastageInventory
-from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
+from app.models.wastege_inventory_model import WastageInventory
+from app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
 from datetime import date
 

@@ -1,5 +1,5 @@
 #  backend/app/schema/entry_inventory_schema.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
 class EntryInventoryBase(BaseValidators,BaseModel):
     product_id: Optional[str] = None  

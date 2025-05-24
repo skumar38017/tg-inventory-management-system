@@ -1,7 +1,7 @@
 # backend/app/services/qrcode_service.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
+from app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
 from urllib.parse import urlparse
 
 class QRCodeService:

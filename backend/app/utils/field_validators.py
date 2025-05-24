@@ -1,5 +1,5 @@
 # backend/app/utils/field_validators.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
 class BaseValidators:
     """Contains reusable validators that can be inherited by different schemas"""

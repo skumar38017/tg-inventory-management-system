@@ -1,8 +1,8 @@
 # backend/app/api/endpoints/qrcode.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
-from backend.app.services.qrcode_service import QRCodeService
+from app.schema.qrcode_barcode_schema import InventoryQrCodeResponse
+from app.services.qrcode_service import QRCodeService
 from fastapi import Request
 # Set up the router
 router = APIRouter()

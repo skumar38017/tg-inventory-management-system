@@ -1,9 +1,9 @@
 # backend/app/api/endpoints/barcode.py
 
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 from fastapi import APIRouter, Depends, HTTPException, Request
-from backend.app.services.barcode_scanner_service import BarcodeScannerService
-from backend.app.schema.qrcode_barcode_schema import BarcodeScanResponse, BarcodeScan
+from app.services.barcode_scanner_service import BarcodeScannerService
+from app.schema.qrcode_barcode_schema import BarcodeScanResponse, BarcodeScan
 from pydantic import ValidationError
 from fastapi import UploadFile, File
 from PIL import Image

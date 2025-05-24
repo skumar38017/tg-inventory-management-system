@@ -1,6 +1,6 @@
 #  backend/app/utils/qr_code_generator.py
 
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 import urllib.request
 from urllib.parse import urlparse
 from qrcode.image.svg import SvgImage

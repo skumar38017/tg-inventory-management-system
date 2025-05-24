@@ -1,16 +1,16 @@
 #  backend/app/routers/wastage_inventory_routes.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.wastage_inventory_schema import (
+from app.schema.wastage_inventory_schema import (
     WastageInventoryCreate,
     WastageInventoryRedisOut,
     WastageInventoryUpdate,
     RedisSearchResult
 )
-from backend.app.models.wastege_inventory_model import WastageInventory
-from backend.app.curd.wastage_inventory_curd import WastageInventoryService
-from backend.app.interface.wastage_inventory_interface import WastageInventoryInterface
-from backend.app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
+from app.models.wastege_inventory_model import WastageInventory
+from app.curd.wastage_inventory_curd import WastageInventoryService
+from app.interface.wastage_inventory_interface import WastageInventoryInterface
+from app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse
 
 # Dependency to get the Wastage inventory service
 def get_Wastage_inventory_service(

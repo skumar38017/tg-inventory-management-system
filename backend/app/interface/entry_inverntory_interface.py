@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
 from fastapi import HTTPException, Request
-from backend.app.models.entry_inventory_model import EntryInventory
-from backend.app.schema.entry_inventory_schema import (
+from app.models.entry_inventory_model import EntryInventory
+from app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdateOut,
     EntryInventoryUpdate,

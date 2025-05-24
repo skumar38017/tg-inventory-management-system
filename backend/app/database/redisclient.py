@@ -7,7 +7,7 @@ from typing import AsyncGenerator, Optional
 from redis import asyncio as aioredis
 from redis.exceptions import RedisError
 
-from backend.app.config import REDIS_URL
+from app.config import REDIS_URL
 
 # Set up logging
 logger = logging.getLogger(__name__)

@@ -1,16 +1,16 @@
 #  backend/app/routers/to_event_routes.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.to_event_inventry_schma import (
+from app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate,
     ToEventUploadResponse,
     ToEventRedisOut,
     ToEventRedisUpdateOut,
     ToEventRedisUpdateIn
 )
-from backend.app.curd.to_event_inventry_curd import ToEventInventoryService
-from backend.app.interface.to_event_interface import ToEventInventoryInterface
-from backend.app.interface.inventory_updater_interface import InventoryUpdaterInterface
+from app.curd.to_event_inventry_curd import ToEventInventoryService
+from app.interface.to_event_interface import ToEventInventoryInterface
+from app.interface.inventory_updater_interface import InventoryUpdaterInterface
 
 # Dependency to get the to_event service
 def get_to_event_service(

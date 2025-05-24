@@ -1,6 +1,6 @@
 # backend/app/utils/transparent_barcode.py
 
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 import uuid
 import hashlib
 import os
@@ -12,7 +12,7 @@ from barcode.writer import ImageWriter
 import barcode
 from PIL import Image
 from io import BytesIO
-from backend.app import config
+from app import config
 import boto3
 from botocore.exceptions import ClientError
 

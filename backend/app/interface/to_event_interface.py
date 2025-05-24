@@ -2,8 +2,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
-from backend.app.models.to_event_inventry_model import ToEventInventory
-from backend.app.schema.to_event_inventry_schma import (
+from app.models.to_event_inventry_model import ToEventInventory
+from app.schema.to_event_inventry_schma import (
     ToEventInventoryBase,
     ToEventInventoryCreate,
     ToEventInventoryUpdate,

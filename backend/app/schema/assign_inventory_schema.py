@@ -1,8 +1,8 @@
 #  backend/app/schema/assign_inventory_schema
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
-from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
+from app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
+from app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
 
 
 

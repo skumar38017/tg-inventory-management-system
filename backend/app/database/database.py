@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from backend.app.config import SYNC_DB_URL, ASYNC_DB_URL
+from app.config import SYNC_DB_URL, ASYNC_DB_URL
 from sqlalchemy.exc import SQLAlchemyError
 import asyncio
 import time

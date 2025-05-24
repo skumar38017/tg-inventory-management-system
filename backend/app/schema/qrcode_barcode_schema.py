@@ -1,5 +1,5 @@
 #  backend/app/schema/qrcode_barcode_schema.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
 class InventoryQrCodeResponse(BaseValidators, BaseModel):
     company: Optional[str] = "Tagglabs Experiential PVT. LTD."

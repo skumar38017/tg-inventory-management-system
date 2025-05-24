@@ -1,5 +1,5 @@
 # backend/app/schema/inventory_ComboBox_schema.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
     
 class InventoryComboBoxItem(BaseModel):
     # Common fields

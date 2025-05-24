@@ -1,8 +1,8 @@
 #  backend/app/curd/to_event_inventry_curd.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.models.to_event_inventry_model import ToEventInventory
-from backend.app.schema.to_event_inventry_schma import (
+from app.models.to_event_inventry_model import ToEventInventory
+from app.schema.to_event_inventry_schma import (
     ToEventInventoryCreate, 
     ToEventRedisUpdateOut,
     ToEventRedisUpdateIn,
@@ -11,9 +11,9 @@ from backend.app.schema.to_event_inventry_schma import (
     RedisInventoryItem,
     ToEventRedisOut,
 )
-from backend.app.models.to_event_inventry_model import InventoryItem, ToEventInventory
-from backend.app.interface.to_event_interface import ToEventInventoryInterface
-from backend.app.interface.inventory_updater_interface import InventoryUpdaterInterface
+from app.models.to_event_inventry_model import InventoryItem, ToEventInventory
+from app.interface.to_event_interface import ToEventInventoryInterface
+from app.interface.inventory_updater_interface import InventoryUpdaterInterface
 
 # ------------------------
 # CRUD OPERATIONS

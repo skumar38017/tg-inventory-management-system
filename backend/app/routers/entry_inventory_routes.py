@@ -1,7 +1,7 @@
 # backend/app/routers/entry_inventory_routes.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.entry_inventory_schema import (
+from app.schema.entry_inventory_schema import (
     EntryInventoryCreate,
     EntryInventoryUpdate,
     EntryInventoryOut,
@@ -10,9 +10,9 @@ from backend.app.schema.entry_inventory_schema import (
     InventoryRedisOut
 )
 from fastapi import Depends, Request
-from backend.app.curd.entry_inverntory_curd import EntryInventoryService
-from backend.app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSyncService
-from backend.app.interface.entry_inverntory_interface import (
+from app.curd.entry_inverntory_curd import EntryInventoryService
+from app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSyncService
+from app.interface.entry_inverntory_interface import (
     EntryInventoryInterface
 )
 

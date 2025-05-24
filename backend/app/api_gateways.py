@@ -1,7 +1,7 @@
 # backend/app/api_gateways.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.routers import (
+from app.routers import (
     assign_inventory_routes,
     entry_inventory_routes,
     wastage_inventory_routes,
@@ -9,8 +9,8 @@ from backend.app.routers import (
     from_event_router,
 
 )
-from  backend.app.barcode_route import qr_code
-from backend.app.barcode_route import barcode, list_barcode_qr_code
+from app.barcode_route import qr_code
+from app.barcode_route import barcode, list_barcode_qr_code
 
 class APIGateway:
     """Centralized API Gateway for managing all routes and endpoints"""

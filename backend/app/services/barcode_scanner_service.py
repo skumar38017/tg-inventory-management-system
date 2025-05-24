@@ -1,8 +1,8 @@
 # backend/app/services/barcode_scanner_service.py
 
-from backend.app.utils.common_imports import *
-from backend.app.interface.barcode_scanner_interface import BarcodeScannerInterface
-from backend.app.schema.qrcode_barcode_schema import BarcodeScan, BarcodeScanResponse
+from app.utils.common_imports import *
+from app.interface.barcode_scanner_interface import BarcodeScannerInterface
+from app.schema.qrcode_barcode_schema import BarcodeScan, BarcodeScanResponse
 import json
 
 class BarcodeScannerService(BarcodeScannerInterface):

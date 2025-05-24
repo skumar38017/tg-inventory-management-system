@@ -1,11 +1,11 @@
 #  backend/app/schema/wastage_inventory_schema
 
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
-from backend.app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
-from backend.app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
-from backend.app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
-from backend.app.models.wastege_inventory_model import WastageInventory
+from app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
+from app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
+from app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
+from app.models.wastege_inventory_model import WastageInventory
 
 class WastageInventoryBase(BaseModel):
     assign_to: Optional[str] = None

@@ -64,19 +64,19 @@ from google.auth.transport.requests import Request
 from dotenv import load_dotenv
 
 # Local Application Imports
-from backend.app.database.base import Base
-from backend.app.database.database import get_async_db
-from backend.app.database.redisclient import (
+from app.database.base import Base
+from app.database.database import get_async_db
+from app.database.redisclient import (
     get_redis, get_redis_dependency, 
     init_redis, check_redis_connectivity_with_retry, 
     close_redis
 )
-from backend.app import config
-from backend.app.utils.date_utils import UTCDateUtils
-from backend.app.utils.field_validators import BaseValidators
-from backend.app.utils.barcode_generator import DynamicBarcodeGenerator
-from backend.app.utils.qr_code_generator import QRCodeGenerator
-from backend.app.utils.inventory_updater import InventoryUpdater
+from app import config
+from app.utils.date_utils import UTCDateUtils
+from app.utils.field_validators import BaseValidators
+from app.utils.barcode_generator import DynamicBarcodeGenerator
+from app.utils.qr_code_generator import QRCodeGenerator
+from app.utils.inventory_updater import InventoryUpdater
 
 # Configure logging
 logger = logging.getLogger(__name__)

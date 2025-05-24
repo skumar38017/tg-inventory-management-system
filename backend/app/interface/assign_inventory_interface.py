@@ -2,8 +2,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession 
 from typing import List, Optional
-from backend.app.models.assign_inventory_model import AssignmentInventory
-from backend.app.schema.assign_inventory_schema import (
+from app.models.assign_inventory_model import AssignmentInventory
+from app.schema.assign_inventory_schema import (
     AssignmentInventoryCreate,
     AssignmentInventoryUpdate,
     AssignmentInventoryRedisOut,

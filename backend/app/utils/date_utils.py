@@ -1,5 +1,5 @@
 #  backend/app/utils/date_utils.py
-from backend.app.utils.common_imports import *
+from app.utils.common_imports import *
 
 UTC_TIMEZONE = timezone.utc
 

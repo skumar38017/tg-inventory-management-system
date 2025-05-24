@@ -1,8 +1,8 @@
 #  backend/app/interface/qrcode_interface.py
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
-from backend.app.schema.qrcode_barcode_schema import InventoryQrCode, InventoryQrCodeResponse
-from backend.app.services.qrcode_service import QRCodeService
+from app.schema.qrcode_barcode_schema import InventoryQrCode, InventoryQrCodeResponse
+from app.services.qrcode_service import QRCodeService
 
 class QRCodeInterface(BaseModel):
     """Interface for QR code operations"""
