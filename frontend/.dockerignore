@@ -19,6 +19,7 @@ dist/
 # Git and other VCS
 .git/
 .gitignore
+frontend.spec
 
 # OS / Editor / IDE files
 .DS_Store
@@ -31,6 +32,7 @@ Thumbs.db
 # Docker artifacts
 Dockerfile
 .dockerignore
+command.txt
 
 # Jupyter notebooks checkpoints
 .ipynb_checkpoints/
