@@ -147,9 +147,9 @@ def display_inventory_items(items):
             ("Returned Date", 25),
             ("On Event", 10),
             ("In Office", 10),
-            ("In Warehouse", 15),
-            ("Issued Qty", 15),
-            ("Balance Qty", 15),
+            ("In Warehouse", 25),
+            ("Issued Qty", 20),
+            ("Balance Qty", 20),
             ("Submitted By", 20),
             ("Created At", 35),
             ("Updated At", 35),
@@ -247,7 +247,7 @@ def perform_search():
                 f"Barcode: {project.get('barcode', '')}\n"
             )
             search_results_listbox.insert(tk.END, header)
-            search_results_listbox.insert(tk.END, "-"*120)
+            search_results_listbox.insert(tk.END, "-"*125)
             search_results_listbox.insert(tk.END, "Inventory Items:")
             
             # Define inventory item headers
@@ -261,10 +261,10 @@ def perform_search():
                 ("Comments", 20),
                 ("Total", 8),
                 ("Unit", 8),
-                ("Per Unit Power", 15),
+                ("Per Unit Power", 25),
                 ("Total Power", 12),
                 ("Status", 12),
-                ("POC", 15),
+                ("POC", 25),
                 ("Item ID", 38)
             ]
             
@@ -343,9 +343,9 @@ def perform_search():
                 ("Returned Date", 25),
                 ("On Event", 10),
                 ("In Office", 10),
-                ("In Warehouse", 15),
-                ("Issued Qty", 15),
-                ("Balance Qty", 15),
+                ("In Warehouse", 25),
+                ("Issued Qty", 20),
+                ("Balance Qty", 20),
                 ("Submitted By", 20),
                 ("Created At", 35),
                 ("Updated At", 35),
@@ -671,8 +671,8 @@ def create_header_frame(root):
     
     # Row 2: Company info (top-right-corner)
     company_info = """Tagglabs Experiential Pvt. Ltd.
-Sector 49, Gurugram, Haryana 122018
-201, Second Floor, Eros City Square Mall
+Sector 49, Gurugram, Haryana 122518
+251, Second Floor, Eros City Square Mall
 Eros City Square
 098214 43358"""
     
@@ -955,7 +955,7 @@ def create_list_frames(root):
         text="Clear", 
         command=clear_fields,
         font=('Helvetica', 10),
-        width=15
+        width=25
     )
     clear_button.pack(side='left', padx=2)
 
@@ -964,7 +964,7 @@ def create_list_frames(root):
         text="Refresh", 
         command=lambda: refresh_form(scrollable_frame, header_labels),
         font=('Helvetica', 10),
-        width=15
+        width=25
     )
     refresh_button.pack(side='left', padx=2)
 
@@ -974,7 +974,7 @@ def create_list_frames(root):
         text="Add Item", 
         command=lambda: create_inventory_item(scrollable_frame, header_labels),
         font=('Helvetica', 10, 'bold'),
-        width=15
+        width=25
     )
     add_button.pack(side='left', padx=5, expand=True)
 
@@ -984,7 +984,7 @@ def create_list_frames(root):
         text="Remove Row", 
         command=lambda: remove_last_row(scrollable_frame),
         font=('Helvetica', 10, 'bold'),
-        width=15
+        width=25
     )
     remove_row_button.pack(side='left', padx=5)
 
@@ -993,7 +993,7 @@ def create_list_frames(root):
         text="Add Row", 
         command=lambda: add_new_row(scrollable_frame, header_labels),
         font=('Helvetica', 10, 'bold'),
-        width=15
+        width=25
     )
     add_row_button.pack(side='left', padx=2)
         
@@ -1053,15 +1053,15 @@ def create_list_frames(root):
     global search_inventory_id_entry, search_project_id_entry, search_product_id_entry
 
     tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=5)
-    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=20)
+    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=25)
     search_inventory_id_entry.grid(row=0, column=1, sticky='w', padx=5)
 
     tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=5)
-    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=20)
+    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=25)
     search_project_id_entry.grid(row=0, column=3, sticky='w', padx=5)
 
     tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 9)).grid(row=0, column=4, sticky='e', padx=5)
-    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=20)
+    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=25)
     search_product_id_entry.grid(row=0, column=5, sticky='w', padx=5)
 
     # Search button

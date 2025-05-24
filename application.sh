@@ -65,7 +65,7 @@ sleep 1
 # Start Docker containers
 log "Starting Docker containers..."
 docker compose up -d || { log "Failed to start Docker containers"; exit 1; }
-sleep 6
+sleep 5
 
 # Check if port 8000 is in use
 log "Checking if port 8000 is in use..."
@@ -89,7 +89,7 @@ sleep 1
 # Start backend using uvicorn in background
 log "Starting FastAPI backend with uvicorn..."
 nohup uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload >> "$PROJECT_DIR/backend.log" 2>&1 &
-sleep 10
+sleep 5
 
 # Final permission check
 log "Running final permission check..."
