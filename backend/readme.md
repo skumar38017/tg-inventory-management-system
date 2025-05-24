@@ -52,44 +52,44 @@ backend/
 
 
 
-# 🛠️ Setup Guide
+## 🛠️ Setup Guide
 
-##### Step 1: Clone the Repository
+## Step 1: Clone the Repository
 
 ````bash
 git clone [Repo](https://github.com/skumar38017/tg-inventory-management-system.git)
 cd tg-inventory-management-system
 ````
 
-# Step 2: Setup Database and Redis Server (Optional) if Required
+## Step 2: Setup Database and Redis Server (Optional) if Required
 
 ✅ For `Linux`
 
-1. # Install PostgreSQL
+1. ### Install PostgreSQL
 
 ```bash
 sudo apt-get install postgresql postgresql-contrib
 ```
 
-2. # Create a new PostgreSQL user
+2. ### Create a new PostgreSQL user
 
 ```bash
 sudo -u postgres createuser -s tg-inventory
 ```
 
-3. # Create a new PostgreSQL database
+3. ### Create a new PostgreSQL database
 
 ```bash
 sudo -u postgres createdb -O tg-inventory tg-inventory
 ```
 
-4. # Connect to PostgreSQL
+4. ### Connect to PostgreSQL
 
 ```bash
 psql -h localhost -p 5432 -U postgres
 ```
 
-5. # Inside psql:
+5. ### Inside psql:
 
 ```bash
 CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
@@ -104,25 +104,25 @@ ALTER ROLE "tg-inventory" WITH
   BYPASSRLS;
 ```
 
-6. # Connect to PostgreSQL Database
+6. ### Connect to PostgreSQL Database
 
 ```bash
 psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
 ```
 
-7. # Install Redis
+7. ### Install Redis
 
 ```bash
 sudo apt-get install redis-server
 ```
 
-8. # Connect to Redis
+8. ### Connect to Redis
 
 ```bash
 redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
 ```
 
-9. # Flush Redis
+9. ### Flush Redis
 
 ```bash
 redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25 FLUSHDB
@@ -130,26 +130,26 @@ redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25 FLUSHDB
 
 ✅ For `Windows`
 
-1. # Install PostgreSQL
+1. ### Install PostgreSQL
 
 Install PostgreSQL from [PostgreSQL](https://www.postgresql.org/download/windows/) website.
 
-2. # Create a new PostgreSQL user
+2. ### Create a new PostgreSQL user
 ```cmd
 sudo -u postgres createuser -s tg-inventory
 ```
 
-3. # Create a new PostgreSQL database
+3. ### Create a new PostgreSQL database
 ```cmd
 sudo -u postgres createdb -O tg-inventory tg-inventory
 ```
 
-4. # Connect to PostgreSQL
+4. ### Connect to PostgreSQL
 ```cmd
 psql -h localhost -p 5432 -U postgres
 ```
 
-5. # Inside psql:
+5. ### Inside psql:
 ```cmd
 CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
 CREATE DATABASE "tg-inventory" OWNER "tg-inventory";
@@ -163,19 +163,19 @@ ALTER ROLE "tg-inventory" WITH
   BYPASSRLS;
 ```
 
-6. # Connect to PostgreSQL Database
+6. ### Connect to PostgreSQL Database
 ```cmd
 psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
 ```
 
-7. # Install Redis for Windows
+7. ### Install Redis for Windows
 Redis does not officially support Windows, but you can use:
 
-(i) the Windows Subsystem for Linux (WSL) to run Redis on Windows
+* (i) the Windows Subsystem for Linux (WSL) to run Redis on Windows
 
-(ii) the Redis Desktop Manager to run Redis on Windows
+* (ii) the Redis Desktop Manager to run Redis on Windows
 
-(iii) the Redis Command Line Interface (CLI) to run Redis on Windows
+* (iii) the Redis Command Line Interface (CLI) to run Redis on Windows
 
 first, install the Redis Desktop Manager from [Redis](https://redis.com/try-free/) website.
 
@@ -195,17 +195,17 @@ fourth, open the Redis Desktop Manager and click on the "Redis" server to connec
 
 fifth, run the following command in the Redis Desktop Manager to flush the Redis database:
 
-8. # Connect to Redis
+8. ### Connect to Redis
 ```cmd
 redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
 ```
 
-9. # Flush Redis   
+9. ### Flush Redis   
 ```cmd
 redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25 FLUSHDB
 ```
 
-##### Step 3: Set Up Python Environment
+## Step 3: Set Up Python Environment
 ✅ For `Linux`
 
 1. Install Python 3.11:
@@ -256,9 +256,9 @@ pip install -r requirements.txt
     pip install -r requirements.txt
     ```
 
-##### Setup `.env` file according to ```.env.sample```
+***Setup `.env` file according to ```.env.sample```***
 
-# Step 4: Migrate Database
+## Step 4: Migrate Database
 1. Generate and apply new migrations and verify into database
 
 ```bash
@@ -266,18 +266,18 @@ export PYTHONPATH=$(pwd)
 PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
 PYTHONPATH=./ alembic upgrade head
 ```
-2. # Connect to PostgreSQL Database
+2. ### Connect to PostgreSQL Database
 
 ```bash
 psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
 ```
-3. # Inside psql to check migrate table
+3. ### Inside psql to check migrate table
 
 ```bash
 \dt
 ```
 
-##### Step 4: Run the Backend server
+## Step 5: Run the Backend server
 
 ```bash
 cd tg-inventory-management-system
