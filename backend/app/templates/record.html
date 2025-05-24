@@ -122,6 +122,18 @@
             width: 300px;
             height: 60px;
         }
+        .related-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .related-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
@@ -222,11 +234,53 @@
             <div class="detail-value">{{ submitted_by }}</div>
         </div>
         {% endif %}
+
+        {% if assignments %}
+        <div class="related-section" style="margin-top: 30px;">
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">Assignment History</h3>
+            {% for assignment in assignments %}
+            <div class="detail-row">
+                <div class="detail-label">Assignment {{ loop.index }}</div>
+                <div class="detail-value">
+                    <div>Assigned to: {{ assignment.employee_name or 'Unknown' }}</div>
+                    <div>Project: {{ assignment.project_name or 'N/A' }}</div>
+                    <div>Date: {{ assignment.assigned_date or 'N/A' }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         
-        {% if created_at %}
-        <div class="detail-row">
-            <div class="detail-label">Created At</div>
-            <div class="detail-value">{{ created_at }}</div>
+        {% if event_inventory %}
+        <div class="related-section" style="margin-top: 30px;">
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">Event History</h3>
+            {% for event in event_inventory %}
+            <div class="detail-row">
+                <div class="detail-label">Event {{ loop.index }}</div>
+                <div class="detail-value">
+                    <div>Project: {{ event.project_id or 'N/A' }}</div>
+                    <div>Project: {{ event.project_name or 'N/A' }}</div>
+                    <div>Event Date: {{ event.event_date or 'N/A' }}</div>
+                    <div>Status: {{ event.status or 'N/A' }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if wastage_inventory %}
+        <div class="related-section" style="margin-top: 30px;">
+            <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">Wastage Records</h3>
+            {% for wastage in wastage_inventory %}
+            <div class="detail-row">
+                <div class="detail-label">Record {{ loop.index }}</div>
+                <div class="detail-value">
+                    <div>Reason: {{ wastage.wastage_reason or 'N/A' }}</div>
+                    <div>Date: {{ wastage.wastage_date or 'N/A' }}</div>
+                    <div>Status: {{ wastage.wastage_status or 'N/A' }}</div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
         {% endif %}
         
@@ -237,11 +291,13 @@
         </div>
         {% endif %}
     </div>
+
     {% if barcode_url %}
     <img class="barcode" src="{{ barcode_url }}" alt="Item Barcode" 
          onerror="console.error('Failed to load Barcode:', this.src)" loading="lazy">
     <div style="display:none;">Barcode URL: {{ barcode_url }}</div>
     {% endif %}
+    
     <div class="timestamp">
         Generated on {{ now }}
     </div>
