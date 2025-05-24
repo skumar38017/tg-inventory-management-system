@@ -1,53 +1,83 @@
-1️⃣ Delete all migration files (except __init__.py)
+✅ 1️⃣ Clean Project & Delete Migrations
+
+# Delete compiled Python files and __pycache__
 find . -name "*.pyc" -exec rm -f {} \;
 find . -type d -name "__pycache__" -exec rm -r {} +
 
-
+# Delete all migration files except __init__.py
 find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
 find . -path "*/migrations/*.pyc" -delete
-rm db.sqlite3
 
+# Delete local database (if using SQLite)
+rm -f db.sqlite3
 
---> Verify Django installation integrity:
+# Check Django installation path
 python -c "import django; print(django.__path__)"
 
---> This should show you where Django is installed. Check that the migrations module exists:
+# Verify the migrations module exists
 ls -l $(python -c "import django; print(django.__path__[0] + '/db/migrations')")
 
-
 --------------------------------------------------------------------
+✅ 3️⃣ Clear pip cache & Reinstall Packages
+
 # Completely clear pip cache
 pip cache purge
 
-# Reinstall everything with --no-cache-dir and --force-reinstall
+# Reinstall dependencies without cache
 pip install --no-cache-dir --force-reinstall -r requirements.txt
+--------------------------------------------------------------------
 
 
-2️⃣ Recreate migrations
+✅ 4️⃣ Recreate Alembic Migrations
+# Initialize Alembic (only if not already done)
 alembic init alembic
 
-alembic revision --autogenerate -m "Initial migration"
-rm alembic/versions/bc58965f1ce9_add_wastage_migration.py
-rm alembic/versions/902ae2280c62_add_wastage_migration.py
-psql -h localhost -p 5432 -U tg-inventory -d tg-inventory -c "DELETE FROM alembic_version;"
-
+# Clear old versioned migrations
 rm -rf alembic/versions/*
 
+# Generate and apply new migrations
+PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
+PYTHONPATH=./ alembic upgrade head
+
+# Optional: If another revision is needed
+alembic revision --autogenerate -m "Fix missing revision"
 alembic upgrade head
+
+# Check migration history
 alembic history --verbose
+
+# Downgrade one step (optional for testing)
 alembic downgrade -1
 
+# Clear Alembic version from DB (last resort)
+psql -h localhost -p 5432 -U tg-inventory -d tg-inventory -c "DELETE FROM alembic_version;"
 
-7️⃣ Run Redis
+# Enter the PostgreSQL
+psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
+--------------------------------------------------------------------
+
+✅ 5️⃣ Redis Setup
+# Connect to local Redis
 redis-cli -h localhost -p 6379 -a Neon-Studioz-Holi-T25
+
+# Connect to remote Redis (DB 1)
 redis-cli -h 192.168.192.3 -p 6379 -a Neon-Studioz-Holi-T25 -n 1
+
+# Flush DB 1 on remote Redis
 redis-cli -h 192.168.192.3 -p 6379 -a Neon-Studioz-Holi-T25 -n 1 FLUSHDB
 
+--------------------------------------------------------------------
 
-8️⃣ PostgreSQL
+✅ 6️⃣ PostgreSQL Setup
+
+-- Connect via psql:
+psql -h localhost -p 5432 -U postgres
+
+-- Inside psql:
 CREATE ROLE "tg-inventory" WITH LOGIN PASSWORD 'tg-inventory';
 CREATE DATABASE "tg-inventory" OWNER "tg-inventory";
 GRANT ALL PRIVILEGES ON DATABASE "tg-inventory" TO "tg-inventory";
+
 ALTER ROLE "tg-inventory" WITH
   SUPERUSER
   CREATEDB
@@ -56,35 +86,12 @@ ALTER ROLE "tg-inventory" WITH
   BYPASSRLS;
 
 
-
-9️⃣ PostgreSQL
+✅ 7️⃣ Connect to PostgreSQL Database
 psql -h localhost -p 5432 -U tg-inventory -d tg-inventory
 
-python manage.py makemigrations 
-
-
-
 ---------------------------------------------------------------
+✅ 8️⃣ Run the FastAPI App with Uvicorn
 export PYTHONPATH=$(pwd)
 uvicorn backend.app.main:app --reload
 
-PYTHONPATH=./ alembic revision --autogenerate -m "Initial migration"
-
-PYTHONPATH=./ alembic upgrade head
-alembic revision --autogenerate -m "Fix missing revision"
-
-
-
 ---------------------------------------------------------------
-# Build with console visible for debugging
-pyinstaller frontend.spec
-
-# Use PyInstaller for window
-wine pyinstaller --onefile --windowed --icon=logo.ico app/entry_inventory.py
-
-For Production Release:
-# Clean previous builds
-rm -rf build/ dist/
-
-# Build with all security optimizations
-pyinstaller --onefile --noconsole --icon=logo.ico frontend.spec

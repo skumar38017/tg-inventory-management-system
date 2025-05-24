@@ -169,3 +169,4 @@ aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/barcode/assignment_
 
 aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/qrcode/assignment_2023-01-31_12-00-00.png
 
+

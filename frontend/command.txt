@@ -3,3 +3,16 @@
 
   python frontend/app/entry_inventory.py
 
+
+# Build with console visible for debugging
+pyinstaller frontend.spec
+
+# Use PyInstaller for window
+wine pyinstaller --onefile --windowed --icon=logo.ico app/entry_inventory.py
+
+For Production Release:
+# Clean previous builds
+rm -rf build/ dist/
+
+# Build with all security optimizations
+pyinstaller --onefile --noconsole --icon=logo.ico frontend.spec
