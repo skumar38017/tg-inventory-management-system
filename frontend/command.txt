@@ -7,9 +7,10 @@ python frontend/app/entry_inventory.py
 
 2. pull the image from ECR
 docker pull 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest
+docker push 891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:frontend-v1
 
 
-4. Run the image
+3. Run the image
 
 On Linux:
 xhost +local:docker
@@ -17,10 +18,40 @@ docker run -it --rm \
   --network host \
   -e DISPLAY=$DISPLAY \
   -e PYTHONPATH=/app \
+  -e USER_ID=$(id -u) \
+  -e GROUP_ID=$(id -g) \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+  -v /home/$USER:/host/home/$USER \
+  -v /tmp:/host/tmp \
+  891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:frontend-latest \
+  python app/entry_inventory.py
+
+            OR
+
+xhost +local:docker
+docker run -it --rm \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -e PYTHONPATH=/app \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v /:/host  \
+  891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:frontend-latest \
   python app/entry_inventory.py
 
             OR
 
 bash run-frontend.sh
+
+            OR
+bash application.sh
+
+
+##########################################################
+# S3
+#############################################################
+aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/barcode
+aws s3 ls s3://tg-inventory-management-management-system-prod-us-east-1/qrcode
+
+aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/barcode/assignment_2023-01-31_12-00-00.png
+
+aws s3 ls s3://tg-inventory-management-system-prod-us-east-1/qrcode/assignment_2023-01-31_12-00-00.png

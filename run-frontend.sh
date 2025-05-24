@@ -102,6 +102,6 @@ else
     -v /tmp/.X11-unix:/tmp/.X11-unix \
     -v /home/$USER:/host/home/$USER \
     -v /tmp:/host/tmp \
-    891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:latest \
+    891377266155.dkr.ecr.ap-south-1.amazonaws.com/tg/inventory:frontend-latest \
     python app/entry_inventory.py
 fi
