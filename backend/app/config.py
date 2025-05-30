@@ -46,7 +46,7 @@ SYNC_DB_URL=f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{
 ASYNC_DB_URL=f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 # Build the full path to credentials file
-credentials_path = os.getenv("GOOGLE_SERVICE_ACCOUNT", "app/credentials/users/office-inventory-457815-933d2b7634a8.json")
+credentials_path = os.getenv("GOOGLE_SERVICE_ACCOUNT", "/app/credentials/users/office-inventory-457815-933d2b7634a8.json")
 SERVICE_ACCOUNT_FILE = os.path.join(BASE_DIR, credentials_path)
 
 # Verify the file exists at startup

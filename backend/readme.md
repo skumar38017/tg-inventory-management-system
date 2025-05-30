@@ -58,7 +58,7 @@ backend/
 
 ````bash
 git clone [Repo](https://github.com/skumar38017/tg-inventory-management-system.git)
-cd tg-inventory-management-system/backend
+cd tg-inventory-management-system
 ````
 
 ## Step 2: Setup Database and Redis Server (Optional) if Required
@@ -211,13 +211,14 @@ redis-cli -h `localhost` -p 6379 -a password FLUSHDB
 1. Install Python 3.11:
 
 ```bash
-sudo apt install python3.11
+sudo apt install python3.11 -y
 sudo apt install python-is-python3 -y
 ```
 
 2. Create a virtual environment:
 
 ```bash
+cd tg-inventory-management-system
 python3 -m venv venv
 ```
 
@@ -230,6 +231,7 @@ source venv/bin/activate
 4. Install dependencies:
 
 ```bash
+cd tg-inventory-management-system/backend
 pip install -r requirements.txt
 ```
 
@@ -243,6 +245,7 @@ pip install -r requirements.txt
     ```
 3. Create a virtual environment:
     ```bash
+    cd tg-inventory-management-system
     python -m venv venv
     ```
 4. `Activate` the virtual environment:
@@ -253,6 +256,7 @@ pip install -r requirements.txt
 5. Install dependencies:
 
     ```cmd
+    cd tg-inventory-management-system/backend
     pip install -r requirements.txt
     ```
 

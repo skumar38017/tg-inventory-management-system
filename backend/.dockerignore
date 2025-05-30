@@ -8,6 +8,7 @@ __pycache__/
 env/
 venv/
 .venv/
+.env
 
 # Distribution / packaging
 *.egg-info/
@@ -52,3 +53,4 @@ version.txt
 README.md
 readme.MD
 readme.md
+credentials/

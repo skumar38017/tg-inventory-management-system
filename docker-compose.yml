@@ -40,6 +40,7 @@ services:
         # Remove vm.overcommit_memory from redis.conf to prevent warnings
         sed -i '/vm.overcommit_memory/d' /usr/local/etc/redis/redis.conf
         exec redis-server /usr/local/etc/redis/redis.conf
+        command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
     healthcheck:
       test: ["CMD", "redis-cli", "--user", "${REDIS_USER}", "--pass", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -50,31 +51,28 @@ services:
       nofile:
         soft: 100032
         hard: 100032
-
-  # frontend:
-  #   container_name: ${FRONTEND_CONTAINER_NAME:-frontend}
-  #   image: ${IMAGE}:latest
-  #   environment:
-  #     - DISPLAY=${DISPLAY:-host.docker.internal:0}
-  #     - PYTHONPATH=/app
-  #     - BACKEND_URL=${BACKEND_URL:-http://localhost:8000/}
-  #     - API_BASE_URL=${API_BASE_URL:-http://localhost:8000/api/v1/}
-  #     - POSTGRES_HOST=postgres
-  #     - REDIS_HOST=redis
-  #   volumes:
-  #     - /tmp/.X11-unix:/tmp/.X11-unix  # For Linuxok 
-  #   command: python app/entry_inventory.py 
-  #   # Windows compatibility requires host.docker.internal
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-  #   # Use network_mode: host for Linux, bridge for Windows
-  #   network_mode: ${NETWORK_MODE:-bridge}
-  #   stdin_open: true
-  #   tty: true
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   restart: unless-stopped
+  backend:
+    image: ${IMAGE_NAME}
+    container_name: ${BACKEND_CONTAINER_NAME}
+    ports:
+      - "${BACKEND_PORT:-8000}:${BACKEND_HTTP_PORT:-8000}"
+    depends_on:
+      - redis
+      - postgres
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@${REDIS_CONTAINER_NAME}:${REDIS_HTTP_PORT}/{REDIS_DB_RESULT}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_CONTAINER_NAME}:${POSTGRES_HTTP_PORT}/${POSTGRES_DB}
+    restart: unless-stopped
+    volumes:
+      - /backend/app/credentials/users:/app/app/credentials/users:ro 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:
