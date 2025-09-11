@@ -596,11 +596,8 @@ def upload_inventory_with_message():
 #  Adjust UI elements based on screen size
 def configure_responsive_grid():
     """Adjust UI elements based on screen size"""
-    screen_width = root.winfo_screenwidth()
-    font_size = max(6, screen_width // 100)
-
-    clock_label.config(font=('Helvetica', 8))
-    company_label.config(font=('Helvetica', 7))
+    clock_label.config(font=('Helvetica', 12, 'bold'))
+    company_label.config(font=('Helvetica', 10))
 
 # ==============================
 # Child window functions
@@ -642,7 +639,8 @@ def setup_main_window():
     """Configure the main application window"""
     global root
     root = tk.Tk()
-    root.title("Tagglabs's Inventory")
+    root.title("Tagglabs Inventory Management System")
+    root.configure(bg='#f0f0f0')  # Light gray background
     
     # Use the imported maximize_window function
     maximize_window(root)
@@ -656,8 +654,8 @@ def open_reveal_window():
 #  Create and configure the header frame with clock and company info
 def create_header_frame(root):
     """Create and configure the header frame with clock and company info"""
-    header_frame = tk.Frame(root)
-    header_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=2)
+    header_frame = tk.Frame(root, bg='#2c3e50', relief='raised', bd=2)
+    header_frame.grid(row=0, column=0, sticky="nsew", padx=3, pady=1)
     
     # Configure grid for header frame
     header_frame.grid_columnconfigure(0, weight=1)
@@ -666,8 +664,9 @@ def create_header_frame(root):
     
     # Row 1: Clock (top-center)
     global clock_label
-    clock_label = tk.Label(header_frame, font=('Helvetica', 8))
-    clock_label.grid(row=0, column=0, sticky='n', pady=(0,0))
+    clock_label = tk.Label(header_frame, font=('Helvetica', 14, 'bold'), 
+                          fg='white', bg='#2c3e50')
+    clock_label.grid(row=0, column=0, sticky='n', pady=(8,0))
     
     # Row 2: Company info (top-right-corner)
     company_info = """Tagglabs Experiential Pvt. Ltd.
@@ -679,108 +678,139 @@ Eros City Square
     global company_label
     company_label = tk.Label(header_frame,
                            text=company_info,
-                           font=('Helvetica', 9),
-                           justify=tk.RIGHT)
-    company_label.grid(row=1, column=0, sticky='ne', pady=(0,5))
+                           font=('Helvetica', 10),
+                           justify='right',
+                           anchor='ne',
+                           fg='#ecf0f1', bg='#2c3e50')
+    company_label.grid(row=1, column=0, sticky='ne', pady=(0,8))
     
+    return header_frame
     return header_frame
 
 #  Create list frames with notebook tabs [Inventory List, New Entry, Search Results]
 def create_list_frames(root):
     """Create list frames with notebook tabs"""
-    # Calculate 65% of screen height
+    # Calculate appropriate height to ensure all elements fit
     screen_height = root.winfo_screenheight()
-    list_frame_height = int(screen_height * 0.65)
-    listbox_height = max(10, list_frame_height // 30)  # Dynamic row count
+    screen_width = root.winfo_screenwidth()
+    
+    # Reserve space for header (80px) and bottom buttons (100px)
+    available_height = screen_height - 180
+    list_frame_height = int(available_height * 0.8)
+    listbox_height = max(8, list_frame_height // 35)  # Adjusted for larger fonts
     
     notebook = ttk.Notebook(root)
-    notebook.grid(row=1, column=0, sticky="nsew", padx=5, pady=2)
+    notebook.grid(row=1, column=0, sticky="nsew", padx=3, pady=2)
+    
+    # Configure notebook style for modern tabs
+    style = ttk.Style()
+    style.theme_use('clam')
+    style.configure('TNotebook', background='#f0f0f0', borderwidth=0)
+    style.configure('TNotebook.Tab', 
+                   padding=[20, 12], 
+                   font=('Helvetica', 11, 'bold'),
+                   background='#bdc3c7',
+                   foreground='#2c3e50')
+    style.map('TNotebook.Tab',
+             background=[('selected', '#3498db'), ('active', '#5dade2')],
+             foreground=[('selected', 'white'), ('active', 'white')])
     
     # Frame 1: Inventory List
-    inventory_frame = tk.Frame(notebook)
+    inventory_frame = tk.Frame(notebook, bg='white')
     notebook.add(inventory_frame, text="Inventory List")
     
-    # Date range filter frame (only visible when in Inventory List tab) by clicking `filter` button
-    date_filter_frame = tk.Frame(inventory_frame)
-    date_filter_frame.pack(fill="x", pady=5)
+    # Date range filter frame with modern styling
+    date_filter_frame = tk.Frame(inventory_frame, bg='#ecf0f1', relief='raised', bd=1)
+    date_filter_frame.pack(fill="x", pady=8, padx=8)
     
     global from_date_entry, to_date_entry
     
     # Left side controls
-    left_frame = tk.Frame(date_filter_frame)
-    left_frame.pack(side="left", fill="x", expand=True)
+    left_frame = tk.Frame(date_filter_frame, bg='#ecf0f1')
+    left_frame.pack(side="left", fill="x", expand=True, padx=10, pady=8)
     
     # From Date
-    tk.Label(left_frame, text="From Date:", font=('Helvetica', 9)).grid(row=0, column=0, padx=5, sticky='e')
+    tk.Label(left_frame, text="From Date:", font=('Helvetica', 10, 'bold'), 
+            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, padx=5, sticky='e')
     from_date_entry = DateEntry(
         left_frame,
-        width=18,
-        background='darkblue',
+        width=15,
+        background='#3498db',
         foreground='white',
         borderwidth=2,
         date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 9))
+        font=('Helvetica', 10))
     from_date_entry.grid(row=0, column=1, padx=5, sticky='w')
-    from_date_entry.set_date(datetime.now().replace(day=1))  # First day of current month
+    from_date_entry.set_date(datetime.now().replace(day=1))
     
     # To Date
-    tk.Label(left_frame, text="To Date:", font=('Helvetica', 9)).grid(row=0, column=2, padx=5, sticky='e')
+    tk.Label(left_frame, text="To Date:", font=('Helvetica', 10, 'bold'), 
+            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, padx=5, sticky='e')
     to_date_entry = DateEntry(
         left_frame,
-        width=18,
-        background='darkblue',
+        width=15,
+        background='#3498db',
         foreground='white',
         borderwidth=2,
         date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 9))
+        font=('Helvetica', 10))
     to_date_entry.grid(row=0, column=3, padx=5, sticky='w')
-    to_date_entry.set_date(datetime.now())  # Current date
+    to_date_entry.set_date(datetime.now())
     
-    # Filter button
+    # Modern styled buttons
     filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
-                         font=('Helvetica', 9, 'bold'))
+                         font=('Helvetica', 10, 'bold'), height=1, width=10,
+                         bg='#27ae60', fg='white', relief='flat',
+                         activebackground='#2ecc71', activeforeground='white')
     filter_btn.grid(row=0, column=4, padx=5)
     
-    # Show All button
     show_all_btn = tk.Button(left_frame, text="Show All", command=update_main_inventory_list,
-                           font=('Helvetica', 9))
+                           font=('Helvetica', 10, 'bold'), height=1, width=10,
+                           bg='#f39c12', fg='white', relief='flat',
+                           activebackground='#e67e22', activeforeground='white')
     show_all_btn.grid(row=0, column=5, padx=5)
     
-    right_frame = tk.Frame(date_filter_frame)
-    right_frame.pack(side="right", fill="x")
+    right_frame = tk.Frame(date_filter_frame, bg='#ecf0f1')
+    right_frame.pack(side="right", fill="x", padx=10, pady=8)
 
     # Add Update button before Sync button
     update_btn = UpdatePopUpWindow.create_update_button(right_frame, root_window=root)
     update_btn.pack(side="right", padx=5)
 
-    # Upload button
+    # Upload button with modern styling
     upload_btn = tk.Button(
         right_frame, 
         text="Upload", 
         command=lambda: upload_inventory_with_message(),
-        font=('Helvetica', 9, 'bold')
+        font=('Helvetica', 10, 'bold'),
+        height=1, width=10,
+        bg='#9b59b6', fg='white', relief='flat',
+        activebackground='#8e44ad', activeforeground='white'
     )
     upload_btn.pack(side="right", padx=5)
 
-
-    # Main List Sync Item Container button
+    # Sync button with modern styling
     sync_btn = tk.Button(
         right_frame, 
         text="Sync", 
-        command=update_inventory_list,  # This should trigger the full refresh
-        font=('Helvetica', 9, 'bold')
+        command=update_inventory_list,
+        font=('Helvetica', 10, 'bold'),
+        height=1, width=10,
+        bg='#e74c3c', fg='white', relief='flat',
+        activebackground='#c0392b', activeforeground='white'
     )
     sync_btn.pack(side="right", padx=5)
 
     # Add Update button
     UpdatePopUpWindow.create_update_button(inventory_frame, root_window=root)
     
-    # Separator
-    ttk.Separator(inventory_frame, orient='horizontal').pack(fill="x", pady=5)
+    # Separator with modern styling
+    separator = ttk.Separator(inventory_frame, orient='horizontal')
+    separator.pack(fill="x", pady=8, padx=8)
         
-    # Main List Sync Item Container
-    list_container = tk.Frame(inventory_frame)
-    list_container.pack(fill="both", expand=True)
+    # Main List Container with modern styling
+    list_container = tk.Frame(inventory_frame, bg='white', relief='sunken', bd=1)
+    list_container.pack(fill="both", expand=True, padx=8, pady=(0,8))
     
     # Create horizontal scrollbar first (placed at bottom)
     h_scrollbar = tk.Scrollbar(
@@ -803,12 +833,14 @@ def create_list_frames(root):
     inventory_listbox = tk.Listbox(
         list_container,
         height=listbox_height,
-        font=('Courier New', 9),
+        font=('Consolas', 10),
         activestyle='none',
-        selectbackground='#4a6984',
+        selectbackground='#3498db',
         selectforeground='white',
-        bg='white',
-        fg='black',
+        bg='#ffffff',
+        fg='#2c3e50',
+        borderwidth=0,
+        highlightthickness=0,
         xscrollcommand=h_scrollbar.set,
         yscrollcommand=v_scrollbar.set
     )
@@ -817,9 +849,8 @@ def create_list_frames(root):
     # Initialize the inventory list
     update_main_inventory_list()
     
-    # Frame 2: New Entry - Updated to match requested layout
-    """Create the new entry tab with all its components"""
-    new_entry_frame = tk.Frame(notebook)
+    # Frame 2: New Entry
+    new_entry_frame = tk.Frame(notebook, bg='white')
     notebook.add(new_entry_frame, text="New Entry")
     
     # Main container for the form
@@ -1017,7 +1048,7 @@ def create_list_frames(root):
     added_items_listbox = tk.Listbox(
         list_container,
         height=10,
-        font=('Courier New', 9),  # Changed to fixed-width font for better alignment
+        font=('Courier New', 11),  # Changed to fixed-width font for better alignment
         selectbackground='#4a6984',
         selectforeground='white',
         xscrollcommand=h_scrollbar.set,
@@ -1035,41 +1066,55 @@ def create_list_frames(root):
     added_items_listbox.config(yscrollcommand=list_scrollbar.set)
 
     # Frame 3: Search Results
-    search_frame = tk.Frame(notebook)
+    search_frame = tk.Frame(notebook, bg='white')
     notebook.add(search_frame, text="Search Results")
 
-    # Search fields
-    search_fields_frame = tk.Frame(search_frame)
-    search_fields_frame.pack(fill="x", pady=5)
+    # Search fields with modern styling
+    search_fields_frame = tk.Frame(search_frame, bg='#ecf0f1', relief='raised', bd=1)
+    search_fields_frame.pack(fill="x", pady=8, padx=8)
+    
+    for i in range(8):
+        search_fields_frame.grid_columnconfigure(i, weight=1)
 
     global search_inventory_id_entry, search_project_id_entry, search_product_id_entry
 
-    tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=5)
-    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=25)
-    search_inventory_id_entry.grid(row=0, column=1, sticky='w', padx=5)
+    # Row 1: First three search fields
+    tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 10, 'bold'), 
+            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, sticky='e', padx=5, pady=8)
+    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 10), width=15,
+                                       relief='flat', bd=5)
+    search_inventory_id_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=8)
 
-    tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 9)).grid(row=0, column=2, sticky='e', padx=5)
-    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=25)
-    search_project_id_entry.grid(row=0, column=3, sticky='w', padx=5)
+    tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 10, 'bold'), 
+            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, sticky='e', padx=5, pady=8)
+    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 10), width=15,
+                                     relief='flat', bd=5)
+    search_project_id_entry.grid(row=0, column=3, sticky='ew', padx=5, pady=8)
 
-    tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 9)).grid(row=0, column=4, sticky='e', padx=5)
-    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 9), width=25)
-    search_product_id_entry.grid(row=0, column=5, sticky='w', padx=5)
+    tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 10, 'bold'), 
+            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=4, sticky='e', padx=5, pady=8)
+    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 10), width=15,
+                                     relief='flat', bd=5)
+    search_product_id_entry.grid(row=0, column=5, sticky='ew', padx=5, pady=8)
 
-    # Search button
+    # Search button with modern styling
     search_btn = tk.Button(search_fields_frame, text="Search", command=perform_search, 
-                        font=('Helvetica', 9, 'bold'))
-    search_btn.grid(row=0, column=6, sticky='e', padx=5)
+                        font=('Helvetica', 10, 'bold'), height=1, width=12,
+                        bg='#27ae60', fg='white', relief='flat',
+                        activebackground='#2ecc71', activeforeground='white')
+    search_btn.grid(row=0, column=6, sticky='ew', padx=5, pady=8)
 
-    # Add Reveal QR & Barcode button in top-right corner of search tab
+    # QR & Barcode button with modern styling
     reveal_btn = tk.Button(
         search_fields_frame,
-        text="Reveal QR & Barcode", 
-        font=('Helvetica', 9),
-        width=20,
+        text="QR & Barcode", 
+        font=('Helvetica', 10, 'bold'),
+        width=15, height=1,
+        bg='#9b59b6', fg='white', relief='flat',
+        activebackground='#8e44ad', activeforeground='white',
         command=open_reveal_window 
     )
-    reveal_btn.grid(row=0, column=7, sticky='e', padx=5, pady=5)
+    reveal_btn.grid(row=0, column=7, sticky='ew', padx=5, pady=8)
     # Make sure to adjust the column weights so the button stays on the right
     search_fields_frame.grid_columnconfigure(7, weight=1)
 
@@ -1101,7 +1146,7 @@ def create_list_frames(root):
     search_results_listbox = tk.Listbox(
         search_list_container,
         height=listbox_height,
-        font=('Courier New', 9),
+        font=('Courier New', 11),
         activestyle='none',
         selectbackground='#4a6984',
         selectforeground='white',
@@ -1115,40 +1160,44 @@ def create_list_frames(root):
     return notebook
 
 def create_bottom_frames(root):
-    """Create the bottom frames with action buttons"""
-    # Single bottom frame spanning full width
-    bottom_frame = tk.Frame(root)
-    bottom_frame.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
+    """Create the bottom frames with modern styled action buttons"""
+    bottom_frame = tk.Frame(root, bg='#34495e', relief='raised', bd=2)
+    bottom_frame.grid(row=2, column=0, sticky='ew', padx=3, pady=3)
     bottom_frame.grid_columnconfigure(0, weight=1)
     
-    # Container for all buttons
-    button_container = tk.Frame(bottom_frame)
-    button_container.pack(fill='x')
+    button_container = tk.Frame(bottom_frame, bg='#34495e')
+    button_container.pack(fill='x', padx=10, pady=8)
     
-    # Left side buttons
-    left_buttons_frame = tk.Frame(button_container)
+    left_buttons_frame = tk.Frame(button_container, bg='#34495e')
     left_buttons_frame.pack(side='left', fill='x', expand=True)
     
     buttons = [
-        ("To Event", open_to_event),
-        ("From Event", open_from_event),
-        ("Assigned", open_assign_inventory),
-        ("Damage/Waste/Not Working", open_damage_inventory)
+        ("To Event", open_to_event, '#e67e22'),
+        ("From Event", open_from_event, '#27ae60'),
+        ("Assigned", open_assign_inventory, '#3498db'),
+        ("Damage/Waste", open_damage_inventory, '#e74c3c')
     ]
     
-    for text, command in buttons:
+    for text, command, color in buttons:
         btn = tk.Button(
             left_buttons_frame,
             text=text,
             command=command,
-            font=('Helvetica', 9, 'bold'),
-            width=25
+            font=('Helvetica', 10, 'bold'),
+            width=18,
+            height=2,
+            bg=color,
+            fg='white',
+            relief='flat',
+            activebackground=color,
+            activeforeground='white'
         )
         btn.pack(side='left', padx=3, fill='x', expand=True)
     
-    # Right side quit button
     quit_button = tk.Button(button_container, text="Quit", command=quit_application,
-                          font=('Helvetica', 10, 'bold'), width=10)
+                          font=('Helvetica', 10, 'bold'), width=12, height=2,
+                          bg='#95a5a6', fg='white', relief='flat',
+                          activebackground='#7f8c8d', activeforeground='white')
     quit_button.pack(side='right', padx=5)
 
 def configure_grid(root):
