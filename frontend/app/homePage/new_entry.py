@@ -36,11 +36,91 @@ def create_inventory_item(scrollable_frame, header_labels):
 
 def remove_last_row(scrollable_frame):
     """Remove the last row from the form"""
-    pass  # Placeholder - implement as needed
+    # Get all widgets in the scrollable frame
+    widgets = scrollable_frame.grid_slaves()
+    
+    # Find the highest row number (excluding header row 0)
+    max_row = 0
+    for widget in widgets:
+        row = widget.grid_info()['row']
+        if row > max_row:
+            max_row = row
+    
+    # Don't remove if only header and one data row exist
+    if max_row <= 1:
+        messagebox.showwarning("Warning", "Cannot remove the last remaining row!")
+        return
+    
+    # Remove all widgets from the last row
+    for widget in widgets:
+        if widget.grid_info()['row'] == max_row:
+            widget.destroy()
+
+def create_field_for_row(scrollable_frame, field, col, row, var_name):
+    """Create a single field for a specific row - reusable function"""
+    if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
+        checkbox_vars[var_name] = tk.BooleanVar()
+        entries[var_name] = tk.Checkbutton(
+            scrollable_frame, 
+            variable=checkbox_vars[var_name],
+            font=('Helvetica', 24),
+            width=20,
+            height=1
+        )
+        entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
+    elif field in ['Purchase Date', 'Returned Date']:
+        date_frame = tk.Frame(scrollable_frame)
+        date_frame.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
+        
+        date_entry = DateEntry(
+            date_frame,
+            width=22,
+            background='darkblue',
+            foreground='white',
+            borderwidth=1,
+            date_pattern='yyyy-mm-dd',
+            font=('Helvetica', 24))
+        date_entry.delete(0, 'end')
+        date_entry.pack(side='left', fill=tk.X, expand=True)
+        
+        # Add clear button
+        clear_btn = tk.Button(
+            date_frame,
+            text="X",
+            command=lambda e=date_entry: e.delete(0, 'end'),
+            font=('Helvetica', 24),
+            width=3,
+            relief='flat',
+        )
+        clear_btn.pack(side='right', padx=(2,0))
+        
+        entries[var_name] = date_entry
+    else:
+        entries[var_name] = tk.Entry(
+            scrollable_frame, 
+            font=('Helvetica', 24), 
+            borderwidth=1,
+            relief='solid',
+            width=22
+        )
+        entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
+        
+        if field == 'InventoryID':
+            entries[var_name].insert(0, generate_inventory_id())
+            entries[var_name].config(state='readonly')
+        elif field == 'ProductID':
+            entries[var_name].insert(0, generate_product_id())
+            entries[var_name].config(state='readonly')
 
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row to the form"""
-    pass  # Placeholder - implement as needed
+    widgets = scrollable_frame.grid_slaves()
+    max_row = max([widget.grid_info()['row'] for widget in widgets])
+    new_row = max_row + 1
+    
+    for col, field in enumerate(header_labels):
+        var_name = f"{field.replace(' ', '')}_{new_row}"
+        create_field_for_row(scrollable_frame, field, col, new_row, var_name)
 
 def create_new_entry_tab(notebook):
     """Create the New Entry tab with all its components"""
@@ -106,7 +186,7 @@ def create_new_entry_tab(notebook):
                 scrollable_frame, 
                 variable=checkbox_vars[var_name],
                 font=('Helvetica', 24),
-                width=22,
+                width=20,
                 height=1
             )
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
