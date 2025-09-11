@@ -35,7 +35,7 @@ from PIL import Image, ImageTk
 from config import *
 from utils.field_validators import StatusEnum
 from widgets.inventory_combobox import InventoryComboBox
-from utils.window_utils import maximize_window, setup_clock_update, setup_window_closing
+from utils.window_utils import maximize_window, setup_clock_update, setup_window_closing, open_calendar_window, create_date_range_picker
 from widgets.generate_id import generate_inventory_id, generate_product_id
 
 # Configure logging

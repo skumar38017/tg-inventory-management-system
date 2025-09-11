@@ -668,7 +668,7 @@ def create_header_frame(root):
                           fg='white', bg='#2c3e50')
     clock_label.grid(row=0, column=0, sticky='n', pady=(8,0))
     
-    # Row 2: Company info (top-right-corner)
+    # Row 2: Company info (bottom-right)
     company_info = """Tagglabs Experiential Pvt. Ltd.
 Sector 49, Gurugram, Haryana 122518
 251, Second Floor, Eros City Square Mall
@@ -682,7 +682,7 @@ Eros City Square
                            justify='right',
                            anchor='ne',
                            fg='#ecf0f1', bg='#2c3e50')
-    company_label.grid(row=1, column=0, sticky='ne', pady=(0,8))
+    company_label.grid(row=1, column=0, sticky='ne', pady=(0,8), padx=10)
     
     return header_frame
     return header_frame
@@ -729,33 +729,10 @@ def create_list_frames(root):
     left_frame = tk.Frame(date_filter_frame, bg='#ecf0f1')
     left_frame.pack(side="left", fill="x", expand=True, padx=10, pady=8)
     
-    # From Date
-    tk.Label(left_frame, text="From Date:", font=('Helvetica', 10, 'bold'), 
-            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, padx=5, sticky='e')
-    from_date_entry = DateEntry(
-        left_frame,
-        width=15,
-        background='#3498db',
-        foreground='white',
-        borderwidth=2,
-        date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 10))
-    from_date_entry.grid(row=0, column=1, padx=5, sticky='w')
-    from_date_entry.set_date(datetime.now().replace(day=1))
+    global from_date_entry, to_date_entry
     
-    # To Date
-    tk.Label(left_frame, text="To Date:", font=('Helvetica', 10, 'bold'), 
-            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, padx=5, sticky='e')
-    to_date_entry = DateEntry(
-        left_frame,
-        width=15,
-        background='#3498db',
-        foreground='white',
-        borderwidth=2,
-        date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 10))
-    to_date_entry.grid(row=0, column=3, padx=5, sticky='w')
-    to_date_entry.set_date(datetime.now())
+    # Create standardized date range picker
+    from_date_entry, to_date_entry = create_date_range_picker(left_frame, bg_color='#ecf0f1', start_column=0, row=0)
     
     # Modern styled buttons
     filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
