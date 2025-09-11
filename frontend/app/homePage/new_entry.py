@@ -148,6 +148,46 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
             entries[var_name].insert(0, generate_product_id())
             entries[var_name].config(state='readonly')
 
+def setup_modern_scrolling(canvas, scrollable_frame):
+    """Setup modern touchpad-style scrolling and arrow key navigation"""
+    
+    def on_mousewheel(event):
+        """Handle mouse wheel scrolling (touchpad scrolling)"""
+        # Horizontal scrolling with Shift+scroll or touchpad horizontal gesture
+        if event.state & 0x1:  # Shift key pressed
+            canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
+        else:
+            # Vertical scrolling
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    
+    def on_key_press(event):
+        """Handle arrow key navigation"""
+        if event.keysym == 'Right':
+            canvas.xview_scroll(1, "units")
+        elif event.keysym == 'Left':
+            canvas.xview_scroll(-1, "units")
+        elif event.keysym == 'Down':
+            canvas.yview_scroll(1, "units")
+        elif event.keysym == 'Up':
+            canvas.yview_scroll(-1, "units")
+    
+    # Bind mouse wheel events for touchpad scrolling
+    canvas.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac
+    canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux scroll up
+    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux scroll down
+    canvas.bind("<Shift-Button-4>", lambda e: canvas.xview_scroll(-1, "units"))  # Linux horizontal
+    canvas.bind("<Shift-Button-5>", lambda e: canvas.xview_scroll(1, "units"))   # Linux horizontal
+    
+    # Make canvas focusable for key events
+    canvas.focus_set()
+    canvas.bind("<Key>", on_key_press)
+    
+    # Bind focus events to enable key navigation
+    def on_canvas_click(event):
+        canvas.focus_set()
+    
+    canvas.bind("<Button-1>", on_canvas_click)
+
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row to the form"""
     widgets = scrollable_frame.grid_slaves()
@@ -187,6 +227,9 @@ def create_new_entry_tab(notebook):
     
     canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
     canvas.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
+    
+    # Setup modern scrolling features
+    setup_modern_scrolling(canvas, scrollable_frame)
     
     # Grid layout for canvas and scrollbars
     canvas.grid(row=0, column=0, sticky='nsew')
