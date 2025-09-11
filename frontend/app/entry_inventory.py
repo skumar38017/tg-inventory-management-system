@@ -657,7 +657,7 @@ def open_reveal_window():
 def create_header_frame(root):
     """Create and configure the header frame with clock and company info"""
     header_frame = tk.Frame(root)
-    header_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=10, pady=0)
+    header_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=2)
     
     # Configure grid for header frame
     header_frame.grid_columnconfigure(0, weight=1)
@@ -694,7 +694,7 @@ def create_list_frames(root):
     listbox_height = max(10, list_frame_height // 30)  # Dynamic row count
     
     notebook = ttk.Notebook(root)
-    notebook.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
+    notebook.grid(row=1, column=0, sticky="nsew", padx=5, pady=2)
     
     # Frame 1: Inventory List
     inventory_frame = tk.Frame(notebook)
@@ -1116,9 +1116,18 @@ def create_list_frames(root):
 
 def create_bottom_frames(root):
     """Create the bottom frames with action buttons"""
-    # Bottom-left buttons
-    bottom_left_frame = tk.Frame(root)
-    bottom_left_frame.grid(row=2, column=0, sticky='sw', padx=10, pady=10)
+    # Single bottom frame spanning full width
+    bottom_frame = tk.Frame(root)
+    bottom_frame.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
+    bottom_frame.grid_columnconfigure(0, weight=1)
+    
+    # Container for all buttons
+    button_container = tk.Frame(bottom_frame)
+    button_container.pack(fill='x')
+    
+    # Left side buttons
+    left_buttons_frame = tk.Frame(button_container)
+    left_buttons_frame.pack(side='left', fill='x', expand=True)
     
     buttons = [
         ("To Event", open_to_event),
@@ -1129,30 +1138,25 @@ def create_bottom_frames(root):
     
     for text, command in buttons:
         btn = tk.Button(
-            bottom_left_frame,
+            left_buttons_frame,
             text=text,
             command=command,
             font=('Helvetica', 9, 'bold'),
-            width=30
+            width=25
         )
-        btn.pack(side='left', padx=5)
+        btn.pack(side='left', padx=3, fill='x', expand=True)
     
-    # Quit button
-    quit_frame = tk.Frame(root)
-    quit_frame.grid(row=2, column=1, sticky='se', padx=10, pady=10)
-    
-    quit_button = tk.Button(quit_frame, text="Quit", command=quit_application,
+    # Right side quit button
+    quit_button = tk.Button(button_container, text="Quit", command=quit_application,
                           font=('Helvetica', 10, 'bold'), width=10)
-    quit_button.pack()
+    quit_button.pack(side='right', padx=5)
 
 def configure_grid(root):
     """Configure the root grid layout"""
     root.grid_rowconfigure(0, weight=0)  # Header
     root.grid_rowconfigure(1, weight=1)  # List frames
     root.grid_rowconfigure(2, weight=0)  # Bottom buttons
-    root.grid_columnconfigure(0, weight=1)
-    root.grid_columnconfigure(1, weight=1)
-    root.grid_columnconfigure(2, weight=1)
+    root.grid_columnconfigure(0, weight=1)  # Single column for full width
 
 def main():
     """Main application entry point"""
