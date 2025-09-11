@@ -814,14 +814,6 @@ def create_list_frames(root):
     )
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
-    scrollbar = tk.Scrollbar(
-        list_container,
-        orient="vertical",
-        command=inventory_listbox.yview
-    )
-    scrollbar.pack(side="right", fill="y")
-    inventory_listbox.config(yscrollcommand=scrollbar.set)
-    
     # Initialize the inventory list
     update_main_inventory_list()
     
