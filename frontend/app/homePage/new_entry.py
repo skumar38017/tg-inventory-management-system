@@ -9,26 +9,46 @@ added_items_listbox = None
 
 def clear_fields():
     """Clear all input fields except InventoryID and ProductID, and reset checkboxes"""
-    for field_name, entry in entries.items():
-        if field_name not in ['InventoryID', 'ProductID']:
-            if hasattr(entry, 'delete'):
-                entry.delete(0, tk.END)
-            elif hasattr(entry, 'set'):
-                entry.set(False)
+    # Create a copy of entries to avoid modification during iteration
+    entries_copy = dict(entries)
+    
+    for field_name, entry in entries_copy.items():
+        # Skip InventoryID and ProductID fields (including numbered ones like InventoryID_2)
+        if 'InventoryID' not in field_name and 'ProductID' not in field_name:
+            try:
+                if hasattr(entry, 'delete'):
+                    entry.delete(0, tk.END)
+                elif hasattr(entry, 'set'):
+                    entry.set(False)
+            except tk.TclError:
+                # Widget has been destroyed, remove from entries dict
+                if field_name in entries:
+                    del entries[field_name]
 
 def refresh_form(scrollable_frame, header_labels):
-    """Refresh the form by clearing fields and regenerating IDs"""
+    """Refresh the form by clearing fields and regenerating IDs for all rows"""
     clear_fields()
-    if 'InventoryID' in entries:
-        entries['InventoryID'].config(state='normal')
-        entries['InventoryID'].delete(0, tk.END)
-        entries['InventoryID'].insert(0, generate_inventory_id())
-        entries['InventoryID'].config(state='readonly')
-    if 'ProductID' in entries:
-        entries['ProductID'].config(state='normal')
-        entries['ProductID'].delete(0, tk.END)
-        entries['ProductID'].insert(0, generate_product_id())
-        entries['ProductID'].config(state='readonly')
+    
+    # Create a copy of entries to avoid modification during iteration
+    entries_copy = dict(entries)
+    
+    # Regenerate IDs for all InventoryID and ProductID fields
+    for field_name, entry in entries_copy.items():
+        try:
+            if 'InventoryID' in field_name:
+                entry.config(state='normal')
+                entry.delete(0, tk.END)
+                entry.insert(0, generate_inventory_id())
+                entry.config(state='readonly')
+            elif 'ProductID' in field_name:
+                entry.config(state='normal')
+                entry.delete(0, tk.END)
+                entry.insert(0, generate_product_id())
+                entry.config(state='readonly')
+        except tk.TclError:
+            # Widget has been destroyed, remove from entries dict
+            if field_name in entries:
+                del entries[field_name]
 
 def create_inventory_item(scrollable_frame, header_labels):
     """Add new inventory items from all rows with all fields optional"""
@@ -51,10 +71,26 @@ def remove_last_row(scrollable_frame):
         messagebox.showwarning("Warning", "Cannot remove the last remaining row!")
         return
     
-    # Remove all widgets from the last row
+    # Remove all widgets from the last row and clean up entries
+    widgets_to_remove = []
     for widget in widgets:
         if widget.grid_info()['row'] == max_row:
-            widget.destroy()
+            widgets_to_remove.append(widget)
+    
+    # Remove widgets and clean up entries dictionary
+    for widget in widgets_to_remove:
+        widget.destroy()
+    
+    # Clean up entries dictionary - remove entries for the deleted row
+    entries_to_remove = []
+    for field_name in entries.keys():
+        if field_name.endswith(f'_{max_row}'):
+            entries_to_remove.append(field_name)
+    
+    for field_name in entries_to_remove:
+        del entries[field_name]
+        if field_name in checkbox_vars:
+            del checkbox_vars[field_name]
 
 def create_field_for_row(scrollable_frame, field, col, row, var_name):
     """Create a single field for a specific row - reusable function"""
