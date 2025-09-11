@@ -177,65 +177,10 @@ def create_new_entry_tab(notebook):
                          height=1, width=20)
         header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
     
-    # Create first row of input fields
+    # Create first row of input fields using reusable function
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
-        if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
-            checkbox_vars[var_name] = tk.BooleanVar()
-            entries[var_name] = tk.Checkbutton(
-                scrollable_frame, 
-                variable=checkbox_vars[var_name],
-                font=('Helvetica', 24),
-                width=20,
-                height=1
-            )
-            entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
-        elif field in ['Purchase Date', 'Returned Date']:
-            # Create a frame to hold the date entry and clear button
-            date_frame = tk.Frame(scrollable_frame)
-            date_frame.grid(row=1, column=col, sticky="ew", padx=1, pady=1)
-            
-            # Create DateEntry widget without setting a default date
-            date_entry = DateEntry(
-                date_frame,
-                width=22,
-                background='darkblue',
-                foreground='white',
-                borderwidth=1,
-                date_pattern='yyyy-mm-dd',
-                font=('Helvetica', 24))
-            date_entry.delete(0, 'end')
-            date_entry.pack(side='left', fill=tk.X, expand=True)
-            
-            # Add clear button
-            clear_btn = tk.Button(
-                date_frame,
-                text="X",
-                command=lambda e=date_entry: e.delete(0, 'end'),
-                font=('Helvetica', 24),
-                width=3,
-                relief='flat',
-            )
-            clear_btn.pack(side='right', padx=(2,0))
-            
-            entries[var_name] = date_entry
-        else:
-            entries[var_name] = tk.Entry(
-                scrollable_frame, 
-                font=('Helvetica', 24), 
-                borderwidth=1,
-                relief='solid',
-                width=22
-            )
-            entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
-            
-            # Auto-fill InventoryID and ProductID for the first row
-            if field == 'InventoryID':
-                entries[var_name].insert(0, generate_inventory_id())
-                entries[var_name].config(state='readonly')
-            elif field == 'ProductID':
-                entries[var_name].insert(0, generate_product_id())
-                entries[var_name].config(state='readonly')
+        create_field_for_row(scrollable_frame, field, col, 1, var_name)
                         
     # Configure column weights
     for col in range(len(header_labels)):
