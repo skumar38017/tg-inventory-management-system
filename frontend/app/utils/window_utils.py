@@ -66,45 +66,70 @@ def setup_window_closing(window, parent_window=None):
         window.destroy()
     window.protocol("WM_DELETE_WINDOW", on_close)
 
-def setup_modern_scrolling(canvas, scrollable_frame=None):
+def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
     """Setup modern touchpad-style scrolling and arrow key navigation"""
     
     def on_mousewheel(event):
         """Handle mouse wheel scrolling (touchpad scrolling)"""
-        # Horizontal scrolling with Shift+scroll or touchpad horizontal gesture
-        if event.state & 0x1:  # Shift key pressed
-            canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
+        # Check if it's a Listbox widget
+        if hasattr(canvas_or_widget, 'yview_scroll'):
+            # For Listbox widgets
+            if event.state & 0x1:  # Shift key pressed - horizontal scroll
+                if hasattr(canvas_or_widget, 'xview_scroll'):
+                    canvas_or_widget.xview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                # Vertical scrolling
+                canvas_or_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
         else:
-            # Vertical scrolling
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            # For Canvas widgets
+            if event.state & 0x1:  # Shift key pressed
+                canvas_or_widget.xview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                # Vertical scrolling
+                canvas_or_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
     
     def on_key_press(event):
         """Handle arrow key navigation"""
-        if event.keysym == 'Right':
-            canvas.xview_scroll(1, "units")
-        elif event.keysym == 'Left':
-            canvas.xview_scroll(-1, "units")
-        elif event.keysym == 'Down':
-            canvas.yview_scroll(1, "units")
-        elif event.keysym == 'Up':
-            canvas.yview_scroll(-1, "units")
+        if hasattr(canvas_or_widget, 'yview_scroll'):
+            # For Listbox widgets
+            if event.keysym == 'Right' and hasattr(canvas_or_widget, 'xview_scroll'):
+                canvas_or_widget.xview_scroll(1, "units")
+            elif event.keysym == 'Left' and hasattr(canvas_or_widget, 'xview_scroll'):
+                canvas_or_widget.xview_scroll(-1, "units")
+            elif event.keysym == 'Down':
+                canvas_or_widget.yview_scroll(1, "units")
+            elif event.keysym == 'Up':
+                canvas_or_widget.yview_scroll(-1, "units")
+        else:
+            # For Canvas widgets
+            if event.keysym == 'Right':
+                canvas_or_widget.xview_scroll(1, "units")
+            elif event.keysym == 'Left':
+                canvas_or_widget.xview_scroll(-1, "units")
+            elif event.keysym == 'Down':
+                canvas_or_widget.yview_scroll(1, "units")
+            elif event.keysym == 'Up':
+                canvas_or_widget.yview_scroll(-1, "units")
     
     # Bind mouse wheel events for touchpad scrolling
-    canvas.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac
-    canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux scroll up
-    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux scroll down
-    canvas.bind("<Shift-Button-4>", lambda e: canvas.xview_scroll(-1, "units"))  # Linux horizontal
-    canvas.bind("<Shift-Button-5>", lambda e: canvas.xview_scroll(1, "units"))   # Linux horizontal
+    canvas_or_widget.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac
+    canvas_or_widget.bind("<Button-4>", lambda e: canvas_or_widget.yview_scroll(-1, "units"))  # Linux scroll up
+    canvas_or_widget.bind("<Button-5>", lambda e: canvas_or_widget.yview_scroll(1, "units"))   # Linux scroll down
     
-    # Make canvas focusable for key events
-    canvas.focus_set()
-    canvas.bind("<Key>", on_key_press)
+    # Horizontal scrolling for Linux (if supported)
+    if hasattr(canvas_or_widget, 'xview_scroll'):
+        canvas_or_widget.bind("<Shift-Button-4>", lambda e: canvas_or_widget.xview_scroll(-1, "units"))
+        canvas_or_widget.bind("<Shift-Button-5>", lambda e: canvas_or_widget.xview_scroll(1, "units"))
+    
+    # Make widget focusable for key events
+    canvas_or_widget.focus_set()
+    canvas_or_widget.bind("<Key>", on_key_press)
     
     # Bind focus events to enable key navigation
-    def on_canvas_click(event):
-        canvas.focus_set()
+    def on_widget_click(event):
+        canvas_or_widget.focus_set()
     
-    canvas.bind("<Button-1>", on_canvas_click)
+    canvas_or_widget.bind("<Button-1>", on_widget_click)
 
 def open_calendar_window(parent_window, callback=None):
     """Open a standard calendar window with clear view"""
@@ -228,12 +253,12 @@ def open_calendar_window(parent_window, callback=None):
     button_frame.pack(fill='x', padx=16, pady=12)
     
     today_btn = tk.Button(button_frame, text="Today", font=('Helvetica', 16, 'bold'),
-                         bg='#27ae60', fg='white', relief='flat', width=14,
+                         bg='#27ae60', fg='white', relief='flat', width=20,
                          command=lambda: select_date(now.day) if current_month == now.month and current_year == now.year else None)
     today_btn.pack(side='left')
     
     cancel_btn = tk.Button(button_frame, text="Cancel", font=('Helvetica', 16, 'bold'),
-                          bg='#95a5a6', fg='white', relief='flat', width=14,
+                          bg='#95a5a6', fg='white', relief='flat', width=20,
                           command=cal_window.destroy)
     cancel_btn.pack(side='right')
     
@@ -243,17 +268,17 @@ def create_date_range_picker(parent_frame, bg_color='#ecf0f1', start_column=0, r
     from datetime import datetime
     
     # From Date
-    tk.Label(parent_frame, text="From Date:", font=('Helvetica', 18, 'bold'), 
+    tk.Label(parent_frame, text="From Date:", font=('Helvetica', 24, 'bold'), 
             bg=bg_color, fg='#2c3e50').grid(row=row, column=start_column, padx=5, sticky='e')
     
     from_date_entry = DateEntry(
         parent_frame,
-        width=14,
+        width=20,
         background='#3498db',
         foreground='white',
         borderwidth=2,
         date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 18),
+        font=('Helvetica', 24),
         calendar_font=('Helvetica', 55),
         calendar_width=2600,
         calendar_height=2600
@@ -262,17 +287,17 @@ def create_date_range_picker(parent_frame, bg_color='#ecf0f1', start_column=0, r
     from_date_entry.set_date(datetime.now().replace(day=1))
     
     # To Date
-    tk.Label(parent_frame, text="To Date:", font=('Helvetica', 18, 'bold'), 
+    tk.Label(parent_frame, text="To Date:", font=('Helvetica', 24, 'bold'), 
             bg=bg_color, fg='#2c3e50').grid(row=row, column=start_column+2, padx=5, sticky='e')
     
     to_date_entry = DateEntry(
         parent_frame,
-        width=14,
+        width=20,
         background='#3498db',
         foreground='white',
         borderwidth=2,
         date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 18),
+        font=('Helvetica', 24),
         calendar_font=('Helvetica', 55),
         calendar_width=2600,
         calendar_height=2600

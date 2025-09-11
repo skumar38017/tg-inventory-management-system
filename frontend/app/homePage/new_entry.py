@@ -92,6 +92,40 @@ def remove_last_row(scrollable_frame):
         if field_name in checkbox_vars:
             del checkbox_vars[field_name]
 
+def create_single_date_entry(parent_frame, row, col):
+    """Create a single date entry with standardized styling"""
+    date_frame = tk.Frame(parent_frame)
+    date_frame.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
+    
+    # Create DateEntry with same styling as date range picker
+    date_entry = DateEntry(
+        date_frame,
+        width=22,
+        background='#3498db',
+        foreground='white',
+        borderwidth=2,
+        date_pattern='yyyy-mm-dd',
+        font=('Helvetica', 24),
+        calendar_font=('Helvetica', 12),
+        calendar_width=300,
+        calendar_height=250
+    )
+    date_entry.delete(0, 'end')
+    date_entry.pack(side='left', fill=tk.X, expand=True)
+    
+    # Add clear button
+    clear_btn = tk.Button(
+        date_frame,
+        text="X",
+        command=lambda e=date_entry: e.delete(0, 'end'),
+        font=('Helvetica', 24),
+        width=3,
+        relief='flat',
+    )
+    clear_btn.pack(side='right', padx=(2,0))
+    
+    return date_entry
+
 def create_field_for_row(scrollable_frame, field, col, row, var_name):
     """Create a single field for a specific row - reusable function"""
     if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
@@ -105,32 +139,7 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
     elif field in ['Purchase Date', 'Returned Date']:
-        date_frame = tk.Frame(scrollable_frame)
-        date_frame.grid(row=row, column=col, sticky="ew", padx=1, pady=1)
-        
-        date_entry = DateEntry(
-            date_frame,
-            width=22,
-            background='darkblue',
-            foreground='white',
-            borderwidth=1,
-            date_pattern='yyyy-mm-dd',
-            font=('Helvetica', 24))
-        date_entry.delete(0, 'end')
-        date_entry.pack(side='left', fill=tk.X, expand=True)
-        
-        # Add clear button
-        clear_btn = tk.Button(
-            date_frame,
-            text="X",
-            command=lambda e=date_entry: e.delete(0, 'end'),
-            font=('Helvetica', 24),
-            width=3,
-            relief='flat',
-        )
-        clear_btn.pack(side='right', padx=(2,0))
-        
-        entries[var_name] = date_entry
+        entries[var_name] = create_single_date_entry(scrollable_frame, row, col)
     else:
         entries[var_name] = tk.Entry(
             scrollable_frame, 
@@ -320,5 +329,8 @@ def create_new_entry_tab(notebook):
     )
     list_scrollbar.pack(side="right", fill="y")
     added_items_listbox.config(yscrollcommand=list_scrollbar.set)
+
+    # Setup modern scrolling for Added Items List
+    setup_modern_scrolling(added_items_listbox)
 
     return new_entry_frame
