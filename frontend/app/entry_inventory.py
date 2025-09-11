@@ -824,6 +824,9 @@ def create_list_frames(root):
     )
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
+    # Setup modern scrolling for inventory list
+    setup_modern_scrolling(inventory_listbox)
+    
     # Initialize the inventory list
     update_main_inventory_list()
     
@@ -921,6 +924,9 @@ def create_list_frames(root):
         yscrollcommand=v_scrollbar.set
     )
     search_results_listbox.pack(side="left", fill="both", expand=True)
+    
+    # Setup modern scrolling for search results list
+    setup_modern_scrolling(search_results_listbox)
     
     return notebook
 
