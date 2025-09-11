@@ -1,4 +1,4 @@
-    company_info = """Tagglabs Experiential Pvt. Ltd.
+company_info = """Tagglabs Experiential Pvt. Ltd.
 Sector 49, Gurugram, Haryana 122018
 201, Second Floor, Eros City Square Mall
 Eros City Square
