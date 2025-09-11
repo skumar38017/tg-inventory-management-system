@@ -66,6 +66,46 @@ def setup_window_closing(window, parent_window=None):
         window.destroy()
     window.protocol("WM_DELETE_WINDOW", on_close)
 
+def setup_modern_scrolling(canvas, scrollable_frame=None):
+    """Setup modern touchpad-style scrolling and arrow key navigation"""
+    
+    def on_mousewheel(event):
+        """Handle mouse wheel scrolling (touchpad scrolling)"""
+        # Horizontal scrolling with Shift+scroll or touchpad horizontal gesture
+        if event.state & 0x1:  # Shift key pressed
+            canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
+        else:
+            # Vertical scrolling
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    
+    def on_key_press(event):
+        """Handle arrow key navigation"""
+        if event.keysym == 'Right':
+            canvas.xview_scroll(1, "units")
+        elif event.keysym == 'Left':
+            canvas.xview_scroll(-1, "units")
+        elif event.keysym == 'Down':
+            canvas.yview_scroll(1, "units")
+        elif event.keysym == 'Up':
+            canvas.yview_scroll(-1, "units")
+    
+    # Bind mouse wheel events for touchpad scrolling
+    canvas.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac
+    canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux scroll up
+    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux scroll down
+    canvas.bind("<Shift-Button-4>", lambda e: canvas.xview_scroll(-1, "units"))  # Linux horizontal
+    canvas.bind("<Shift-Button-5>", lambda e: canvas.xview_scroll(1, "units"))   # Linux horizontal
+    
+    # Make canvas focusable for key events
+    canvas.focus_set()
+    canvas.bind("<Key>", on_key_press)
+    
+    # Bind focus events to enable key navigation
+    def on_canvas_click(event):
+        canvas.focus_set()
+    
+    canvas.bind("<Button-1>", on_canvas_click)
+
 def open_calendar_window(parent_window, callback=None):
     """Open a standard calendar window with clear view"""
     cal_window = tk.Toplevel(parent_window)
