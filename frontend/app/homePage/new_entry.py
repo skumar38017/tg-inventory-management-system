@@ -2,6 +2,46 @@
 
 from common_imports import *
 
+# Global variables
+entries = {}
+checkbox_vars = {}
+added_items_listbox = None
+
+def clear_fields():
+    """Clear all input fields except InventoryID and ProductID, and reset checkboxes"""
+    for field_name, entry in entries.items():
+        if field_name not in ['InventoryID', 'ProductID']:
+            if hasattr(entry, 'delete'):
+                entry.delete(0, tk.END)
+            elif hasattr(entry, 'set'):
+                entry.set(False)
+
+def refresh_form(scrollable_frame, header_labels):
+    """Refresh the form by clearing fields and regenerating IDs"""
+    clear_fields()
+    if 'InventoryID' in entries:
+        entries['InventoryID'].config(state='normal')
+        entries['InventoryID'].delete(0, tk.END)
+        entries['InventoryID'].insert(0, generate_inventory_id())
+        entries['InventoryID'].config(state='readonly')
+    if 'ProductID' in entries:
+        entries['ProductID'].config(state='normal')
+        entries['ProductID'].delete(0, tk.END)
+        entries['ProductID'].insert(0, generate_product_id())
+        entries['ProductID'].config(state='readonly')
+
+def create_inventory_item(scrollable_frame, header_labels):
+    """Add new inventory items from all rows with all fields optional"""
+    pass  # Placeholder - implement as needed
+
+def remove_last_row(scrollable_frame):
+    """Remove the last row from the form"""
+    pass  # Placeholder - implement as needed
+
+def add_new_row(scrollable_frame, header_labels):
+    """Add a new row to the form"""
+    pass  # Placeholder - implement as needed
+
 def create_new_entry_tab(notebook):
     """Create the New Entry tab with all its components"""
     # Frame 2: New Entry
