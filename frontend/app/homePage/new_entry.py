@@ -81,11 +81,6 @@ def create_new_entry_tab(notebook):
     scroll_container.grid_rowconfigure(0, weight=1)
     scroll_container.grid_columnconfigure(0, weight=1)
     
-    # Create the entry form inside the scrollable frame
-    global entries, checkbox_vars
-    entries = {}
-    checkbox_vars = {}
-    
     # Header row with field names
     header_labels = [
         'Sno', "InventoryID", "ProductID", 'Name', 'Material', 'Total Quantity', 
@@ -95,13 +90,14 @@ def create_new_entry_tab(notebook):
         'In Warehouse', 'Issued Qty', 'Balance Qty', 'Submited by'
     ]
     
-    # Create header row (i)
+    # Create header row
     for col, label in enumerate(header_labels):
         header = tk.Label(scrollable_frame, text=label, 
-                         font=('Helvetica', 9, 'bold'), borderwidth=1, relief='solid')
+                         font=('Helvetica', 24, 'bold'), borderwidth=1, relief='solid',
+                         height=1, width=20)
         header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
     
-    # In the create_list_frames function, where you create the first row of input fields:
+    # Create first row of input fields
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
         if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
@@ -109,8 +105,9 @@ def create_new_entry_tab(notebook):
             entries[var_name] = tk.Checkbutton(
                 scrollable_frame, 
                 variable=checkbox_vars[var_name],
-                borderwidth=1,
-                relief='solid'
+                font=('Helvetica', 24),
+                width=22,
+                height=1
             )
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
         elif field in ['Purchase Date', 'Returned Date']:
@@ -121,22 +118,22 @@ def create_new_entry_tab(notebook):
             # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
-                width=12,  # Slightly reduced to accommodate clear button
+                width=22,
                 background='darkblue',
                 foreground='white',
                 borderwidth=1,
                 date_pattern='yyyy-mm-dd',
-                font=('Helvetica', 9))
-            date_entry.delete(0, 'end')  # Clear any default date
+                font=('Helvetica', 24))
+            date_entry.delete(0, 'end')
             date_entry.pack(side='left', fill=tk.X, expand=True)
             
             # Add clear button
             clear_btn = tk.Button(
                 date_frame,
-                text="✕",
+                text="X",
                 command=lambda e=date_entry: e.delete(0, 'end'),
-                font=('Helvetica', 7),
-                width=1,
+                font=('Helvetica', 24),
+                width=3,
                 relief='flat',
             )
             clear_btn.pack(side='right', padx=(2,0))
@@ -145,9 +142,10 @@ def create_new_entry_tab(notebook):
         else:
             entries[var_name] = tk.Entry(
                 scrollable_frame, 
-                font=('Helvetica', 9), 
+                font=('Helvetica', 24), 
                 borderwidth=1,
-                relief='solid'
+                relief='solid',
+                width=22
             )
             entries[var_name].grid(row=1, column=col, sticky='ew', padx=1, pady=1)
             
@@ -159,21 +157,21 @@ def create_new_entry_tab(notebook):
                 entries[var_name].insert(0, generate_product_id())
                 entries[var_name].config(state='readonly')
                         
-            # Configure column weights
-            for col in range(len(header_labels)):
-                scrollable_frame.grid_columnconfigure(col, weight=1)
+    # Configure column weights
+    for col in range(len(header_labels)):
+        scrollable_frame.grid_columnconfigure(col, weight=1)
 
     # Button container
     button_frame = tk.Frame(form_container)
-    button_frame.pack(fill='x', pady=5)
+    button_frame.pack(fill='x', pady=2)
     
     # Left side buttons (Clear and Refresh)
     clear_button = tk.Button(
         button_frame, 
         text="Clear", 
         command=clear_fields,
-        font=('Helvetica', 12),
-        width=25
+        font=('Helvetica', 24),
+        width=10
     )
     clear_button.pack(side='left', padx=2)
 
@@ -181,8 +179,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Refresh", 
         command=lambda: refresh_form(scrollable_frame, header_labels),
-        font=('Helvetica', 12),
-        width=25
+        font=('Helvetica', 24),
+        width=10
     )
     refresh_button.pack(side='left', padx=2)
 
@@ -191,8 +189,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Add Item", 
         command=lambda: create_inventory_item(scrollable_frame, header_labels),
-        font=('Helvetica', 12, 'bold'),
-        width=25
+        font=('Helvetica', 24, 'bold'),
+        width=10
     )
     add_button.pack(side='left', padx=5, expand=True)
 
@@ -201,8 +199,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Remove Row", 
         command=lambda: remove_last_row(scrollable_frame),
-        font=('Helvetica', 12, 'bold'),
-        width=25
+        font=('Helvetica', 24,),
+        width=10
     )
     remove_row_button.pack(side='left', padx=5)
 
@@ -210,8 +208,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Add Row", 
         command=lambda: add_new_row(scrollable_frame, header_labels),
-        font=('Helvetica', 12, 'bold'),
-        width=25
+        font=('Helvetica', 24),
+        width=10
     )
     add_row_button.pack(side='left', padx=2)
         
@@ -223,7 +221,7 @@ def create_new_entry_tab(notebook):
     list_label = tk.Label(
         list_frame, 
         text="Added Items List", 
-        font=('Helvetica', 12, 'bold')
+        font=('Helvetica', 24, 'bold')
     )
     list_label.pack()
     
@@ -239,11 +237,10 @@ def create_new_entry_tab(notebook):
     )
     h_scrollbar.pack(side="bottom", fill="x")
     
-    global added_items_listbox
     added_items_listbox = tk.Listbox(
         list_container,
         height=12,
-        font=('Courier New', 11),  # Changed to fixed-width font for better alignment
+        font=('Courier New', 24),
         selectbackground='#4a6984',
         selectforeground='white',
         xscrollcommand=h_scrollbar.set,
