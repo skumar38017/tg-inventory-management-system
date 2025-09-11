@@ -128,7 +128,7 @@ def display_inventory_items(items):
         # Define the column headers and their display widths
         headers = [
             ("ID", 50),
-            ("Serial No.", 10),
+            ("Serial No.", 12),
             ("InventoryID", 15),
             ("Product ID", 15),
             ("Name", 50),
@@ -140,13 +140,13 @@ def display_inventory_items(items):
             ("Purchase Amount", 20),
             ("Repair Quantity", 15),
             ("Repair Cost", 15),
-            ("On Rent", 10),
+            ("On Rent", 12),
             ("Vendor Name", 35),
             ("Total Rent", 15),
             ("Rented Inventory Returned", 25),
             ("Returned Date", 25),
-            ("On Event", 10),
-            ("In Office", 10),
+            ("On Event", 12),
+            ("In Office", 12),
             ("In Warehouse", 25),
             ("Issued Qty", 20),
             ("Balance Qty", 20),
@@ -154,7 +154,7 @@ def display_inventory_items(items):
             ("Created At", 35),
             ("Updated At", 35),
             ("BarCode", 20),
-            ("BacodeUrl", 100)
+            ("BacodeUrl", 120)
         ]
 
         # Calculate total width needed
@@ -288,14 +288,14 @@ def perform_search():
                     safe_get('name')[:18],
                     safe_get('description')[:23],
                     safe_get('quantity')[:4],
-                    safe_get('zone_active')[:10],
+                    safe_get('zone_active')[:12],
                     safe_get('material')[:13],
                     safe_get('comments')[:18],
                     safe_get('total')[:6],
                     safe_get('unit')[:6],
                     safe_get('per_unit_power')[:13],
-                    safe_get('total_power')[:10],
-                    safe_get('status')[:10],
+                    safe_get('total_power')[:12],
+                    safe_get('status')[:12],
                     safe_get('poc')[:13],
                     safe_get('id')[:36]
                 ]
@@ -324,7 +324,7 @@ def perform_search():
             # Define the column headers and their display widths
             headers = [
                 ("ID", 50),
-                ("Serial No.", 10),
+                ("Serial No.", 12),
                 ("InventoryID", 15),
                 ("Product ID", 15),
                 ("Name", 50),
@@ -336,13 +336,13 @@ def perform_search():
                 ("Purchase Amount", 20),
                 ("Repair Quantity", 15),
                 ("Repair Cost", 15),
-                ("On Rent", 10),
+                ("On Rent", 12),
                 ("Vendor Name", 35),
                 ("Total Rent", 15),
                 ("Rented Inventory Returned", 25),
                 ("Returned Date", 25),
-                ("On Event", 10),
-                ("In Office", 10),
+                ("On Event", 12),
+                ("In Office", 12),
                 ("In Warehouse", 25),
                 ("Issued Qty", 20),
                 ("Balance Qty", 20),
@@ -350,7 +350,7 @@ def perform_search():
                 ("Created At", 35),
                 ("Updated At", 35),
                 ("BarCode", 20),
-                ("BacodeUrl", 100)
+                ("BacodeUrl", 120)
             ]
 
             # Calculate total width needed
@@ -517,7 +517,7 @@ def add_new_row(scrollable_frame, header_labels):
             # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
-                width=16,  # Slightly reduced to accommodate clear button
+                width=12,  # Slightly reduced to accommodate clear button
                 background='darkblue',
                 foreground='white',
                 borderwidth=1,
@@ -597,7 +597,7 @@ def upload_inventory_with_message():
 def configure_responsive_grid():
     """Adjust UI elements based on screen size"""
     clock_label.config(font=('Helvetica', 12, 'bold'))
-    company_label.config(font=('Helvetica', 10))
+    company_label.config(font=('Helvetica', 12))
 
 # ==============================
 # Child window functions
@@ -678,11 +678,11 @@ Eros City Square
     global company_label
     company_label = tk.Label(header_frame,
                            text=company_info,
-                           font=('Helvetica', 10),
+                           font=('Helvetica', 12),
                            justify='right',
                            anchor='ne',
                            fg='#ecf0f1', bg='#2c3e50')
-    company_label.grid(row=1, column=0, sticky='ne', pady=(0,8), padx=10)
+    company_label.grid(row=1, column=0, sticky='ne', pady=(0,8), padx=12)
     
     return header_frame
     return header_frame
@@ -694,7 +694,7 @@ def create_list_frames(root):
     screen_height = root.winfo_screenheight()
     screen_width = root.winfo_screenwidth()
     
-    # Reserve space for header (80px) and bottom buttons (100px)
+    # Reserve space for header (80px) and bottom buttons (120px)
     available_height = screen_height - 180
     list_frame_height = int(available_height * 0.8)
     listbox_height = max(8, list_frame_height // 35)  # Adjusted for larger fonts
@@ -727,7 +727,7 @@ def create_list_frames(root):
     
     # Left side controls
     left_frame = tk.Frame(date_filter_frame, bg='#ecf0f1')
-    left_frame.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+    left_frame.pack(side="left", fill="x", expand=True, padx=12, pady=8)
     
     global from_date_entry, to_date_entry
     
@@ -736,19 +736,19 @@ def create_list_frames(root):
     
     # Modern styled buttons
     filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
-                         font=('Helvetica', 10, 'bold'), height=1, width=10,
-                         bg='#27ae60', fg='white', relief='flat',
-                         activebackground='#2ecc71', activeforeground='white')
+                         font=('Helvetica', 12, 'bold'), height=1, width=12,
+                         bg='#2c3e50', fg='white', relief='flat',
+                         activebackground='#34495e', activeforeground='white')
     filter_btn.grid(row=0, column=4, padx=5)
     
     show_all_btn = tk.Button(left_frame, text="Show All", command=update_main_inventory_list,
-                           font=('Helvetica', 10, 'bold'), height=1, width=10,
-                           bg='#f39c12', fg='white', relief='flat',
-                           activebackground='#e67e22', activeforeground='white')
+                           font=('Helvetica', 12, 'bold'), height=1, width=12,
+                           bg='#95a5a6', fg='white', relief='flat',
+                           activebackground='#7f8c8d', activeforeground='white')
     show_all_btn.grid(row=0, column=5, padx=5)
     
     right_frame = tk.Frame(date_filter_frame, bg='#ecf0f1')
-    right_frame.pack(side="right", fill="x", padx=10, pady=8)
+    right_frame.pack(side="right", fill="x", padx=12, pady=8)
 
     # Add Update button before Sync button
     update_btn = UpdatePopUpWindow.create_update_button(right_frame, root_window=root)
@@ -759,10 +759,10 @@ def create_list_frames(root):
         right_frame, 
         text="Upload", 
         command=lambda: upload_inventory_with_message(),
-        font=('Helvetica', 10, 'bold'),
-        height=1, width=10,
-        bg='#9b59b6', fg='white', relief='flat',
-        activebackground='#8e44ad', activeforeground='white'
+        font=('Helvetica', 12, 'bold'),
+        height=1, width=12,
+        bg='#34495e', fg='white', relief='flat',
+        activebackground='#2c3e50', activeforeground='white'
     )
     upload_btn.pack(side="right", padx=5)
 
@@ -771,10 +771,10 @@ def create_list_frames(root):
         right_frame, 
         text="Sync", 
         command=update_inventory_list,
-        font=('Helvetica', 10, 'bold'),
-        height=1, width=10,
-        bg='#e74c3c', fg='white', relief='flat',
-        activebackground='#c0392b', activeforeground='white'
+        font=('Helvetica', 12, 'bold'),
+        height=1, width=12,
+        bg='#7f8c8d', fg='white', relief='flat',
+        activebackground='#95a5a6', activeforeground='white'
     )
     sync_btn.pack(side="right", padx=5)
 
@@ -810,7 +810,7 @@ def create_list_frames(root):
     inventory_listbox = tk.Listbox(
         list_container,
         height=listbox_height,
-        font=('Consolas', 10),
+        font=('Consolas', 12),
         activestyle='none',
         selectbackground='#3498db',
         selectforeground='white',
@@ -832,7 +832,7 @@ def create_list_frames(root):
     
     # Main container for the form
     form_container = tk.Frame(new_entry_frame)
-    form_container.pack(fill='both', expand=True, padx=10, pady=5)
+    form_container.pack(fill='both', expand=True, padx=12, pady=5)
     
     # Container for the header and input rows with scrollbars
     scroll_container = tk.Frame(form_container)
@@ -903,7 +903,7 @@ def create_list_frames(root):
             # Create DateEntry widget without setting a default date
             date_entry = DateEntry(
                 date_frame,
-                width=16,  # Slightly reduced to accommodate clear button
+                width=12,  # Slightly reduced to accommodate clear button
                 background='darkblue',
                 foreground='white',
                 borderwidth=1,
@@ -954,7 +954,7 @@ def create_list_frames(root):
         button_frame, 
         text="Clear", 
         command=clear_fields,
-        font=('Helvetica', 10),
+        font=('Helvetica', 12),
         width=25
     )
     clear_button.pack(side='left', padx=2)
@@ -963,7 +963,7 @@ def create_list_frames(root):
         button_frame, 
         text="Refresh", 
         command=lambda: refresh_form(scrollable_frame, header_labels),
-        font=('Helvetica', 10),
+        font=('Helvetica', 12),
         width=25
     )
     refresh_button.pack(side='left', padx=2)
@@ -973,7 +973,7 @@ def create_list_frames(root):
         button_frame, 
         text="Add Item", 
         command=lambda: create_inventory_item(scrollable_frame, header_labels),
-        font=('Helvetica', 10, 'bold'),
+        font=('Helvetica', 12, 'bold'),
         width=25
     )
     add_button.pack(side='left', padx=5, expand=True)
@@ -983,7 +983,7 @@ def create_list_frames(root):
         button_frame, 
         text="Remove Row", 
         command=lambda: remove_last_row(scrollable_frame),
-        font=('Helvetica', 10, 'bold'),
+        font=('Helvetica', 12, 'bold'),
         width=25
     )
     remove_row_button.pack(side='left', padx=5)
@@ -992,20 +992,20 @@ def create_list_frames(root):
         button_frame, 
         text="Add Row", 
         command=lambda: add_new_row(scrollable_frame, header_labels),
-        font=('Helvetica', 10, 'bold'),
+        font=('Helvetica', 12, 'bold'),
         width=25
     )
     add_row_button.pack(side='left', padx=2)
         
     # Added Items List section
     list_frame = tk.Frame(new_entry_frame)
-    list_frame.pack(fill='both', expand=True, padx=10, pady=5)
+    list_frame.pack(fill='both', expand=True, padx=12, pady=5)
     
     # "Added Items List" label centered
     list_label = tk.Label(
         list_frame, 
         text="Added Items List", 
-        font=('Helvetica', 10, 'bold')
+        font=('Helvetica', 12, 'bold')
     )
     list_label.pack()
     
@@ -1024,7 +1024,7 @@ def create_list_frames(root):
     global added_items_listbox
     added_items_listbox = tk.Listbox(
         list_container,
-        height=10,
+        height=12,
         font=('Courier New', 11),  # Changed to fixed-width font for better alignment
         selectbackground='#4a6984',
         selectforeground='white',
@@ -1056,39 +1056,39 @@ def create_list_frames(root):
     global search_inventory_id_entry, search_project_id_entry, search_product_id_entry
 
     # Row 1: First three search fields
-    tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 10, 'bold'), 
+    tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 12, 'bold'), 
             bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, sticky='e', padx=5, pady=8)
-    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 10), width=15,
+    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
                                        relief='flat', bd=5)
     search_inventory_id_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=8)
 
-    tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 10, 'bold'), 
+    tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 12, 'bold'), 
             bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, sticky='e', padx=5, pady=8)
-    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 10), width=15,
+    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
                                      relief='flat', bd=5)
     search_project_id_entry.grid(row=0, column=3, sticky='ew', padx=5, pady=8)
 
-    tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 10, 'bold'), 
+    tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 12, 'bold'), 
             bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=4, sticky='e', padx=5, pady=8)
-    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 10), width=15,
+    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
                                      relief='flat', bd=5)
     search_product_id_entry.grid(row=0, column=5, sticky='ew', padx=5, pady=8)
 
     # Search button with modern styling
     search_btn = tk.Button(search_fields_frame, text="Search", command=perform_search, 
-                        font=('Helvetica', 10, 'bold'), height=1, width=12,
-                        bg='#27ae60', fg='white', relief='flat',
-                        activebackground='#2ecc71', activeforeground='white')
+                        font=('Helvetica', 12, 'bold'), height=1, width=12,
+                        bg='#2c3e50', fg='white', relief='flat',
+                        activebackground='#34495e', activeforeground='white')
     search_btn.grid(row=0, column=6, sticky='ew', padx=5, pady=8)
 
     # QR & Barcode button with modern styling
     reveal_btn = tk.Button(
         search_fields_frame,
         text="QR & Barcode", 
-        font=('Helvetica', 10, 'bold'),
+        font=('Helvetica', 12, 'bold'),
         width=15, height=1,
-        bg='#9b59b6', fg='white', relief='flat',
-        activebackground='#8e44ad', activeforeground='white',
+        bg='#95a5a6', fg='white', relief='flat',
+        activebackground='#7f8c8d', activeforeground='white',
         command=open_reveal_window 
     )
     reveal_btn.grid(row=0, column=7, sticky='ew', padx=5, pady=8)
@@ -1143,16 +1143,16 @@ def create_bottom_frames(root):
     bottom_frame.grid_columnconfigure(0, weight=1)
     
     button_container = tk.Frame(bottom_frame, bg='#34495e')
-    button_container.pack(fill='x', padx=10, pady=8)
+    button_container.pack(fill='x', padx=12, pady=8)
     
     left_buttons_frame = tk.Frame(button_container, bg='#34495e')
     left_buttons_frame.pack(side='left', fill='x', expand=True)
     
     buttons = [
-        ("To Event", open_to_event, '#e67e22'),
-        ("From Event", open_from_event, '#27ae60'),
-        ("Assigned", open_assign_inventory, '#3498db'),
-        ("Damage/Waste", open_damage_inventory, '#e74c3c')
+        ("To Event", open_to_event, '#2c3e50'),
+        ("From Event", open_from_event, '#34495e'),
+        ("Assigned", open_assign_inventory, '#7f8c8d'),
+        ("Damage/Waste", open_damage_inventory, '#95a5a6')
     ]
     
     for text, command, color in buttons:
@@ -1160,8 +1160,8 @@ def create_bottom_frames(root):
             left_buttons_frame,
             text=text,
             command=command,
-            font=('Helvetica', 10, 'bold'),
-            width=18,
+            font=('Helvetica', 12, 'bold'),
+            width=15,
             height=2,
             bg=color,
             fg='white',
@@ -1172,7 +1172,7 @@ def create_bottom_frames(root):
         btn.pack(side='left', padx=3, fill='x', expand=True)
     
     quit_button = tk.Button(button_container, text="Quit", command=quit_application,
-                          font=('Helvetica', 10, 'bold'), width=12, height=2,
+                          font=('Helvetica', 12, 'bold'), width=8, height=2,
                           bg='#95a5a6', fg='white', relief='flat',
                           activebackground='#7f8c8d', activeforeground='white')
     quit_button.pack(side='right', padx=5)
