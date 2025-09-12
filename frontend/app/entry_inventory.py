@@ -270,7 +270,7 @@ def create_list_frames(root):
     # Reserve space for header (80px) and bottom buttons (120px)
     available_height = screen_height - 180
     list_frame_height = int(available_height * 0.8)
-    listbox_height = max(20, list_frame_height // 35)  # Adjusted for larger fonts
+    listbox_height = universal_font_box_size.inventory_list_font_size # Increased row height
     
     notebook = ttk.Notebook(root)
     notebook.grid(row=1, column=0, sticky="nsew", padx=3, pady=2)
@@ -393,7 +393,7 @@ def create_list_frames(root):
     # Smart loop for headers and widths
     for col in columns:
         inventory_listbox.heading(col, text=col)
-        width = len(col) * 30 if len(col) > 10 else len(col) * 90  # Smart width calculation
+        width = len(col) * 50 if len(col) > 10 else len(col) * 50  # Smart width calculation
         inventory_listbox.column(col, width=width, anchor='center' if col in ['Sno', 'Total Quantity', 'Purchase Amount'] else 'w', stretch=False)
     
     # Configure scrollbars and layout - use pack consistently
