@@ -1,5 +1,6 @@
 #  frontend/app/entry_inventory.py
 from common_imports import *
+from utils.pagination import Pagination
 from api_request.entry_inventory_api_request import (
     sync_inventory,
     upload_inventory,
@@ -36,6 +37,13 @@ root = None
 # Global variables for the listboxes
 inventory_listbox = None
 added_items_listbox = None
+
+# Global pagination instance
+paginator = Pagination()
+
+# Global variables for pagination UI
+page_info_label = None
+page_entry = None
 
 # Global variables for entry form
 entries = {}
@@ -77,26 +85,31 @@ def update_pagination_info():
 
 def go_next_page():
     """Go to next page and refresh data from API"""
+    global paginator
     paginator.next_page()
     update_main_inventory_list()  # This hits the API
 
 def go_prev_page():
     """Go to previous page and refresh data from API"""
+    global paginator
     paginator.prev_page()
     update_main_inventory_list()  # This hits the API
 
 def go_specific_page(page_num):
     """Go to specific page and refresh data from API"""
+    global paginator
     paginator.go_to_page(page_num)
     update_main_inventory_list()  # This hits the API
 
 def go_to_first_page():
     """Go to first page and refresh data from API"""
+    global paginator
     paginator.go_to_page(0)
     update_main_inventory_list()
 
 def go_to_page_from_entry():
     """Go to page number from entry field"""
+    global paginator
     try:
         page_num = int(page_entry.get())
         if page_num >= 0:
@@ -107,6 +120,7 @@ def go_to_page_from_entry():
 
 def update_pagination_ui():
     """Update pagination UI elements"""
+    global paginator
     if page_info_label:
         current_page = paginator.current_page
         page_info_label.config(text=f"Page {current_page} | 20 items per page")
