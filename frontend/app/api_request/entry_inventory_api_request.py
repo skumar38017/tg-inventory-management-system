@@ -164,48 +164,55 @@ def load_record_by_inventory_name(inventory_name: str) -> Dict:
         messagebox.showerror("Error", "An unexpected error occurred")
         return {}  
 
+# Shared data cleaning functions
+def clean_value(value):
+    if value is None or str(value).strip() == '':
+        return None
+    return str(value).strip()
+
+def clean_number_str(value):
+    try:
+        if value is None or str(value).strip() == '':
+            return None
+        num = float(value) if '.' in str(value) else int(float(value))
+        return str(num)
+    except (ValueError, TypeError):
+        return None
+
+def clean_boolean(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if str(value).lower() in ('true', 'yes', '1'):
+        return True
+    if str(value).lower() in ('false', 'no', '0'):
+        return False
+    return None
+
+def clean_date(date_str):
+    try:
+        if date_str:
+            return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
+        return None
+    except (ValueError, TypeError):
+        return None
+
+def handle_validation_response(response):
+    """Handle API validation errors consistently"""
+    if response.status_code == 422:
+        errors = response.json().get('detail', [])
+        error_msgs = "\n".join(
+            f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
+            for e in errors if isinstance(e, dict)
+        )
+        raise Exception(f"Validation errors:\n{error_msgs}")
+    response.raise_for_status()
+
 # Add new inventory items to the database with proper data formatting
 def add_new_inventory_item(item_data: dict):
     """Inventory item creation with all fields optional"""
     try:
-        # Helper function to clean input values
-        def clean_value(value):
-            if value is None or str(value).strip() == '':
-                return None
-            return str(value).strip()
-        
-        # Helper function for numeric fields (as strings)
-        def clean_number_str(value):
-            try:
-                if value is None or str(value).strip() == '':
-                    return None
-                # Convert to number first to validate, then back to string
-                num = float(value) if '.' in str(value) else int(float(value))
-                return str(num)
-            except (ValueError, TypeError):
-                return None
-        
-        # Helper function for boolean fields
-        def clean_boolean(value):
-            if value is None:
-                return None
-            if isinstance(value, bool):
-                return value
-            if str(value).lower() in ('true', 'yes', '1'):
-                return True
-            if str(value).lower() in ('false', 'no', '0'):
-                return False
-            return None
-        
-        # Helper function for date fields
-        def clean_date(date_str):
-            try:
-                if date_str:
-                    return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
-                return None
-            except (ValueError, TypeError):
-                return None
-
         # Clean IDs - remove non-numeric characters but keep as strings
         product_id = clean_value(item_data.get('ProductID'))
         inventory_id = clean_value(item_data.get('InventoryID'))
@@ -216,7 +223,6 @@ def add_new_inventory_item(item_data: dict):
 
         # Payload construction - all fields optional
         payload = {
-            # Basic information
             "product_id": product_id,
             "inventory_id": inventory_id,
             "sno": clean_value(item_data.get('Sno')),
@@ -224,25 +230,17 @@ def add_new_inventory_item(item_data: dict):
             "material": clean_value(item_data.get('Material')),
             "manufacturer": clean_value(item_data.get('Manufacturer')),
             "submitted_by": clean_value(item_data.get('Submitedby')),
-            
-            # Quantity information (as strings)
             "total_quantity": clean_number_str(item_data.get('TotalQuantity')),
             "issued_qty": clean_number_str(item_data.get('IssuedQty')),
             "balance_qty": clean_number_str(item_data.get('BalanceQty')),
             "repair_quantity": clean_number_str(item_data.get('RepairQuantity')),
-            
-            # Purchase information
             "purchase_dealer": clean_value(item_data.get('PurchaseDealer')),
             "purchase_date": clean_date(item_data.get('PurchaseDate')),
             "purchase_amount": clean_number_str(item_data.get('PurchaseAmount')),
             "repair_cost": clean_number_str(item_data.get('RepairCost')),
-            
-            # Rental information
             "vendor_name": clean_value(item_data.get('VendorName')),
             "total_rent": clean_number_str(item_data.get('TotalRent')),
             "returned_date": clean_date(item_data.get('ReturnedDate')),
-            
-            # Status flags
             "on_rent": clean_boolean(item_data.get('OnRent')),
             "rented_inventory_returned": clean_boolean(item_data.get('RentedInventoryReturned')),
             "on_event": clean_boolean(item_data.get('OnEvent')),
@@ -253,26 +251,8 @@ def add_new_inventory_item(item_data: dict):
         # Remove None values to keep payload clean
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        logger.debug(f"Sending payload: {payload}")
-
-        # API request
-        response = make_api_request(
-            "POST",
-            "create-item/",
-            headers={"Content-Type": "application/json"},
-            json=payload
-        )
-        
-        # Handle response
-        if response.status_code == 422:
-            errors = response.json().get('detail', [])
-            error_msgs = "\n".join(
-                f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
-                for e in errors if isinstance(e, dict)
-            )
-            raise Exception(f"Validation errors:\n{error_msgs}")
-            
-        response.raise_for_status()
+        response = make_api_request("POST", "create-item/", headers={"Content-Type": "application/json"}, json=payload)
+        handle_validation_response(response)
         return response.json()
         
     except Exception as e:
@@ -303,50 +283,10 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> 
 def update_existing_inventory(item_data: dict):
     """Update inventory item with all fields optional"""
     try:
-        # Helper function to clean input values
-        def clean_value(value):
-            if value is None or str(value).strip() == '':
-                return None
-            return str(value).strip()
-        
-        # Helper function for numeric fields (as strings)
-        def clean_number_str(value):
-            try:
-                if value is None or str(value).strip() == '':
-                    return None
-                # Convert to number first to validate, then back to string
-                num = float(value) if '.' in str(value) else int(float(value))
-                return str(num)
-            except (ValueError, TypeError):
-                return None
-        
-        # Helper function for boolean fields
-        def clean_boolean(value):
-            if value is None:
-                return None
-            if isinstance(value, bool):
-                return value
-            if str(value).lower() in ('true', 'yes', '1'):
-                return True
-            if str(value).lower() in ('false', 'no', '0'):
-                return False
-            return None
-        
-        # Helper function for date fields
-        def clean_date(date_str):
-            try:
-                if date_str:
-                    return datetime.strptime(date_str, '%Y-%m-%d').date().isoformat()
-                return None
-            except (ValueError, TypeError):
-                return None
-
-        # Clean inventory_id - required field
         inventory_id = clean_value(item_data.get('inventory_id'))
         if not inventory_id:
             raise ValueError("Inventory ID is required")
 
-        # Payload construction - all fields optional except inventory_id
         payload = {
             "inventory_name": clean_value(item_data.get('inventory_name')),
             "material": clean_value(item_data.get('material')),
@@ -374,26 +314,8 @@ def update_existing_inventory(item_data: dict):
         # Remove None values to keep payload clean
         payload = {k: v for k, v in payload.items() if v is not None}
 
-        logger.debug(f"Sending payload: {payload}")
-
-        # API request
-        response = make_api_request(
-            "PUT",
-            f"update/{inventory_id}/",
-            headers={"Content-Type": "application/json"},
-            json=payload
-        )
-        
-        # Handle response
-        if response.status_code == 422:
-            errors = response.json().get('detail', [])
-            error_msgs = "\n".join(
-                f"{'.'.join(map(str, e.get('loc', [])))}: {e.get('msg', 'Unknown error')}"
-                for e in errors if isinstance(e, dict)
-            )
-            raise Exception(f"Validation errors:\n{error_msgs}")
-            
-        response.raise_for_status()
+        response = make_api_request("PUT", f"update/{inventory_id}/", headers={"Content-Type": "application/json"}, json=payload)
+        handle_validation_response(response)
         return response.json()
         
     except Exception as e:
@@ -419,88 +341,88 @@ def list_barcode_qrcode() -> List[Dict[str, Any]]:
         return []  
         
 
-# #  Search  Project by [Project_id] by clicking search
-# def search_project_details_by_project_id(project_id: str) -> List[Dict]:
-#     """Fetch inventory data filtered by a single project_id from the API"""
-#     if not project_id or not str(project_id).strip():
-#         logger.error("Empty project_id provided for search")
-#         messagebox.showwarning("Search Error", "Project ID is required for searching")
-#         return []
+#  Search  Project by [Project_id] by clicking search
+def search_project_details_by_project_id(project_id: str) -> List[Dict]:
+    """Fetch inventory data filtered by a single project_id from the API"""
+    if not project_id or not str(project_id).strip():
+        logger.error("Empty project_id provided for search")
+        messagebox.showwarning("Search Error", "Project ID is required for searching")
+        return []
     
-#     try:
-#         # Ensure project_id has proper PRJ prefix if missing
-#         project_id = project_id.upper()
-#         if not project_id.startswith('PRJ'):
-#             project_id = f'PRJ{project_id}'
+    try:
+        # Ensure project_id has proper PRJ prefix if missing
+        project_id = project_id.upper()
+        if not project_id.startswith('PRJ'):
+            project_id = f'PRJ{project_id}'
             
-#         response = make_api_request(
-#             "GET",
-#             f"to_event-search-entries-by-project-id/{project_id}/"
-#         )
+        response = make_api_request(
+            "GET",
+            f"to_event-search-entries-by-project-id/{project_id}/"
+        )
         
-#         if response.status_code == 404:
-#             logger.debug(f"Project {project_id} not found")
-#             return []
+        if response.status_code == 404:
+            logger.debug(f"Project {project_id} not found")
+            return []
             
-#         response.raise_for_status()
-#         logger.debug(f"Raw API response for {project_id}: {response.text}")
+        response.raise_for_status()
+        logger.debug(f"Raw API response for {project_id}: {response.text}")
         
-#         data = response.json()
+        data = response.json()
         
-#         if isinstance(data, dict):
-#             return [format_project_item(data)]
-#         elif isinstance(data, list):
-#             return [format_project_item(item) for item in data]
-#         else:
-#             logger.error(f"Unexpected API response format: {type(data)}")
-#             return []
+        if isinstance(data, dict):
+            return [format_project_item(data)]
+        elif isinstance(data, list):
+            return [format_project_item(item) for item in data]
+        else:
+            logger.error(f"Unexpected API response format: {type(data)}")
+            return []
             
-#     except Exception as e:
-#         error_msg = f"Could not fetch project data: {str(e)}"
-#         logger.error(error_msg, exc_info=True)
-#         messagebox.showerror("Error", error_msg)
-#         return []
+    except Exception as e:
+        error_msg = f"Could not fetch project data: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        messagebox.showerror("Error", error_msg)
+        return []
     
-# # Format project item from API response to consistent frontend format
-# def format_project_item(item: dict) -> dict:
-#     """Format project item from API response to consistent frontend format"""
-#     if not isinstance(item, dict):
-#         logger.error(f"Invalid item format: {type(item)}")
-#         return {}
+# Format project item from API response to consistent frontend format
+def format_project_item(item: dict) -> dict:
+    """Format project item from API response to consistent frontend format"""
+    if not isinstance(item, dict):
+        logger.error(f"Invalid item format: {type(item)}")
+        return {}
         
-#     # Handle both flat structure (old) and nested inventory_items (new)
-#     inventory_items = item.get('inventory_items', [])
-#     if not inventory_items:
-#         # Convert flat structure to nested if needed
-#         inventory_item = {
-#             'project_id': item.get('work_id') or item.get('project_id'),
-#             'zone_active': item.get('zone_active'),
-#             'sno': item.get('sno'),
-#             'name': item.get('inventory_name'),
-#             'description': item.get('description'),
-#             'quantity': item.get('quantity'),
-#             'material': item.get('material'),
-#             'comments': item.get('comments'),
-#             'total': item.get('total'),
-#             'unit': item.get('unit'),
-#             'per_unit_power': item.get('per_unit_power'),
-#             'total_power': item.get('total_power'),
-#             'status': item.get('status'),
-#             'poc': item.get('poc')
-#         }
-#         inventory_items = [inventory_item] if any(inventory_item.values()) else []
+    # Handle both flat structure (old) and nested inventory_items (new)
+    inventory_items = item.get('inventory_items', [])
+    if not inventory_items:
+        # Convert flat structure to nested if needed
+        inventory_item = {
+            'project_id': item.get('work_id') or item.get('project_id'),
+            'zone_active': item.get('zone_active'),
+            'sno': item.get('sno'),
+            'name': item.get('inventory_name'),
+            'description': item.get('description'),
+            'quantity': item.get('quantity'),
+            'material': item.get('material'),
+            'comments': item.get('comments'),
+            'total': item.get('total'),
+            'unit': item.get('unit'),
+            'per_unit_power': item.get('per_unit_power'),
+            'total_power': item.get('total_power'),
+            'status': item.get('status'),
+            'poc': item.get('poc')
+        }
+        inventory_items = [inventory_item] if any(inventory_item.values()) else []
     
-#     return {
-#         'id': item.get('id'),
-#         'work_id': item.get('project_id') or item.get('work_id'),
-#         'employee_name': item.get('employee_name'),
-#         'location': item.get('location'),
-#         'client_name': item.get('client_name'),
-#         'setup_date': item.get('setup_date'),
-#         'project_name': item.get('project_name'),
-#         'event_date': item.get('event_date'),
-#         'inventory_items': inventory_items,
-#         'submitted_by': item.get('submitted_by'),
-#         'barcode': item.get('project_barcode'),
-#         'updated_at': item.get('updated_at')
-#     }
+    return {
+        'id': item.get('id'),
+        'work_id': item.get('project_id') or item.get('work_id'),
+        'employee_name': item.get('employee_name'),
+        'location': item.get('location'),
+        'client_name': item.get('client_name'),
+        'setup_date': item.get('setup_date'),
+        'project_name': item.get('project_name'),
+        'event_date': item.get('event_date'),
+        'inventory_items': inventory_items,
+        'submitted_by': item.get('submitted_by'),
+        'barcode': item.get('project_barcode'),
+        'updated_at': item.get('updated_at')
+    }
