@@ -4,7 +4,8 @@ from widgets.inventory_combobox import InventoryComboBox
 from api_request.entry_inventory_api_request import (
     update_existing_inventory
 )
-from entry_inventory import update_main_inventory_list
+from utils.universal_font_box_size import universal_font_box_size
+from utils.universal_font_box_size import universal_font_box_size
 
 
 class UpdatePopUpWindow:
@@ -22,7 +23,9 @@ class UpdatePopUpWindow:
             inventory_frame,
             text="Update", 
             command=cls.open_update_window,
-            font=('Helvetica', 9, 'bold')
+            font=('Helvetica', universal_font_box_size.button_width_large, 'bold'),
+            width=universal_font_box_size.button_width_medium,
+            height=universal_font_box_size.button_height_standard
         )
         return update_btn
 
@@ -174,7 +177,7 @@ class UpdatePopUpWindow:
             
         update_window = tk.Toplevel(cls.root)
         update_window.title("Update Inventory")
-        update_window.geometry("1000x800")
+        update_window.geometry("1080x1920")
         
         # Main container
         main_frame = tk.Frame(update_window)
@@ -184,19 +187,26 @@ class UpdatePopUpWindow:
         top_frame = tk.Frame(main_frame)
         top_frame.pack(fill='x', pady=(0, 10))
         
-        tk.Label(top_frame, text="Inventory Name:").pack(side='left', padx=5)
+        tk.Label(top_frame, text="Inventory Name:", 
+                font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight)).pack(side='left', padx=5)
         
         # Use InventoryComboBox instead of regular Combobox
-        inventory_name_combo = InventoryComboBox(top_frame, width=40)
+        inventory_name_combo = InventoryComboBox(top_frame, 
+                                               font=('Helvetica', universal_font_box_size.drop_down_box_size), 
+                                               width=80)
         inventory_name_combo.pack(side='left', padx=5)
         
         # Load button
         load_btn = tk.Button(top_frame, text="Load Record", 
+                            font=('Helvetica', universal_font_box_size.button_font_size_standard), 
+                            width=universal_font_box_size.button_width_large,
                             command=lambda: UpdatePopUpWindow.load_inventory_record(inventory_name_combo.get_selected_item()))
         load_btn.pack(side='left', padx=5)
         
         # Edit button - will enable editing of editable fields
         edit_btn = tk.Button(top_frame, text="Edit", 
+                            font=('Helvetica', universal_font_box_size.button_font_size_standard), 
+                            width=universal_font_box_size.button_width_small,
                             command=lambda: toggle_edit_mode(True))
         edit_btn.pack(side='left', padx=5)
         
@@ -235,10 +245,15 @@ class UpdatePopUpWindow:
             frame = tk.Frame(left_column)
             frame.pack(fill='x', pady=2)
             
-            tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
+            tk.Label(frame, text=label_text, 
+                    width=universal_font_box_size.label_width, 
+                    anchor='e', 
+                    font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight)).pack(side='left', padx=5)
             
             if field_type == "entry":
-                entry = tk.Entry(frame)
+                entry = tk.Entry(frame, 
+                               font=('Helvetica', universal_font_box_size.input_font_size), 
+                               width=universal_font_box_size.input_width)
                 entry.config(state='readonly' if is_readonly else 'normal')
                 entry.pack(side='left', fill='x', expand=True)
                 update_window_entries[label_text.strip(":")] = entry
@@ -248,7 +263,9 @@ class UpdatePopUpWindow:
                 date_frame.pack(side='left', fill='x', expand=True)  
 
                 # Date entry
-                date_entry = DateEntry(date_frame, date_pattern='yyyy-mm-dd')
+                date_entry = DateEntry(date_frame, date_pattern='yyyy-mm-dd', 
+                                     font=('Helvetica', universal_font_box_size.drop_down_box_size), 
+                                     width=universal_font_box_size.date_entry_width)
                 date_entry.pack(side='left', fill='x', expand=True)
                 
                 # Clear button for date
@@ -256,7 +273,7 @@ class UpdatePopUpWindow:
                     date_frame, 
                     text="Clear", 
                     command=lambda de=date_entry: UpdatePopUpWindow.clear_date_entry(de),
-                    font=('Helvetica', 8),
+                    font=('Helvetica', universal_font_box_size.date_clear_button_font),
                     state='normal'
                 )
                 clear_btn.pack(side='left', padx=2)
@@ -275,7 +292,9 @@ class UpdatePopUpWindow:
                 cb.pack(side='left')
                 update_window_entries[label_text.strip(":")] = var
             elif field_type == "long_entry":
-                entry = tk.Entry(frame)
+                entry = tk.Entry(frame, 
+                               font=('Helvetica', universal_font_box_size.input_font_size), 
+                               width=universal_font_box_size.input_width)
                 entry.config(state='normal')
                 entry.pack(side='left', fill='x', expand=True)
                 update_window_entries[label_text.strip(":")] = entry
@@ -299,10 +318,15 @@ class UpdatePopUpWindow:
             frame = tk.Frame(right_column)
             frame.pack(fill='x', pady=2)
             
-            tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
+            tk.Label(frame, text=label_text, 
+                    width=universal_font_box_size.label_width, 
+                    anchor='e', 
+                    font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight)).pack(side='left', padx=5)
             
             if field_type == "entry":
-                entry = tk.Entry(frame)
+                entry = tk.Entry(frame, 
+                               font=('Helvetica', universal_font_box_size.input_font_size), 
+                               width=universal_font_box_size.input_width)
                 entry.config(state='readonly' if is_readonly else 'normal')
                 entry.pack(side='left', fill='x', expand=True)
                 update_window_entries[label_text.strip(":")] = entry
@@ -313,7 +337,8 @@ class UpdatePopUpWindow:
                 update_window_entries[label_text.strip(":")] = var
         
         # Additional information section (read-only)
-        info_frame = tk.LabelFrame(main_frame, text="Additional Information (auto-generated)")
+        info_frame = tk.LabelFrame(main_frame, text="Additional Information (auto-generated)", 
+                                  font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight))
         info_frame.pack(fill='x', pady=10)
         
         # Create two columns for info section
@@ -334,8 +359,13 @@ class UpdatePopUpWindow:
             frame = tk.Frame(info_left)
             frame.pack(fill='x', pady=2)
             
-            tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
-            entry = tk.Entry(frame, state='readonly')
+            tk.Label(frame, text=label_text, 
+                    width=universal_font_box_size.label_width, 
+                    anchor='e', 
+                    font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight)).pack(side='left', padx=5)
+            entry = tk.Entry(frame, state='readonly', 
+                           font=('Helvetica', universal_font_box_size.input_font_size), 
+                           width=universal_font_box_size.input_width)
             entry.pack(side='left', fill='x', expand=True)
             update_window_entries[label_text.strip(":")] = entry
         
@@ -350,8 +380,13 @@ class UpdatePopUpWindow:
             frame = tk.Frame(info_right)
             frame.pack(fill='x', pady=2)
             
-            tk.Label(frame, text=label_text, width=15, anchor='e').pack(side='left', padx=5)
-            entry = tk.Entry(frame, state='readonly')
+            tk.Label(frame, text=label_text, 
+                    width=universal_font_box_size.label_width, 
+                    anchor='e', 
+                    font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight)).pack(side='left', padx=5)
+            entry = tk.Entry(frame, state='readonly', 
+                           font=('Helvetica', universal_font_box_size.input_font_size), 
+                           width=universal_font_box_size.input_width)
             entry.pack(side='left', fill='x', expand=True)
             update_window_entries[label_text.strip(":")] = entry
         
@@ -367,7 +402,10 @@ class UpdatePopUpWindow:
         ]
         
         for text, command in buttons:
-            tk.Button(button_frame, text=text, command=command).pack(side='left', padx=5, expand=True)
+            tk.Button(button_frame, text=text, 
+                     font=('Helvetica', universal_font_box_size.button_font_size_standard), 
+                     width=universal_font_box_size.button_width_large, 
+                     command=command).pack(side='left', padx=5, expand=True)
         
         def clear_form():
             """Clear all form fields while maintaining readonly states"""
@@ -431,7 +469,7 @@ class UpdatePopUpWindow:
                 # Show success message and clear the form
                 messagebox.showinfo("Success", "Inventory record updated successfully")
                 clear_form()  # Clear the form instead of reloading
-                update_main_inventory_list()
+                # Refresh will be handled by the parent window
                 
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to update inventory: {str(e)}")

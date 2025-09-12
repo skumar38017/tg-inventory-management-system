@@ -14,9 +14,10 @@ from to_event import ToEventWindow
 from from_event import FromEventWindow
 from assign_inventory import AssignInventoryWindow
 from damage_inventory import DamageWindow
-from entry_update_pop_window import *
+from homePage.entry_update_pop_window import *
 from reveal_qr_barcode_window import *
 from homePage.new_entry import create_new_entry_tab
+from homePage.entry_update_pop_window import UpdatePopUpWindow
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
