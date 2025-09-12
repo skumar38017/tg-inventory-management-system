@@ -35,8 +35,8 @@ class RevealQrAndBarcodeWindow:
         header_frame = ttk.Frame(self.reveal_qr_and_barcode_window, style='Modern.TFrame')
         header_frame.pack(fill='x', padx=20, pady=(20, 10))
         
-        # Title with icon
-        title_label = ttk.Label(header_frame, text="📱 QR & Barcode Manager", 
+        # Title
+        title_label = ttk.Label(header_frame, text="QR & Barcode Manager", 
                                font=('Segoe UI', 20, 'bold'), foreground='#2c3e50', background='#ffffff')
         title_label.pack(side='left')
         
@@ -62,14 +62,14 @@ class RevealQrAndBarcodeWindow:
         button_frame.pack(fill='x', padx=20, pady=(10, 20))
         
         # Modern buttons
-        ttk.Button(button_frame, text="🔄 Load Data", style='Modern.TButton',
+        ttk.Button(button_frame, text="Load Data", style='Modern.TButton',
                   command=self.load_data).pack(side='left', padx=(0, 10))
         
-        self.image_view_button = ttk.Button(button_frame, text="🖼️ View Images", 
+        self.image_view_button = ttk.Button(button_frame, text="View Images", 
                                           style='Modern.TButton', command=self.open_image_view, state='disabled')
         self.image_view_button.pack(side='left', padx=(0, 10))
         
-        ttk.Button(button_frame, text="❌ Close", style='Modern.TButton',
+        ttk.Button(button_frame, text="Close", style='Modern.TButton',
                   command=self.reveal_qr_and_barcode_window.destroy).pack(side='right')
         
         # Status bar
@@ -106,15 +106,19 @@ class RevealQrAndBarcodeWindow:
         self.tree.column('Barcode URL', width=250, anchor='w')
         self.tree.column('QR Code URL', width=250, anchor='w')
         
-        # Modern scrollbars
+        # Modern scrollbars - proper positioning
         v_scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=self.tree.yview)
         h_scrollbar = ttk.Scrollbar(table_frame, orient='horizontal', command=self.tree.xview)
         self.tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
         
-        # Pack scrollbars and treeview
-        self.tree.pack(side='left', fill='both', expand=True)
-        v_scrollbar.pack(side='right', fill='y')
-        h_scrollbar.pack(side='bottom', fill='x')
+        # Grid layout for proper scrollbar positioning
+        self.tree.grid(row=0, column=0, sticky='nsew')
+        v_scrollbar.grid(row=0, column=1, sticky='ns')
+        h_scrollbar.grid(row=1, column=0, sticky='ew')
+        
+        # Configure grid weights
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
         
         # Bind selection event
         self.tree.bind('<<TreeviewSelect>>', self.on_item_select)
@@ -158,7 +162,7 @@ class RevealQrAndBarcodeWindow:
             
             # Insert data
             self.tree.insert('', 'end', values=(
-                '●',  # Select indicator
+                'O',  # Select indicator
                 str(i + 1),  # Serial number
                 item.get("InventoryID", ""),
                 item.get("Name", ""),
@@ -206,8 +210,8 @@ class RevealQrAndBarcodeWindow:
                 
                 # Highlight selected row
                 for item in self.tree.get_children():
-                    self.tree.set(item, 'Select', '○')
-                self.tree.set(item_id, 'Select', '●')
+                    self.tree.set(item, 'Select', 'O')
+                self.tree.set(item_id, 'Select', 'X')
 
     def open_image_view(self):
         """Open the Image View window for the selected item"""
