@@ -1,5 +1,6 @@
 # ~/frontend/app/homePage/new_entry.py
 
+from turtle import width
 from common_imports import *
 from utils.universal_font_box_size import universal_font_box_size
 
@@ -419,8 +420,8 @@ def create_new_entry_tab(notebook):
     added_items_header = tk.Label(
         added_items_frame, 
         text="Added Items List (Today)", 
-        font=('Helvetica', universal_font_box_size.search_button_font_size, 'bold'),
-        bg='white', fg='#2c3e50'
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'),
+        bg='white', fg='#2c3e50', height=1
     )
     added_items_header.pack(anchor='w', pady=(0, 5))
     
@@ -453,22 +454,22 @@ def create_new_entry_tab(notebook):
     added_items_listbox.heading('submitted_by', text='submitted_by')
     added_items_listbox.heading('BarCode', text='BarCode')
     
-    # Set column widths - full size for horizontal scrolling
-    added_items_listbox.column('ID', width=120, anchor='center')
-    added_items_listbox.column('Serial No.', width=120, anchor='center')
-    added_items_listbox.column('InventoryID', width=150, anchor='center')
-    added_items_listbox.column('ProductID', width=120, anchor='center')
-    added_items_listbox.column('Name', width=200, anchor='w')
-    added_items_listbox.column('Material', width=120, anchor='w')
-    added_items_listbox.column('Total Quantity', width=150, anchor='center')
-    added_items_listbox.column('Manufacturer', width=150, anchor='w')
-    added_items_listbox.column('Purchase Dealer', width=180, anchor='w')
-    added_items_listbox.column('Purchase Date', width=150, anchor='center')
-    added_items_listbox.column('Purchase Amount', width=180, anchor='center')
-    added_items_listbox.column('Repair Quantity', width=150, anchor='center')
-    added_items_listbox.column('Repair Cost', width=130, anchor='center')
-    added_items_listbox.column('submitted_by', width=150, anchor='w')
-    added_items_listbox.column('BarCode', width=150, anchor='center')
+    # Set column widths - using universal_font_box_size pattern (fixed, no resizing)
+    added_items_listbox.column('ID', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('Serial No.',width=universal_font_box_size.common * 50,anchor='center', stretch=True)
+    added_items_listbox.column('InventoryID', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('ProductID', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('Name', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
+    added_items_listbox.column('Material', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
+    added_items_listbox.column('Total Quantity', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('Manufacturer', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
+    added_items_listbox.column('Purchase Dealer', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
+    added_items_listbox.column('Purchase Date', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('Purchase Amount', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('Repair Quantity', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('Repair Cost', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    added_items_listbox.column('submitted_by', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
+    added_items_listbox.column('BarCode', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
     
     # Create scrollbars
     added_v_scrollbar = ttk.Scrollbar(added_list_container, orient='vertical', command=added_items_listbox.yview)
@@ -484,6 +485,11 @@ def create_new_entry_tab(notebook):
     added_list_container.grid_rowconfigure(0, weight=1)
     added_list_container.grid_columnconfigure(0, weight=1)
     
+    # Configure Treeview font styling
+    style = ttk.Style()
+    style.configure('Treeview', font=(universal_font_box_size.qr_barcode_button_font_family, universal_font_box_size.new_entry_font_size))
+    style.configure('Treeview.Heading', font=(universal_font_box_size.qr_barcode_button_font_family, universal_font_box_size.new_entry_font_size, 'bold'))
+ 
     # Row styling
     added_items_listbox.tag_configure('evenrow', background='#f8f9fa')
     added_items_listbox.tag_configure('oddrow', background='#ffffff')
