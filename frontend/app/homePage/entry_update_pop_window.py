@@ -179,6 +179,9 @@ class UpdatePopUpWindow:
         update_window.title("Update Inventory")
         update_window.geometry("1080x1920")
         
+        # Auto-maximize using existing utility function
+        maximize_window(update_window)
+        
         # Main container
         main_frame = tk.Frame(update_window)
         main_frame.pack(fill='both', expand=True, padx=10, pady=10)

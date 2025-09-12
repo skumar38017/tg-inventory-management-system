@@ -33,8 +33,8 @@ class UniversalFontBoxSize:
     drop_down_box_size = 22
     drop_down_font_size = 22
 
-    input_font_size = 22
-    input_width = 20
+    input_font_size = 20
+    input_width = 22
     input_height = 2
     
     # Standard Labels
