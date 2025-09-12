@@ -1,6 +1,7 @@
 # ~/frontend/app/homePage/new_entry.py
 
 from common_imports import *
+from utils.universal_font_box_size import universal_font_box_size
 
 # Global variables
 entries = {}
@@ -105,10 +106,10 @@ def create_single_date_entry(parent_frame, row, col):
         foreground='white',
         borderwidth=2,
         date_pattern='yyyy-mm-dd',
-        font=('Helvetica', 24),
-        calendar_font=('Helvetica', 12),
-        calendar_width=300,
-        calendar_height=250
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
+        calendar_font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
+        calendar_width=universal_font_box_size.ID * 5,
+        calendar_height=universal_font_box_size.ID * 5
     )
     date_entry.delete(0, 'end')
     date_entry.pack(side='left', fill=tk.X, expand=True)
@@ -118,7 +119,7 @@ def create_single_date_entry(parent_frame, row, col):
         date_frame,
         text="X",
         command=lambda e=date_entry: e.delete(0, 'end'),
-        font=('Helvetica', 24),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
         width=3,
         relief='flat',
     )
@@ -133,8 +134,8 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
         entries[var_name] = tk.Checkbutton(
             scrollable_frame, 
             variable=checkbox_vars[var_name],
-            font=('Helvetica', 24),
-            width=20,
+            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size),
+            width=universal_font_box_size.common * 2,
             height=1
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
@@ -143,10 +144,10 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
     else:
         entries[var_name] = tk.Entry(
             scrollable_frame, 
-            font=('Helvetica', 24), 
+            font=('Helvetica', universal_font_box_size.new_entry_font_size), 
             borderwidth=1,
             relief='solid',
-            width=22
+            width=int(universal_font_box_size.common * 2)
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
         
@@ -221,8 +222,8 @@ def create_new_entry_tab(notebook):
     # Create header row
     for col, label in enumerate(header_labels):
         header = tk.Label(scrollable_frame, text=label, 
-                         font=('Helvetica', 24, 'bold'), borderwidth=1, relief='solid',
-                         height=1, width=20)
+                         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size, 'bold'), borderwidth=1, relief='solid',
+                         height=1, width=universal_font_box_size.common * 2, anchor='w')
         header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
     
     # Create first row of input fields using reusable function
@@ -243,8 +244,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Clear", 
         command=clear_fields,
-        font=('Helvetica', 24),
-        width=10
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
+        width=universal_font_box_size.button_width
     )
     clear_button.pack(side='left', padx=2)
 
@@ -252,8 +253,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Refresh", 
         command=lambda: refresh_form(scrollable_frame, header_labels),
-        font=('Helvetica', 24),
-        width=10
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
+        width=universal_font_box_size.button_width
     )
     refresh_button.pack(side='left', padx=2)
 
@@ -262,8 +263,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Add Item", 
         command=lambda: create_inventory_item(scrollable_frame, header_labels),
-        font=('Helvetica', 24, 'bold'),
-        width=10
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+        width=universal_font_box_size.button_width
     )
     add_button.pack(side='left', padx=5, expand=True)
 
@@ -272,8 +273,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Remove Row", 
         command=lambda: remove_last_row(scrollable_frame),
-        font=('Helvetica', 24,),
-        width=10
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size,),
+        width=universal_font_box_size.button_width
     )
     remove_row_button.pack(side='left', padx=5)
 
@@ -281,8 +282,8 @@ def create_new_entry_tab(notebook):
         button_frame, 
         text="Add Row", 
         command=lambda: add_new_row(scrollable_frame, header_labels),
-        font=('Helvetica', 24),
-        width=10
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
+        width=universal_font_box_size.button_width
     )
     add_row_button.pack(side='left', padx=2)
         
@@ -294,7 +295,7 @@ def create_new_entry_tab(notebook):
     list_label = tk.Label(
         list_frame, 
         text="Added Items List", 
-        font=('Helvetica', 24, 'bold')
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold')
     )
     list_label.pack()
     
@@ -313,7 +314,7 @@ def create_new_entry_tab(notebook):
     added_items_listbox = tk.Listbox(
         list_container,
         height=12,
-        font=('Courier New', 24),
+        font=('Courier New', universal_font_box_size.search_button_font_size),
         selectbackground='#4a6984',
         selectforeground='white',
         xscrollcommand=h_scrollbar.set,

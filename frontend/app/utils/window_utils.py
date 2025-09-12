@@ -93,23 +93,23 @@ def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
         if hasattr(canvas_or_widget, 'yview_scroll'):
             # For Listbox widgets
             if event.keysym == 'Right' and hasattr(canvas_or_widget, 'xview_scroll'):
-                canvas_or_widget.xview_scroll(-1, "units")
-            elif event.keysym == 'Left' and hasattr(canvas_or_widget, 'xview_scroll'):
                 canvas_or_widget.xview_scroll(1, "units")
+            elif event.keysym == 'Left' and hasattr(canvas_or_widget, 'xview_scroll'):
+                canvas_or_widget.xview_scroll(-1, "units")
             elif event.keysym == 'Down':
-                canvas_or_widget.yview_scroll(-1, "units")
-            elif event.keysym == 'Up':
                 canvas_or_widget.yview_scroll(1, "units")
+            elif event.keysym == 'Up':
+                canvas_or_widget.yview_scroll(-1, "units")
         else:
             # For Canvas widgets
             if event.keysym == 'Right':
-                canvas_or_widget.xview_scroll(-1, "units")
-            elif event.keysym == 'Left':
                 canvas_or_widget.xview_scroll(1, "units")
+            elif event.keysym == 'Left':
+                canvas_or_widget.xview_scroll(-1, "units")
             elif event.keysym == 'Down':
-                canvas_or_widget.yview_scroll(-1, "units")
-            elif event.keysym == 'Up':
                 canvas_or_widget.yview_scroll(1, "units")
+            elif event.keysym == 'Up':
+                canvas_or_widget.yview_scroll(-1, "units")
     
     # Bind mouse wheel events for touchpad scrolling
     canvas_or_widget.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac

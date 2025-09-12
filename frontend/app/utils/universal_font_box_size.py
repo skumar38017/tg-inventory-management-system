@@ -216,6 +216,7 @@ class UniversalFontBoxSize:
     
     
     #  All fields 
+    common=10
     ID=50
     S_No=50
     InventoryID=40
