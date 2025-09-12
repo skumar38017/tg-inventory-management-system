@@ -320,7 +320,7 @@ def create_list_frames(root):
     # Reserve space for header (80px) and bottom buttons (120px)
     available_height = screen_height - 180
     list_frame_height = int(available_height * 0.8)
-    listbox_height = universal_font_box_size.inventory_list_font_size # Increased row height
+    listbox_height = universal_font_box_size.button_width_small # Increased row height
     
     notebook = ttk.Notebook(root)
     notebook.grid(row=1, column=0, sticky="nsew", padx=3, pady=2)
@@ -382,7 +382,7 @@ def create_list_frames(root):
         right_frame, 
         text="Upload", 
         command=lambda: upload_inventory_with_message(),
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'),
         height=1, width=12,
         bg='#34495e', fg='white', relief='flat',
         activebackground='#2c3e50', activeforeground='white'
@@ -394,7 +394,7 @@ def create_list_frames(root):
         right_frame, 
         text="Sync", 
         command=update_inventory_list,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'),
         height=1, width=12,
         bg='#7f8c8d', fg='white', relief='flat',
         activebackground='#95a5a6', activeforeground='white'
@@ -457,8 +457,8 @@ def create_list_frames(root):
     
     # Styling
     style = ttk.Style()
-    style.configure('Treeview', font=(universal_font_box_size.inventory_list_font_family, universal_font_box_size.inventory_list_font_size))
-    style.configure('Treeview.Heading', font=(universal_font_box_size.inventory_list_font_family, universal_font_box_size.inventory_list_font_size))
+    style.configure('Treeview', font=(universal_font_box_size.inventory_list_font_family, universal_font_box_size.button_width_medium))
+    style.configure('Treeview.Heading', font=(universal_font_box_size.inventory_list_font_family, universal_font_box_size.button_width_medium))
     
     inventory_listbox.tag_configure('evenrow', background='#f8f9fa')
     inventory_listbox.tag_configure('oddrow', background='#ffffff')
@@ -490,7 +490,7 @@ def create_pagination_frame(root):
     page_info_label = tk.Label(
         pagination_frame,
         text="Page 0 | 20 items per page",
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small),
         bg='#ecf0f1', fg='#2c3e50'
     )
     page_info_label.pack(side="left", padx=20, pady=15)
@@ -502,9 +502,9 @@ def create_pagination_frame(root):
     # First page button
     first_btn = tk.Button(
         nav_frame,
-        text="⏮",
+        text="<<",
         command=go_to_first_page,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'),
         width=4, height=1,
         bg='#95a5a6', fg='white', relief='flat', bd=1,
         activebackground='#7f8c8d', activeforeground='white'
@@ -514,9 +514,9 @@ def create_pagination_frame(root):
     # Previous button
     prev_btn = tk.Button(
         nav_frame,
-        text="◀",
+        text="<",
         command=go_prev_page,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'),
         width=4, height=1,
         bg='#3498db', fg='white', relief='flat', bd=1,
         activebackground='#2980b9', activeforeground='white'
@@ -527,7 +527,7 @@ def create_pagination_frame(root):
     page_entry = tk.Entry(
         nav_frame,
         width=6,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small),
         justify='center', relief='solid', bd=1
     )
     page_entry.pack(side="left", padx=5)
@@ -537,9 +537,9 @@ def create_pagination_frame(root):
     # Next button
     next_btn = tk.Button(
         nav_frame,
-        text="▶",
+        text=">",
         command=go_next_page,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'),
         width=4, height=1,
         bg='#3498db', fg='white', relief='flat', bd=1,
         activebackground='#2980b9', activeforeground='white'
@@ -570,7 +570,7 @@ def create_bottom_frames(root):
             left_buttons_frame,
             text=text,
             command=command,
-            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'),
             width=15,
             height=2,
             bg=color,
@@ -582,7 +582,7 @@ def create_bottom_frames(root):
         btn.pack(side='left', padx=3, fill='x', expand=True)
     
     quit_button = tk.Button(button_container, text="Quit", command=quit_application,
-                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'), width=8, height=2,
+                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_small, 'bold'), width=8, height=2,
                           bg='#95a5a6', fg='white', relief='flat',
                           activebackground='#7f8c8d', activeforeground='white')
     quit_button.pack(side='right', padx=5)
