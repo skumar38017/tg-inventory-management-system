@@ -41,52 +41,6 @@ added_items_listbox = None
 entries = {}
 checkbox_vars = {}
 
-def refresh_form(scrollable_frame, header_labels):
-    """Refresh the form by clearing fields and regenerating IDs"""
-    clear_fields()
-    # Re-generate IDs for the first row
-    entries['InventoryID'].config(state='normal')
-    entries['InventoryID'].delete(0, tk.END)
-    entries['InventoryID'].insert(0, generate_inventory_id())
-    entries['InventoryID'].config(state='readonly')
-    
-    entries['ProductID'].config(state='normal')
-    entries['ProductID'].delete(0, tk.END)
-    entries['ProductID'].insert(0, generate_product_id())
-    entries['ProductID'].config(state='readonly')
-    
-    # Don't clear the added items list if it's from today
-    today = datetime.now().date()
-    current_list_date = getattr(added_items_listbox, 'current_date', None)
-    if current_list_date != today:
-        if added_items_listbox:
-            added_items_listbox.delete(0, tk.END)
-            added_items_listbox.current_date = today
-    
-    messagebox.showinfo("Refreshed", "Form has been refreshed with new IDs")
-
-def clear_fields():
-    """Clear all input fields except InventoryID and ProductID, and reset checkboxes"""
-    for field_name, entry in entries.items():
-        if isinstance(entry, tk.Entry):
-            # Skip InventoryID and ProductID fields
-            if field_name.startswith('InventoryID') or field_name.startswith('ProductID'):
-                continue
-                
-            # Temporarily make writable to clear, then restore state if needed
-            current_state = entry['state']
-            if current_state == 'readonly':
-                entry.config(state='normal')
-            
-            entry.delete(0, tk.END)
-            
-            if current_state == 'readonly':
-                entry.config(state='readonly')
-    
-    # Reset all checkboxes
-    for var in checkbox_vars.values():
-        var.set(False)
-
 def update_inventory_list():
     """Update all three listboxes with current data"""
     sync_inventory()
@@ -104,7 +58,9 @@ def update_inventory_list():
 def update_main_inventory_list():
     """Update only the main inventory listbox with all items"""
     if inventory_listbox:
-        inventory_listbox.delete(0, tk.END)
+        # Clear existing items from treeview
+        for item in inventory_listbox.get_children():
+            inventory_listbox.delete(item)
         try:
             inventory = show_all_inventory() # This now returns formatted data from the API
             display_inventory_items(inventory)
@@ -113,73 +69,54 @@ def update_main_inventory_list():
             messagebox.showerror("Error", "Could not Sync inventory data")
 
 def display_inventory_items(items):
-    """Display inventory items in a horizontal table format with fixed headers"""
+    """Display inventory items in Treeview table format with fixed headers"""
     if inventory_listbox:
-        inventory_listbox.delete(0, tk.END)
+        # Clear existing items
+        for item in inventory_listbox.get_children():
+            inventory_listbox.delete(item)
         
         if not items:
-            inventory_listbox.insert(tk.END, "No inventory items found")
+            # Insert a message row when no items found
+            inventory_listbox.insert('', 'end', values=('', '', '', 'No inventory items found', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''))
             return
 
-        # Define the column headers and their display widths
-        headers = [
-            ("ID", 50),
-            ("Serial No.", 30),
-            ("InventoryID", 20),
-            ("Product ID", 20),
-            ("Name", 50),
-            ("Material", 40),
-            ("Total Quantity", 25),
-            ("Manufacturer", 40),
-            ("Purchase Dealer", 40),
-            ("Purchase Date", 35),
-            ("Purchase Amount", 25),
-            ("Repair Quantity", 25),
-            ("Repair Cost", 25),
-            ("On Rent", 30),
-            ("Vendor Name", 40),
-            ("Total Rent", 30),
-            ("Rented Inventory Returned", 30),
-            ("Returned Date", 30),
-            ("On Event", 30),
-            ("In Office", 30),
-            ("In Warehouse", 35),
-            ("Issued Qty", 25),
-            ("Balance Qty", 25),
-            ("Submitted By", 35),
-            ("Created At", 40),
-            ("Updated At", 40),
-            ("BarCode", 40),
-            ("BacodeUrl", 150)
-        ]
-
-        # Calculate total width needed
-        total_width = sum(h[1] for h in headers)
-        
-        # Create header row
-        header_row = "".join(f"{h[0]:<{h[1]}}" for h in headers)
-        inventory_listbox.insert(tk.END, header_row)
-        
-        # Add separator line
-        separator = "-" * total_width
-        inventory_listbox.insert(tk.END, separator)
-        
-        # Add each item's values in a row
-        for item in items:
-            row_values = []
-            for h in headers:
-                # Get the value directly using the same keys as in the API response
-                value = item.get(h[0], 'N/A')
-                
-                # Format the value to fit the column width
-                display_value = str(value)[:h[1]-2] + ".." if len(str(value)) > h[1] else str(value)
-                row_values.append(f"{display_value:<{h[1]}}")
+        # Add each item as a row in the treeview
+        for idx, item in enumerate(items, start=1):
+            # Determine row tag for alternating colors
+            tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
             
-            # Join all values with no extra spaces between columns
-            inventory_listbox.insert(tk.END, "".join(row_values))
-        
-        # Configure horizontal scrolling
-        inventory_listbox.config(width=total_width)
+            # Extract values for each column
+            values = (
+                item.get('id', ''),
+                item.get('sno', ''),
+                item.get('inventory_id', ''),
+                item.get('product_id', ''),
+                item.get('name', ''),
+                item.get('material', ''),
+                item.get('total_quantity', ''),
+                item.get('manufacturer', ''),
+                item.get('purchase_dealer', ''),
+                item.get('purchase_date', ''),
+                item.get('purchase_amount', ''),
+                item.get('repair_quantity', ''),
+                item.get('repair_cost', ''),
+                item.get('on_rent', ''),
+                item.get('vendor_name', ''),
+                item.get('total_rent', ''),
+                item.get('rented_inventory_returned', ''),
+                item.get('returned_date', ''),
+                item.get('on_event', ''),
+                item.get('in_office', ''),
+                item.get('in_warehouse', ''),
+                item.get('issued_qty', ''),
+                item.get('balance_qty', ''),
+                item.get('bar_code', ''),
+                item.get('barcode_url', ''),
+                item.get('submitted_by', '')
+            )
+            
+            # Insert row into treeview
+            inventory_listbox.insert('', 'end', values=values, tags=(tag,))
             
 #  Filter inventory by date range by `filter` button
 def filter_by_date_range():
@@ -214,197 +151,6 @@ def filter_by_date_range():
 # Moved to homePage/search_results.py
 
 # Add new inventory items from all rows
-def create_inventory_item(scrollable_frame, header_labels):
-    """Add new inventory items from all rows with all fields optional"""
-    row_count = len(scrollable_frame.grid_slaves()) // len(header_labels)
-    checkbox_fields = ['OnRent', 'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse']
-    all_fields = ['InventoryID', 'ProductID', 'Name', 'TotalQuantity', 'Submitedby',
-                 'ReturnedDate', 'Material', 'Manufacturer', 'PurchaseDealer',
-                 'RepairQuantity', 'RepairCost', 'IssuedQty', 'BalanceQty',
-                 'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Sno']
-    
-    added_items = []
-    today = datetime.now().date()
-    
-    # Track if we have any valid data to submit
-    has_valid_data = False
-    
-    for row in range(row_count):
-        item_data = {}
-        row_has_data = False
-        
-        # Helper function to safely get and clean field values
-        def get_field_value(field_name, default=None):
-            if field_name in entries and isinstance(entries[field_name], tk.Entry):
-                value = entries[field_name].get()
-                return value.strip() if value else None
-            return None
-
-        # Collect all field values
-        for field in all_fields:
-            field_name = f"{field}_{row}" if row > 0 else field
-            value = get_field_value(field_name)
-            if value:
-                item_data[field] = value
-                row_has_data = True
-        
-        # Skip empty rows (except first row which is required)
-        if not row_has_data and row > 0:
-            continue
-            
-        has_valid_data = has_valid_data or row_has_data
-        
-        # Auto-generate InventoryID if not provided
-        if 'InventoryID' not in item_data or not item_data['InventoryID']:
-            item_data['InventoryID'] = generate_inventory_id()
-        
-        # Auto-generate ProductID if not provided
-        if 'ProductID' not in item_data or not item_data['ProductID']:
-            item_data['ProductID'] = generate_product_id()
-        
-        # Handle checkboxes
-        for field in checkbox_fields:
-            field_name = f"{field}_{row}" if row > 0 else field
-            if field_name in checkbox_vars:
-                item_data[field] = checkbox_vars[field_name].get()
-                if item_data[field]:  # If checkbox is checked
-                    row_has_data = True
-        
-        if row_has_data or row == 0:  # Always process first row
-            try:
-                # Add current date to the item data
-                item_data['added_date'] = today.strftime("%Y-%m-%d")
-                added_item = add_new_inventory_item(item_data)
-                added_items.append(added_item)
-            except Exception as e:
-                logger.error(f"Failed to add item (row {row+1}): {str(e)}")
-                messagebox.showerror("Error", f"Failed to add item from row {row+1}\nError: {str(e)}")
-                return  # Stop processing if there's an error
-
-    if not has_valid_data and row_count > 1:
-        messagebox.showwarning("Warning", "No valid data to submit in additional rows")
-        return
-
-    # Display results if any items were added
-    if added_items:
-        if added_items_listbox:
-            # Only clear if we're starting a new day
-            current_list_date = getattr(added_items_listbox, 'current_date', None)
-            if current_list_date != today:
-                added_items_listbox.delete(0, tk.END)
-                added_items_listbox.current_date = today
-            
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            for idx, item in enumerate(added_items, start=1):
-                display_str = (
-                    f"[Today] ID: {idx}. {item.get('id', 'N/A')} | "
-                    f"Serial No.: {item.get('sno', 'N/A')} | "
-                    f"Inventory ID: {item.get('inventory_id', 'N/A')} | "
-                    f"Product ID: {item.get('product_id', 'N/A')} | "
-                    f"Name: {item.get('inventory_name', 'N/A')} | "
-                    f"Qty: {item.get('total_quantity', 'N/A')} | "
-                    f"On Rent: {item.get('on_rent', 'N/A')} | "
-                    f"Returned: {item.get('rented_inventory_returned', 'N/A')} | "
-                    f"Balance: {item.get('balance_qty', 'N/A')} | "
-                    f"Purchased: {item.get('purchase_date', 'N/A')} | "
-                    f"Created At: {item.get('created_at', 'N/A')} | "
-                    f"Updated At: {item.get('updated_at', 'N/A')} | "
-                    f"submitted_by: {item.get('submitted_by', 'N/A')}"
-                    f"BarCode: {item.get('inventory_barcode', 'N/A')} | "
-                )
-                added_items_listbox.insert(tk.END, display_str)
-        
-        # Refresh form and generate new IDs
-        update_main_inventory_list()
-        refresh_form(scrollable_frame, header_labels)
-        messagebox.showinfo("Success", f"{len(added_items)} items added successfully")
-    else:
-        messagebox.showwarning("Warning", "No items were added")
-        
-#  Add a new row of input fields below the existing ones
-def add_new_row(scrollable_frame, header_labels):
-    """Add a new row of input fields below the existing ones"""
-    row_num = len(scrollable_frame.grid_slaves()) // len(header_labels)  # Calculate current row count
-    
-    for col, field in enumerate(header_labels):
-        var_name = f"{field.replace(' ', '')}_{row_num}"  # Unique name for each row
-        if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
-            checkbox_vars[var_name] = tk.BooleanVar()
-            entries[var_name] = tk.Checkbutton(
-                scrollable_frame, 
-                variable=checkbox_vars[var_name],
-                borderwidth=1,
-                relief='solid'
-            )
-            entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
-        elif field in ['Purchase Date', 'Returned Date']:
-            # Create a frame to hold the date entry and clear button
-            date_frame = tk.Frame(scrollable_frame)
-            date_frame.grid(row=row_num, column=col, sticky="ew", padx=1, pady=1)
-            
-            # Create DateEntry widget without setting a default date
-            date_entry = DateEntry(
-                date_frame,
-                width=12,  # Slightly reduced to accommodate clear button
-                background='darkblue',
-                foreground='white',
-                borderwidth=1,
-                date_pattern='yyyy-mm-dd',
-                font=('Helvetica', 9))
-            date_entry.delete(0, 'end')  # Clear any default date
-            date_entry.pack(side='left', fill=tk.X, expand=True)
-            
-            # Add clear button
-            clear_btn = tk.Button(
-                date_frame,
-                text="✕",
-                command=lambda e=date_entry: e.delete(0, 'end'),
-                font=('Helvetica', 7),
-                width=1,
-                relief='flat',
-            )
-            clear_btn.pack(side='right', padx=(2,0))
-            
-            entries[var_name] = date_entry
-        else:
-            entries[var_name] = tk.Entry(
-                scrollable_frame, 
-                font=('Helvetica', 9), 
-                borderwidth=1,
-                relief='solid'
-            )
-            entries[var_name].grid(row=row_num, column=col, sticky='ew', padx=1, pady=1)
-            
-            # Pre-fill InventoryID and ProductID for new rows
-            if field == 'InventoryID':
-                entries[var_name].insert(0, generate_inventory_id())
-                entries[var_name].config(state='readonly')
-            elif field == 'ProductID':
-                entries[var_name].insert(0, generate_product_id())
-                entries[var_name].config(state='readonly')
-
-#  Remove the last row of input fields
-def remove_last_row(scrollable_frame):
-    """Remove the last row of input fields"""
-    # Get all widgets in the scrollable frame
-    widgets = scrollable_frame.grid_slaves()
-    if not widgets:
-        return
-    
-    # Find the highest row number
-    max_row = max(int(w.grid_info()['row']) for w in widgets)
-    
-    # Remove all widgets in the last row
-    for widget in widgets:
-        if widget.grid_info()['row'] == max_row:
-            widget.destroy()
-            # Also remove from entries/checkbox_vars if needed
-            for key in list(entries.keys()):
-                if key.endswith(f"_{max_row}"):
-                    del entries[key]
-            for key in list(checkbox_vars.keys()):
-                if key.endswith(f"_{max_row}"):
-                    del checkbox_vars[key]
 
 def quit_application():
     """Confirm and quit the application"""
@@ -424,8 +170,8 @@ def upload_inventory_with_message():
 #  Adjust UI elements based on screen size
 def configure_responsive_grid():
     """Adjust UI elements based on screen size"""
-    clock_label.config(font=('Helvetica', 12, 'bold'))
-    company_label.config(font=('Helvetica', 12))
+    clock_label.config(font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold'))
+    company_label.config(font=(universal_font_box_size.qr_barcode_header_font_family, 12))
 
 # ==============================
 # Child window functions
@@ -492,7 +238,7 @@ def create_header_frame(root):
     
     # Row 1: Clock (top-center)
     global clock_label
-    clock_label = tk.Label(header_frame, font=('Helvetica', 14, 'bold'), 
+    clock_label = tk.Label(header_frame, font=(universal_font_box_size.qr_barcode_header_font_family, 14, 'bold'), 
                           fg='white', bg='#2c3e50')
     clock_label.grid(row=0, column=0, sticky='n', pady=(8,0))
     
@@ -506,13 +252,12 @@ def create_header_frame(root):
     global company_label
     company_label = tk.Label(header_frame,
                            text=company_info,
-                           font=('Helvetica', 12),
+                           font=(universal_font_box_size.qr_barcode_header_font_family, 12),
                            justify='right',
                            anchor='ne',
                            fg='#ecf0f1', bg='#2c3e50')
     company_label.grid(row=1, column=0, sticky='ne', pady=(0,8), padx=12)
     
-    return header_frame
     return header_frame
 
 #  Create list frames with notebook tabs [Inventory List, New Entry, Search Results]
@@ -525,7 +270,7 @@ def create_list_frames(root):
     # Reserve space for header (80px) and bottom buttons (120px)
     available_height = screen_height - 180
     list_frame_height = int(available_height * 0.8)
-    listbox_height = max(8, list_frame_height // 35)  # Adjusted for larger fonts
+    listbox_height = max(20, list_frame_height // 35)  # Adjusted for larger fonts
     
     notebook = ttk.Notebook(root)
     notebook.grid(row=1, column=0, sticky="nsew", padx=3, pady=2)
@@ -536,7 +281,7 @@ def create_list_frames(root):
     style.configure('TNotebook', background='#f0f0f0', borderwidth=0)
     style.configure('TNotebook.Tab', 
                    padding=[20, 12], 
-                   font=('Helvetica', 11, 'bold'),
+                   font=(universal_font_box_size.qr_barcode_header_font_family, 11, 'bold'),
                    background='#bdc3c7',
                    foreground='#2c3e50')
     style.map('TNotebook.Tab',
@@ -564,13 +309,13 @@ def create_list_frames(root):
     
     # Modern styled buttons
     filter_btn = tk.Button(left_frame, text="Filter", command=filter_by_date_range,
-                         font=('Helvetica', 12, 'bold'), height=1, width=12,
+                         font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold'), height=1, width=12,
                          bg='#2c3e50', fg='white', relief='flat',
                          activebackground='#34495e', activeforeground='white')
     filter_btn.grid(row=0, column=4, padx=5)
     
     show_all_btn = tk.Button(left_frame, text="Show All", command=update_main_inventory_list,
-                           font=('Helvetica', 12, 'bold'), height=1, width=12,
+                           font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold'), height=1, width=12,
                            bg='#95a5a6', fg='white', relief='flat',
                            activebackground='#7f8c8d', activeforeground='white')
     show_all_btn.grid(row=0, column=5, padx=5)
@@ -587,7 +332,7 @@ def create_list_frames(root):
         right_frame, 
         text="Upload", 
         command=lambda: upload_inventory_with_message(),
-        font=('Helvetica', 12, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
         height=1, width=12,
         bg='#34495e', fg='white', relief='flat',
         activebackground='#2c3e50', activeforeground='white'
@@ -599,7 +344,7 @@ def create_list_frames(root):
         right_frame, 
         text="Sync", 
         command=update_inventory_list,
-        font=('Helvetica', 12, 'bold'),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
         height=1, width=12,
         bg='#7f8c8d', fg='white', relief='flat',
         activebackground='#95a5a6', activeforeground='white'
@@ -633,25 +378,39 @@ def create_list_frames(root):
     )
     v_scrollbar.pack(side="right", fill="y")
     
-    # Create the listbox with both scrollbars
+    # Create the inventory table with Treeview
     global inventory_listbox
-    inventory_listbox = tk.Listbox(
-        list_container,
-        height=listbox_height,
-        font=('Consolas', 12),
-        activestyle='none',
-        selectbackground='#3498db',
-        selectforeground='white',
-        bg='#ffffff',
-        fg='#2c3e50',
-        borderwidth=0,
-        highlightthickness=0,
-        xscrollcommand=h_scrollbar.set,
-        yscrollcommand=v_scrollbar.set
-    )
+    
+    # Smart column definition - just names, loop handles the rest
+    columns = ['ID','Sno', 'InventoryID', 'ProductID', 'Name', 'Material', 'Total Quantity', 
+               'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
+               'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
+               'Rented Inventory Returned', 'Returned Date', 'On Event', 'In Office', 
+               'In Warehouse', 'Issued Qty', 'Balance Qty', 'Bar Code', 'Barcode URL', 'Submitted by']
+    
+    inventory_listbox = ttk.Treeview(list_container, columns=columns, show='headings', height=listbox_height)
+    
+    # Smart loop for headers and widths
+    for col in columns:
+        inventory_listbox.heading(col, text=col)
+        width = len(col) * 30 if len(col) > 10 else len(col) * 90  # Smart width calculation
+        inventory_listbox.column(col, width=width, anchor='center' if col in ['Sno', 'Total Quantity', 'Purchase Amount'] else 'w', stretch=False)
+    
+    # Configure scrollbars and layout - use pack consistently
+    inventory_listbox.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
+    h_scrollbar.config(command=inventory_listbox.xview)
+    v_scrollbar.config(command=inventory_listbox.yview)
+    
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
-    # Setup modern scrolling for inventory list
+    # Styling
+    style = ttk.Style()
+    style.configure('Treeview', font=(universal_font_box_size.inventory_list_font_family, universal_font_box_size.inventory_list_font_size))
+    style.configure('Treeview.Heading', font=(universal_font_box_size.inventory_list_font_family, universal_font_box_size.inventory_list_font_size))
+    
+    inventory_listbox.tag_configure('evenrow', background='#f8f9fa')
+    inventory_listbox.tag_configure('oddrow', background='#ffffff')
+    
     setup_modern_scrolling(inventory_listbox)
     
     # Initialize the inventory list
@@ -690,7 +449,7 @@ def create_bottom_frames(root):
             left_buttons_frame,
             text=text,
             command=command,
-            font=('Helvetica', 12, 'bold'),
+            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
             width=15,
             height=2,
             bg=color,
@@ -702,7 +461,7 @@ def create_bottom_frames(root):
         btn.pack(side='left', padx=3, fill='x', expand=True)
     
     quit_button = tk.Button(button_container, text="Quit", command=quit_application,
-                          font=('Helvetica', 12, 'bold'), width=8, height=2,
+                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'), width=8, height=2,
                           bg='#95a5a6', fg='white', relief='flat',
                           activebackground='#7f8c8d', activeforeground='white')
     quit_button.pack(side='right', padx=5)
