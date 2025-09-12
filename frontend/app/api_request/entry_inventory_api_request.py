@@ -1,8 +1,12 @@
 #  frontend/app/entry_inventory_functions_request.py
 from common_imports import *
 import logging
+from utils.pagination import Pagination
 
 logger = logging.getLogger(__name__)
+
+# Global pagination instance
+paginator = Pagination()
 
 def format_inventory_item(item: Dict[str, Any]) -> Dict[str, str]:
     """Helper function to format inventory item data consistently across all functions."""
@@ -134,12 +138,13 @@ def filter_inventory_by_date_range(from_date: str, to_date: str) -> List[Dict[st
         return []
     
 #  Show all inventory from local database by clicking the `Show All` button
-def show_all_inventory() -> List[Dict[str, str]]:
-    """Show all inventory from local database"""
+def show_all_inventory():
+    """Show all inventory from local database with pagination"""
     try:
         response = make_api_request("GET", "show-all/")
         response.raise_for_status()
-        return format_inventory_response(response.json())
+        all_data = format_inventory_response(response.json())
+        return paginator.get_page_data(all_data)
     except requests.RequestException as e:
         handle_api_error(e, "fetch all inventory")
         return []
@@ -260,8 +265,8 @@ def add_new_inventory_item(item_data: dict):
         raise Exception(f"Could not add inventory item: {str(e)}")
     
 # Search for an item by [inventory_id, product_id, Project_id] by clicking search
-def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> List[Dict[str, str]]:
-    """Fetch inventory data filtered by a single ID from the API"""
+def search_inventory_by_id(inventory_id: str = None, product_id: str = None):
+    """Fetch inventory data filtered by a single ID from the API with pagination"""
     try:
         provided_ids = [id for id in [inventory_id, product_id] if id]
         if len(provided_ids) != 1:
@@ -270,7 +275,8 @@ def search_inventory_by_id(inventory_id: str = None, product_id: str = None) -> 
         params = {'inventory_id': inventory_id} if inventory_id else {'product_id': product_id}
         response = make_api_request("GET", "search/", params=params)
         response.raise_for_status()
-        return format_inventory_response(response.json())
+        all_data = format_inventory_response(response.json())
+        return paginator.get_page_data(all_data)
     except requests.RequestException as e:
         handle_api_error(e, "fetch inventory by ID")
         return []
@@ -383,6 +389,19 @@ def search_project_details_by_project_id(project_id: str) -> List[Dict]:
         messagebox.showerror("Error", error_msg)
         return []
     
+# Pagination control functions
+def next_page():
+    return paginator.next_page()
+
+def prev_page():
+    return paginator.prev_page()
+
+def go_to_page(page_num):
+    return paginator.go_to_page(page_num)
+
+def get_current_page():
+    return paginator.current_page
+
 # Format project item from API response to consistent frontend format
 def format_project_item(item: dict) -> dict:
     """Format project item from API response to consistent frontend format"""

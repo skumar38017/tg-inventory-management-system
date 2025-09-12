@@ -4,7 +4,11 @@ from api_request.entry_inventory_api_request import (
     sync_inventory,
     upload_inventory,
     show_all_inventory,
-    filter_inventory_by_date_range
+    filter_inventory_by_date_range,
+    next_page,
+    prev_page,
+    go_to_page,
+    get_current_page
 )
 from to_event import ToEventWindow
 from from_event import FromEventWindow
@@ -52,17 +56,39 @@ def update_inventory_list():
         
 # Update main inventory listbox with all items by clicking sync button
 def update_main_inventory_list():
-    """Update only the main inventory listbox with all items"""
+    """Update only the main inventory listbox with paginated items"""
     if inventory_listbox:
         # Clear existing items from treeview
         for item in inventory_listbox.get_children():
             inventory_listbox.delete(item)
         try:
-            inventory = show_all_inventory() # This now returns formatted data from the API
+            inventory = show_all_inventory()  # Returns 20 items for current page
             display_inventory_items(inventory)
+            update_pagination_info()
         except Exception as e:
             logger.error(f"Failed to Sync inventory: {e}")
             messagebox.showerror("Error", "Could not Sync inventory data")
+
+def update_pagination_info():
+    """Update pagination display info"""
+    current_page = get_current_page()
+    # You can add pagination info display here if needed
+    logger.info(f"Current page: {current_page}")
+
+def go_next_page():
+    """Go to next page and refresh data"""
+    next_page()
+    update_main_inventory_list()
+
+def go_prev_page():
+    """Go to previous page and refresh data"""
+    prev_page()
+    update_main_inventory_list()
+
+def go_specific_page(page_num):
+    """Go to specific page and refresh data"""
+    go_to_page(page_num)
+    update_main_inventory_list()
 
 def display_inventory_items(items):
     """Display inventory items in Treeview table format with fixed headers"""
@@ -349,6 +375,29 @@ def create_list_frames(root):
         activebackground='#95a5a6', activeforeground='white'
     )
     sync_btn.pack(side="right", padx=5)
+
+    # Pagination buttons
+    prev_btn = tk.Button(
+        button_frame,
+        text="◀ Prev",
+        command=go_prev_page,
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        height=1, width=8,
+        bg='#3498db', fg='white', relief='flat',
+        activebackground='#2980b9', activeforeground='white'
+    )
+    prev_btn.pack(side="right", padx=2)
+
+    next_btn = tk.Button(
+        button_frame,
+        text="Next ▶",
+        command=go_next_page,
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        height=1, width=8,
+        bg='#3498db', fg='white', relief='flat',
+        activebackground='#2980b9', activeforeground='white'
+    )
+    next_btn.pack(side="right", padx=2)
 
     # Add Update button
     UpdatePopUpWindow.create_update_button(inventory_frame, root_window=root)
