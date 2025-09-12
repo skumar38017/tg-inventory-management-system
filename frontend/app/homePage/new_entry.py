@@ -57,7 +57,9 @@ def refresh_form(scrollable_frame, header_labels):
     if added_items_listbox:
         current_list_date = getattr(added_items_listbox, 'current_date', None)
         if current_list_date != today:
-            added_items_listbox.delete(0, tk.END)
+            # Clear all items from treeview
+            for item in added_items_listbox.get_children():
+                added_items_listbox.delete(item)
             added_items_listbox.current_date = today
 
 def create_inventory_item(scrollable_frame, header_labels):
@@ -142,29 +144,34 @@ def create_inventory_item(scrollable_frame, header_labels):
             # Only clear if we're starting a new day
             current_list_date = getattr(added_items_listbox, 'current_date', None)
             if current_list_date != today:
-                added_items_listbox.delete(0, tk.END)
+                # Clear all items from treeview
+                for item in added_items_listbox.get_children():
+                    added_items_listbox.delete(item)
                 added_items_listbox.current_date = today
             
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for idx, item in enumerate(added_items, start=1):
-                display_str = (
-                    f"[Today] ID: {idx}. {item.get('id', 'N/A')} | "
-                    f"Serial No.: {item.get('sno', 'N/A')} | "
-                    f"InventoryID: {item.get('inventory_id', 'N/A')} | "
-                    f"ProductID: {item.get('product_id', 'N/A')} | "
-                    f"Name: {item.get('name', 'N/A')} | "
-                    f"Material: {item.get('material', 'N/A')} | "
-                    f"Total Quantity: {item.get('total_quantity', 'N/A')} | "
-                    f"Manufacturer: {item.get('manufacturer', 'N/A')} | "
-                    f"Purchase Dealer: {item.get('purchase_dealer', 'N/A')} | "
-                    f"Purchase Date: {item.get('purchase_date', 'N/A')} | "
-                    f"Purchase Amount: {item.get('purchase_amount', 'N/A')} | "
-                    f"Repair Quantity: {item.get('repair_quantity', 'N/A')} | "
-                    f"Repair Cost: {item.get('repair_cost', 'N/A')} | "
-                    f"submitted_by: {item.get('submitted_by', 'N/A')}"
-                    f"BarCode: {item.get('inventory_barcode', 'N/A')} | "
-                )
-                added_items_listbox.insert(tk.END, display_str)
+                # Determine row tag for alternating colors
+                tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+                
+                # Insert data into treeview
+                added_items_listbox.insert('', 'end', values=(
+                    f"{idx}. {item.get('id', 'N/A')}",
+                    item.get('sno', 'N/A'),
+                    item.get('inventory_id', 'N/A'),
+                    item.get('product_id', 'N/A'),
+                    item.get('name', 'N/A'),
+                    item.get('material', 'N/A'),
+                    item.get('total_quantity', 'N/A'),
+                    item.get('manufacturer', 'N/A'),
+                    item.get('purchase_dealer', 'N/A'),
+                    item.get('purchase_date', 'N/A'),
+                    item.get('purchase_amount', 'N/A'),
+                    item.get('repair_quantity', 'N/A'),
+                    item.get('repair_cost', 'N/A'),
+                    item.get('submitted_by', 'N/A'),
+                    item.get('inventory_barcode', 'N/A')
+                ), tags=(tag,))
         
         # Refresh form and generate new IDs
         refresh_form(scrollable_frame, header_labels)
@@ -264,7 +271,7 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
             font=('Helvetica', universal_font_box_size.new_entry_font_size), 
             borderwidth=1,
             relief='solid',
-            width=int(universal_font_box_size.common * 2)
+            width=universal_font_box_size.common * 2
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
         
@@ -412,7 +419,7 @@ def create_new_entry_tab(notebook):
     added_items_header = tk.Label(
         added_items_frame, 
         text="Added Items List (Today)", 
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+        font=('Helvetica', universal_font_box_size.search_button_font_size, 'bold'),
         bg='white', fg='#2c3e50'
     )
     added_items_header.pack(anchor='w', pady=(0, 5))
@@ -421,85 +428,68 @@ def create_new_entry_tab(notebook):
     added_list_container = tk.Frame(added_items_frame, bg='white', relief='sunken', bd=1)
     added_list_container.pack(fill='both', expand=True)
     
-    # Create scrollbars for added items list
-    added_h_scrollbar = tk.Scrollbar(added_list_container, orient='horizontal')
-    added_h_scrollbar.pack(side='bottom', fill='x')
+    # Create Treeview for table layout
+    columns = ('ID', 'Serial No.', 'InventoryID', 'ProductID', 'Name', 'Material', 
+               'Total Quantity', 'Manufacturer', 'Purchase Dealer', 'Purchase Date', 
+               'Purchase Amount', 'Repair Quantity', 'Repair Cost', 'submitted_by', 'BarCode')
     
-    added_v_scrollbar = tk.Scrollbar(added_list_container, orient='vertical')
-    added_v_scrollbar.pack(side='right', fill='y')
-    
-    # Create the added items listbox
     global added_items_listbox
-    added_items_listbox = tk.Listbox(
-        added_list_container,
-        height=universal_font_box_size.added_items_height,
-        font=(universal_font_box_size.added_items_font_family, universal_font_box_size.added_items_font_size),
-        activestyle='none',
-        selectbackground='#3498db',
-        selectforeground='white',
-        bg='#ffffff',
-        fg='#2c3e50',
-        borderwidth=0,
-        highlightthickness=0,
-        xscrollcommand=added_h_scrollbar.set,
-        yscrollcommand=added_v_scrollbar.set
-    )
-    added_items_listbox.pack(side='left', fill='both', expand=True)
+    added_items_listbox = ttk.Treeview(added_list_container, columns=columns, show='headings', height=8)
     
-    # Configure scrollbars
-    added_h_scrollbar.config(command=added_items_listbox.xview)
-    added_v_scrollbar.config(command=added_items_listbox.yview)
+    # Configure column headings and widths
+    added_items_listbox.heading('ID', text='[Today] ID')
+    added_items_listbox.heading('Serial No.', text='Serial No.')
+    added_items_listbox.heading('InventoryID', text='InventoryID')
+    added_items_listbox.heading('ProductID', text='ProductID')
+    added_items_listbox.heading('Name', text='Name')
+    added_items_listbox.heading('Material', text='Material')
+    added_items_listbox.heading('Total Quantity', text='Total Quantity')
+    added_items_listbox.heading('Manufacturer', text='Manufacturer')
+    added_items_listbox.heading('Purchase Dealer', text='Purchase Dealer')
+    added_items_listbox.heading('Purchase Date', text='Purchase Date')
+    added_items_listbox.heading('Purchase Amount', text='Purchase Amount')
+    added_items_listbox.heading('Repair Quantity', text='Repair Quantity')
+    added_items_listbox.heading('Repair Cost', text='Repair Cost')
+    added_items_listbox.heading('submitted_by', text='submitted_by')
+    added_items_listbox.heading('BarCode', text='BarCode')
     
-    # Setup modern scrolling for added items list
-    setup_modern_scrolling(added_items_listbox)
+    # Set column widths
+    added_items_listbox.column('ID', width=100, anchor='center')
+    added_items_listbox.column('Serial No.', width=100, anchor='center')
+    added_items_listbox.column('InventoryID', width=120, anchor='center')
+    added_items_listbox.column('ProductID', width=100, anchor='center')
+    added_items_listbox.column('Name', width=150, anchor='w')
+    added_items_listbox.column('Material', width=100, anchor='w')
+    added_items_listbox.column('Total Quantity', width=120, anchor='center')
+    added_items_listbox.column('Manufacturer', width=120, anchor='w')
+    added_items_listbox.column('Purchase Dealer', width=140, anchor='w')
+    added_items_listbox.column('Purchase Date', width=120, anchor='center')
+    added_items_listbox.column('Purchase Amount', width=140, anchor='center')
+    added_items_listbox.column('Repair Quantity', width=120, anchor='center')
+    added_items_listbox.column('Repair Cost', width=100, anchor='center')
+    added_items_listbox.column('submitted_by', width=120, anchor='w')
+    added_items_listbox.column('BarCode', width=120, anchor='center')
     
-    # Set current date for the listbox
+    # Create scrollbars
+    added_v_scrollbar = ttk.Scrollbar(added_list_container, orient='vertical', command=added_items_listbox.yview)
+    added_h_scrollbar = ttk.Scrollbar(added_list_container, orient='horizontal', command=added_items_listbox.xview)
+    added_items_listbox.configure(yscrollcommand=added_v_scrollbar.set, xscrollcommand=added_h_scrollbar.set)
+    
+    # Grid layout for proper scrollbar positioning
+    added_items_listbox.grid(row=0, column=0, sticky='nsew')
+    added_v_scrollbar.grid(row=0, column=1, sticky='ns')
+    added_h_scrollbar.grid(row=1, column=0, sticky='ew')
+    
+    # Configure grid weights
+    added_list_container.grid_rowconfigure(0, weight=1)
+    added_list_container.grid_columnconfigure(0, weight=1)
+    
+    # Row styling
+    added_items_listbox.tag_configure('evenrow', background='#f8f9fa')
+    added_items_listbox.tag_configure('oddrow', background='#ffffff')
+    
+    # Set current date for the treeview
     today = datetime.now().date()
     added_items_listbox.current_date = today
-    list_frame = tk.Frame(new_entry_frame)
-    list_frame.pack(fill='both', expand=True, padx=12, pady=5)
     
-    # "Added Items List" label centered
-    list_label = tk.Label(
-        list_frame, 
-        text="Added Items List", 
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold')
-    )
-    list_label.pack()
-    
-    # Create container for the listbox with both scrollbars
-    list_container = tk.Frame(list_frame)
-    list_container.pack(fill='both', expand=True)
-
-    # Create horizontal scrollbar first (placed at bottom)
-    h_scrollbar = tk.Scrollbar(
-        list_container,
-        orient="horizontal",
-        command=lambda *args: added_items_listbox.xview(*args)
-    )
-    h_scrollbar.pack(side="bottom", fill="x")
-    
-    added_items_listbox = tk.Listbox(
-        list_container,
-        height=12,
-        font=('Courier New', universal_font_box_size.search_button_font_size),
-        selectbackground='#4a6984',
-        selectforeground='white',
-        xscrollcommand=h_scrollbar.set,
-        yscrollcommand=v_scrollbar.set
-    )
-    added_items_listbox.pack(side="left", fill="both", expand=True)
-
-    # Add vertical scrollbar
-    list_scrollbar = tk.Scrollbar(
-        list_container,
-        orient="vertical",
-        command=added_items_listbox.yview
-    )
-    list_scrollbar.pack(side="right", fill="y")
-    added_items_listbox.config(yscrollcommand=list_scrollbar.set)
-
-    # Setup modern scrolling for Added Items List
-    setup_modern_scrolling(added_items_listbox)
-
     return new_entry_frame
