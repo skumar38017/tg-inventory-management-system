@@ -18,6 +18,7 @@ from homePage.entry_update_pop_window import *
 from reveal_qr_barcode_window import *
 from homePage.new_entry import create_new_entry_tab
 from homePage.entry_update_pop_window import UpdatePopUpWindow
+from homePage.search_results import SearchResults
 # from .api_request.entry_inventory_api_request import search_project_details_by_project_id
 
 # Configure logging
@@ -35,10 +36,6 @@ root = None
 # Global variables for the listboxes
 inventory_listbox = None
 added_items_listbox = None
-search_results_listbox = None
-search_inventory_id_entry = None
-search_project_id_entry = None
-search_product_id_entry = None
 
 # Global variables for entry form
 entries = {}
@@ -94,9 +91,6 @@ def update_inventory_list():
     """Update all three listboxes with current data"""
     sync_inventory()
     update_main_inventory_list()
-    # Only clear search results when refreshing main inventory
-    if search_results_listbox:
-        search_results_listbox.delete(0, tk.END)
     
     # Don't clear today's added items
     today = datetime.now().date()
@@ -217,175 +211,7 @@ def filter_by_date_range():
         messagebox.showerror("Error", "Could not filter inventory by date range")
 
 # Perform inventory search based on search criteria [InventoryID, 'ProjectID', ProductID]
-def perform_search():
-    """Perform inventory search based on search criteria and display results in table format"""
-    inventory_id = search_inventory_id_entry.get().strip()
-    project_id = search_project_id_entry.get().strip()
-    product_id = search_product_id_entry.get().strip()
-    
-    search_results_listbox.delete(0, tk.END)
-    
-    try:
-        if project_id:
-            # Project search remains the same but with empty string instead of N/A
-            results = search_project_details_by_id(project_id)
-            if not results:
-                messagebox.showinfo("Search Results", "No matching project found")
-                return
-                
-            project = results[0]
-            # Enhanced header with more project details
-            header = (
-                f"Project: {project.get('project_name', '')} | "
-                f"Project_ID: {project.get('work_id', '')} | "
-                f"Employee: {project.get('employee_name', '')} | "
-                f"Client: {project.get('client_name', '')} | "
-                f"Location: {project.get('location', '')}\n"
-                f"Setup Date: {project.get('setup_date', '')} | "
-                f"Event Date: {project.get('event_date', '')}\n"
-                f"Submitted By: {project.get('submitted_by', '')} | "
-                f"Created At: {project.get('created_at', '')} | "
-                f"Updated At: {project.get('updated_at', '')}"
-                f"Barcode: {project.get('barcode', '')}\n"
-            )
-            search_results_listbox.insert(tk.END, header)
-            search_results_listbox.insert(tk.END, "-"*125)
-            search_results_listbox.insert(tk.END, "Inventory Items:")
-            
-            # Define inventory item headers
-            item_headers = [
-                ("S.No", 30),
-                ("Name", 50),
-                ("Description", 50),
-                ("Qty", 16),
-                ("Zone", 35),
-                ("Material", 40),
-                ("Comments", 50),
-                ("Total", 16),
-                ("Unit", 16),
-                ("Per Unit Power", 25),
-                ("Total Power", 25),
-                ("Status", 25),
-                ("POC", 40),
-                ("Item ID", 40)
-            ]
-            
-            # Create header row for inventory items
-            header_row = "".join(f"{h[0]:<{h[1]}}" for h in item_headers)
-            search_results_listbox.insert(tk.END, header_row)
-            
-            # Add separator line
-            separator = "-" * sum(h[1] for h in item_headers)
-            search_results_listbox.insert(tk.END, separator)
-            
-            # Display each inventory item with proper None handling
-            for item in project.get('inventory_items', []):
-                # Safe getter function that handles None values
-                def safe_get(key, default=''):
-                    val = item.get(key, default)
-                    return str(val) if val is not None else default
-                
-                row_values = [
-                    safe_get('sno')[:7],
-                    safe_get('name')[:18],
-                    safe_get('description')[:23],
-                    safe_get('quantity')[:4],
-                    safe_get('zone_active')[:12],
-                    safe_get('material')[:13],
-                    safe_get('comments')[:18],
-                    safe_get('total')[:6],
-                    safe_get('unit')[:6],
-                    safe_get('per_unit_power')[:13],
-                    safe_get('total_power')[:12],
-                    safe_get('status')[:12],
-                    safe_get('poc')[:13],
-                    safe_get('id')[:36]
-                ]
-                
-                # Format the row
-                row = ""
-                for i, value in enumerate(row_values):
-                    row += f"{value:<{item_headers[i][1]}}"
-                
-                search_results_listbox.insert(tk.END, row)
-                
-            # Configure horizontal scrolling based on inventory items width
-            search_results_listbox.config(width=sum(h[1] for h in item_headers))
-                
-        elif inventory_id or product_id:
-            # Handle inventory/product search with table format (existing code)
-            results = search_inventory_by_id(
-                inventory_id=inventory_id,
-                product_id=product_id
-            )
-            
-            if not results:
-                messagebox.showinfo("Search Results", "No matching items found")
-                return
-                
-            # Define the column headers and their display widths
-            headers = [
-                ("ID", 50),
-                ("Serial No.", 30),
-                ("InventoryID", 20),
-                ("Product ID", 20),
-                ("Name", 50),
-                ("Material", 40),
-                ("Total Quantity", 25),
-                ("Manufacturer", 40),
-                ("Purchase Dealer", 40),
-                ("Purchase Date", 35),
-                ("Purchase Amount", 25),
-                ("Repair Quantity", 25),
-                ("Repair Cost", 25),
-                ("On Rent", 30),
-                ("Vendor Name", 40),
-                ("Total Rent", 25),
-                ("Rented Inventory Returned", 30),
-                ("Returned Date", 30),
-                ("On Event", 25),
-                ("In Office", 30),
-                ("In Warehouse", 35),
-                ("Issued Qty", 25),
-                ("Balance Qty", 25),
-                ("Submitted By", 35),
-                ("Created At", 40),
-                ("Updated At", 40),
-                ("BarCode", 40),
-                ("BacodeUrl", 150)
-            ]
-
-            # Calculate total width needed
-            total_width = sum(h[1] for h in headers)
-            
-            # Create header row
-            header_row = "".join(f"{h[0]:<{h[1]}}" for h in headers)
-            search_results_listbox.insert(tk.END, header_row)
-            
-            # Add separator line
-            separator = "-" * total_width
-            search_results_listbox.insert(tk.END, separator)
-            
-            # Add each item's values in a row
-            for item in results:
-                row_values = []
-                for h in headers:
-                    # Get the value using the exact header text (spaces included)
-                    value = item.get(h[0], '')
-                    
-                    # Format the value to fit the column width
-                    display_value = str(value)[:h[1]-2] + ".." if len(str(value)) > h[1] else str(value)
-                    row_values.append(f"{display_value:<{h[1]}}")
-                
-                # Join all values with no extra spaces between columns
-                search_results_listbox.insert(tk.END, "".join(row_values))
-            
-            # Configure horizontal scrolling
-            search_results_listbox.config(width=total_width)
-                
-    except Exception as e:
-        logger.error(f"Search failed: {str(e)}", exc_info=True)
-        messagebox.showerror("Search Error", f"Failed to perform search: {str(e)}")
+# Moved to homePage/search_results.py
 
 # Add new inventory items from all rows
 def create_inventory_item(scrollable_frame, header_labels):
@@ -834,100 +660,9 @@ def create_list_frames(root):
     # Frame 2: New Entry
     create_new_entry_tab(notebook)
     
-    # Frame 3: Search Results
-    search_frame = tk.Frame(notebook, bg='white')
-    notebook.add(search_frame, text="Search Results")
-
-    # Search fields with modern styling
-    search_fields_frame = tk.Frame(search_frame, bg='#ecf0f1', relief='raised', bd=1)
-    search_fields_frame.pack(fill="x", pady=8, padx=8)
-    
-    for i in range(8):
-        search_fields_frame.grid_columnconfigure(i, weight=1)
-
-    global search_inventory_id_entry, search_project_id_entry, search_product_id_entry
-
-    # Row 1: First three search fields
-    tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 12, 'bold'), 
-            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, sticky='e', padx=5, pady=8)
-    search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
-                                       relief='flat', bd=5)
-    search_inventory_id_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=8)
-
-    tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 12, 'bold'), 
-            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, sticky='e', padx=5, pady=8)
-    search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
-                                     relief='flat', bd=5)
-    search_project_id_entry.grid(row=0, column=3, sticky='ew', padx=5, pady=8)
-
-    tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 12, 'bold'), 
-            bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=4, sticky='e', padx=5, pady=8)
-    search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
-                                     relief='flat', bd=5)
-    search_product_id_entry.grid(row=0, column=5, sticky='ew', padx=5, pady=8)
-
-    # Search button with modern styling
-    search_btn = tk.Button(search_fields_frame, text="Search", command=perform_search, 
-                        font=('Helvetica', 12, 'bold'), height=1, width=12,
-                        bg='#2c3e50', fg='white', relief='flat',
-                        activebackground='#34495e', activeforeground='white')
-    search_btn.grid(row=0, column=6, sticky='ew', padx=5, pady=8)
-
-    # QR & Barcode button with modern styling
-    reveal_btn = tk.Button(
-        search_fields_frame,
-        text="QR & Barcode", 
-        font=('Helvetica', 12, 'bold'),
-        width=15, height=1,
-        bg='#95a5a6', fg='white', relief='flat',
-        activebackground='#7f8c8d', activeforeground='white',
-        command=open_reveal_window 
-    )
-    reveal_btn.grid(row=0, column=7, sticky='ew', padx=5, pady=8)
-    # Make sure to adjust the column weights so the button stays on the right
-    search_fields_frame.grid_columnconfigure(7, weight=1)
-
-    # Separator line
-    ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
-
-    # Search Results list container
-    search_list_container = tk.Frame(search_frame)
-    search_list_container.pack(fill="both", expand=True)
-
-    # Create horizontal scrollbar first (placed at bottom)
-    h_scrollbar = tk.Scrollbar(
-        search_list_container,
-        orient="horizontal",
-        command=lambda *args: search_results_listbox.xview(*args)
-    )
-    h_scrollbar.pack(side="bottom", fill="x")
-
-    # Then create vertical scrollbar (right side)
-    v_scrollbar = tk.Scrollbar(
-        search_list_container,
-        orient="vertical",
-        command=lambda *args: search_results_listbox.yview(*args)
-    )
-    v_scrollbar.pack(side="right", fill="y")
-
-    # Create the listbox with both scrollbars
-    global search_results_listbox
-    search_results_listbox = tk.Listbox(
-        search_list_container,
-        height=listbox_height,
-        font=('Courier New', 11),
-        activestyle='none',
-        selectbackground='#4a6984',
-        selectforeground='white',
-        bg='white',
-        fg='black',
-        xscrollcommand=h_scrollbar.set,
-        yscrollcommand=v_scrollbar.set
-    )
-    search_results_listbox.pack(side="left", fill="both", expand=True)
-    
-    # Setup modern scrolling for search results list
-    setup_modern_scrolling(search_results_listbox)
+    # Frame 3: Search Results - using SearchResults class
+    search_results = SearchResults(root)
+    search_results.create_search_results_tab(notebook)
     
     return notebook
 

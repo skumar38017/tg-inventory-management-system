@@ -3,11 +3,23 @@
 # Universal font size and box size for all the widgets
 
 class UniversalFontBoxSize:
-    # New entry tab specific (24pt fonts)
+    # New entry tab specific 
     new_entry_font_size = 24
     new_entry_input_width = 20
     new_entry_header_width = 20
     new_entry_header_height = 1
+
+    # Search results specific
+    search_results_header_font_size = 18
+
+    search_results_header_font_family = 'Courier New'
+    search_results_header_font_weight = 'bold'
+
+    search_results_header_bottom_font_size = 18
+    search_results_header_bottom_width = 20
+    search_results_header_bottom_height = 1
+    search_results_header_bottom_font_family = 'Courier New'
+    search_results_header_bottom_font_weight = 'bold'
 
     # Legacy sizes (keep for backward compatibility)
     regular_font_size = 24
