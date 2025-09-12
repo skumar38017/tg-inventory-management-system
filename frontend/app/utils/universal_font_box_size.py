@@ -103,6 +103,41 @@ class UniversalFontBoxSize:
     # Search results separator constants
     search_separator_length = 125
 
+    # QR & Barcode window specific
+    qr_barcode_window_title = "Reveal QR & Barcode"
+    qr_barcode_window_geometry = "1080x1920"
+    qr_barcode_main_frame_padx = 10
+    qr_barcode_main_frame_pady = 10
+    
+    # QR & Barcode title
+    qr_barcode_title_font_family = 'Helvetica'
+    qr_barcode_title_font_size = 18
+    qr_barcode_title_font_weight = 'bold'
+    qr_barcode_title_pady = 10
+    
+    # QR & Barcode table headers
+    qr_barcode_table_headers = ["Select", "Serial No.", "Inventory ID", "Inventory Name", "Barcode URL", "QR Code URL"]
+    qr_barcode_header_font_family = 'Helvetica'
+    qr_barcode_header_font_size = 24
+    qr_barcode_header_font_weight = 'bold'
+    qr_barcode_header_borderwidth = 1
+    qr_barcode_header_relief = "solid"
+    qr_barcode_header_padx = 10
+    qr_barcode_header_pady = 10
+    
+    # QR & Barcode table cells
+    qr_barcode_cell_borderwidth = 1
+    qr_barcode_cell_relief = "solid"
+    qr_barcode_cell_padx = 10
+    qr_barcode_cell_pady = 10
+    
+    # QR & Barcode buttons
+    qr_barcode_button_frame_pady = 10
+    qr_barcode_button_padx = 5
+    qr_barcode_button_font_family = 'Helvetica'
+    qr_barcode_button_font_size = 18
+    qr_barcode_button_font_weight = 'normal'
+
     # Legacy sizes (keep for backward compatibility)
     regular_font_size = 24
     regular_box_size = 24

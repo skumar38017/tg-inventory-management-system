@@ -76,40 +76,40 @@ def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
             # For Listbox widgets
             if event.state & 0x1:  # Shift key pressed - horizontal scroll
                 if hasattr(canvas_or_widget, 'xview_scroll'):
-                    canvas_or_widget.xview_scroll(int(-1 * (event.delta / 120)), "units")
+                    canvas_or_widget.xview_scroll(int(event.delta / 120), "units")
             else:
                 # Vertical scrolling
-                canvas_or_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                canvas_or_widget.yview_scroll(int(event.delta / 120), "units")
         else:
             # For Canvas widgets
             if event.state & 0x1:  # Shift key pressed
-                canvas_or_widget.xview_scroll(int(-1 * (event.delta / 120)), "units")
+                canvas_or_widget.xview_scroll(int(event.delta / 120), "units")
             else:
                 # Vertical scrolling
-                canvas_or_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                canvas_or_widget.yview_scroll(int(event.delta / 120), "units")
     
     def on_key_press(event):
         """Handle arrow key navigation"""
         if hasattr(canvas_or_widget, 'yview_scroll'):
             # For Listbox widgets
             if event.keysym == 'Right' and hasattr(canvas_or_widget, 'xview_scroll'):
-                canvas_or_widget.xview_scroll(1, "units")
-            elif event.keysym == 'Left' and hasattr(canvas_or_widget, 'xview_scroll'):
                 canvas_or_widget.xview_scroll(-1, "units")
+            elif event.keysym == 'Left' and hasattr(canvas_or_widget, 'xview_scroll'):
+                canvas_or_widget.xview_scroll(1, "units")
             elif event.keysym == 'Down':
-                canvas_or_widget.yview_scroll(1, "units")
-            elif event.keysym == 'Up':
                 canvas_or_widget.yview_scroll(-1, "units")
+            elif event.keysym == 'Up':
+                canvas_or_widget.yview_scroll(1, "units")
         else:
             # For Canvas widgets
             if event.keysym == 'Right':
-                canvas_or_widget.xview_scroll(1, "units")
-            elif event.keysym == 'Left':
                 canvas_or_widget.xview_scroll(-1, "units")
+            elif event.keysym == 'Left':
+                canvas_or_widget.xview_scroll(1, "units")
             elif event.keysym == 'Down':
-                canvas_or_widget.yview_scroll(1, "units")
-            elif event.keysym == 'Up':
                 canvas_or_widget.yview_scroll(-1, "units")
+            elif event.keysym == 'Up':
+                canvas_or_widget.yview_scroll(1, "units")
     
     # Bind mouse wheel events for touchpad scrolling
     canvas_or_widget.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac

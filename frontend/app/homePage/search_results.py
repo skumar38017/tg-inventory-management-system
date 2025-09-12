@@ -2,7 +2,7 @@
 from common_imports import *
 from api_request.entry_inventory_api_request import search_inventory_by_id
 from api_request.to_event_inventory_request import search_project_details_by_id
-from reveal_qr_barcode_window import *
+from homePage.reveal_qr_barcode_window import *
 from utils.universal_font_box_size import universal_font_box_size
 
 class SearchResults:
