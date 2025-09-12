@@ -148,6 +148,13 @@ class RevealQrAndBarcodeWindow:
         # Bind selection event
         self.tree.bind('<<TreeviewSelect>>', self.on_item_select)
         
+        # Bind arrow key scrolling
+        self.tree.bind('<Left>', self.scroll_left)
+        self.tree.bind('<Right>', self.scroll_right)
+        self.tree.bind('<Up>', self.scroll_up)
+        self.tree.bind('<Down>', self.scroll_down)
+        self.tree.focus_set()  # Enable keyboard focus
+        
         # Modern row styling
         self.tree.tag_configure('evenrow', background='#f8f9fa')
         self.tree.tag_configure('oddrow', background='#ffffff')
@@ -249,6 +256,26 @@ class RevealQrAndBarcodeWindow:
             image_viewer.open_image_view()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open image view: {str(e)}")
+
+    def scroll_left(self, event):
+        """Scroll table left with arrow key"""
+        self.tree.xview_scroll(-10, "units")
+        return "break"
+    
+    def scroll_right(self, event):
+        """Scroll table right with arrow key"""
+        self.tree.xview_scroll(10, "units")
+        return "break"
+    
+    def scroll_up(self, event):
+        """Scroll table up with arrow key"""
+        self.tree.yview_scroll(-10, "units")
+        return "break"
+    
+    def scroll_down(self, event):
+        """Scroll table down with arrow key"""
+        self.tree.yview_scroll(10, "units")
+        return "break"
 
     # Legacy methods for compatibility
     def create_table_structure(self):
