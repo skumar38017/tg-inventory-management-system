@@ -202,7 +202,7 @@ class UniversalFontBoxSize:
     date_clear_button_font = 18
     
     # Main inventory list
-    inventory_list_font_size = 12
+    inventory_list_font_size = 9
     inventory_list_font_family = 'Consolas'
     
     # Search results

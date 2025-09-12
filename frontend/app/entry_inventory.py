@@ -76,19 +76,44 @@ def update_pagination_info():
     logger.info(f"Current page: {current_page}")
 
 def go_next_page():
-    """Go to next page and refresh data"""
-    next_page()
-    update_main_inventory_list()
+    """Go to next page and refresh data from API"""
+    paginator.next_page()
+    update_main_inventory_list()  # This hits the API
 
 def go_prev_page():
-    """Go to previous page and refresh data"""
-    prev_page()
-    update_main_inventory_list()
+    """Go to previous page and refresh data from API"""
+    paginator.prev_page()
+    update_main_inventory_list()  # This hits the API
 
 def go_specific_page(page_num):
-    """Go to specific page and refresh data"""
-    go_to_page(page_num)
+    """Go to specific page and refresh data from API"""
+    paginator.go_to_page(page_num)
+    update_main_inventory_list()  # This hits the API
+
+def go_to_first_page():
+    """Go to first page and refresh data from API"""
+    paginator.go_to_page(0)
     update_main_inventory_list()
+
+def go_to_page_from_entry():
+    """Go to page number from entry field"""
+    try:
+        page_num = int(page_entry.get())
+        if page_num >= 0:
+            paginator.go_to_page(page_num)
+            update_main_inventory_list()
+    except ValueError:
+        messagebox.showwarning("Invalid Page", "Please enter a valid page number")
+
+def update_pagination_ui():
+    """Update pagination UI elements"""
+    if page_info_label:
+        current_page = paginator.current_page
+        page_info_label.config(text=f"Page {current_page} | 20 items per page")
+    
+    if page_entry:
+        page_entry.delete(0, tk.END)
+        page_entry.insert(0, str(paginator.current_page))
 
 def display_inventory_items(items):
     """Display inventory items in Treeview table format with fixed headers"""
@@ -376,29 +401,6 @@ def create_list_frames(root):
     )
     sync_btn.pack(side="right", padx=5)
 
-    # Pagination buttons
-    prev_btn = tk.Button(
-        button_frame,
-        text="◀ Prev",
-        command=go_prev_page,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
-        height=1, width=8,
-        bg='#3498db', fg='white', relief='flat',
-        activebackground='#2980b9', activeforeground='white'
-    )
-    prev_btn.pack(side="right", padx=2)
-
-    next_btn = tk.Button(
-        button_frame,
-        text="Next ▶",
-        command=go_next_page,
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
-        height=1, width=8,
-        bg='#3498db', fg='white', relief='flat',
-        activebackground='#2980b9', activeforeground='white'
-    )
-    next_btn.pack(side="right", padx=2)
-
     # Add Update button
     UpdatePopUpWindow.create_update_button(inventory_frame, root_window=root)
     
@@ -475,10 +477,79 @@ def create_list_frames(root):
     
     return notebook
 
+def create_pagination_frame(root):
+    """Create pagination controls between display list and bottom buttons"""
+    global page_info_label, page_entry
+    
+    # Pagination frame
+    pagination_frame = tk.Frame(root, bg='#ecf0f1', height=60, relief='raised', bd=1)
+    pagination_frame.grid(row=2, column=0, sticky="ew", padx=8, pady=5)
+    pagination_frame.grid_propagate(False)
+    
+    # Left side - Page info
+    page_info_label = tk.Label(
+        pagination_frame,
+        text="Page 0 | 20 items per page",
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large),
+        bg='#ecf0f1', fg='#2c3e50'
+    )
+    page_info_label.pack(side="left", padx=20, pady=15)
+    
+    # Right side - Navigation buttons
+    nav_frame = tk.Frame(pagination_frame, bg='#ecf0f1')
+    nav_frame.pack(side="right", padx=20, pady=10)
+    
+    # First page button
+    first_btn = tk.Button(
+        nav_frame,
+        text="⏮",
+        command=go_to_first_page,
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        width=4, height=1,
+        bg='#95a5a6', fg='white', relief='flat', bd=1,
+        activebackground='#7f8c8d', activeforeground='white'
+    )
+    first_btn.pack(side="left", padx=3)
+    
+    # Previous button
+    prev_btn = tk.Button(
+        nav_frame,
+        text="◀",
+        command=go_prev_page,
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        width=4, height=1,
+        bg='#3498db', fg='white', relief='flat', bd=1,
+        activebackground='#2980b9', activeforeground='white'
+    )
+    prev_btn.pack(side="left", padx=3)
+    
+    # Page number entry
+    page_entry = tk.Entry(
+        nav_frame,
+        width=6,
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large),
+        justify='center', relief='solid', bd=1
+    )
+    page_entry.pack(side="left", padx=5)
+    page_entry.insert(0, "0")
+    page_entry.bind('<Return>', lambda e: go_to_page_from_entry())
+    
+    # Next button
+    next_btn = tk.Button(
+        nav_frame,
+        text="▶",
+        command=go_next_page,
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.button_width_large, 'bold'),
+        width=4, height=1,
+        bg='#3498db', fg='white', relief='flat', bd=1,
+        activebackground='#2980b9', activeforeground='white'
+    )
+    next_btn.pack(side="left", padx=3)
+
 def create_bottom_frames(root):
     """Create the bottom frames with modern styled action buttons"""
     bottom_frame = tk.Frame(root, bg='#34495e', relief='raised', bd=2)
-    bottom_frame.grid(row=2, column=0, sticky='ew', padx=3, pady=3)
+    bottom_frame.grid(row=3, column=0, sticky='ew', padx=3, pady=3)
     bottom_frame.grid_columnconfigure(0, weight=1)
     
     button_container = tk.Frame(bottom_frame, bg='#34495e')
@@ -520,7 +591,8 @@ def configure_grid(root):
     """Configure the root grid layout"""
     root.grid_rowconfigure(0, weight=0)  # Header
     root.grid_rowconfigure(1, weight=1)  # List frames
-    root.grid_rowconfigure(2, weight=0)  # Bottom buttons
+    root.grid_rowconfigure(2, weight=0)  # Pagination
+    root.grid_rowconfigure(3, weight=0)  # Bottom buttons
     root.grid_columnconfigure(0, weight=1)  # Single column for full width
 
 def main():
@@ -531,6 +603,7 @@ def main():
     # Create frames in order
     header_frame = create_header_frame(root)  # Row 0: Clock and company info
     notebook = create_list_frames(root)      # Row 1: Display lists (includes initial update)
+    create_pagination_frame(root)            # Row 1.5: Pagination controls
     create_bottom_frames(root)               # Row 2: Bottom buttons
     
     configure_grid(root)
