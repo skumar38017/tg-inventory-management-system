@@ -50,10 +50,127 @@ def refresh_form(scrollable_frame, header_labels):
             # Widget has been destroyed, remove from entries dict
             if field_name in entries:
                 del entries[field_name]
+    
+    # Don't clear the added items list if it's from today
+    global added_items_listbox
+    today = datetime.now().date()
+    if added_items_listbox:
+        current_list_date = getattr(added_items_listbox, 'current_date', None)
+        if current_list_date != today:
+            added_items_listbox.delete(0, tk.END)
+            added_items_listbox.current_date = today
 
 def create_inventory_item(scrollable_frame, header_labels):
     """Add new inventory items from all rows with all fields optional"""
-    pass  # Placeholder - implement as needed
+    from api_request.entry_inventory_api_request import add_new_inventory_item
+    
+    # Define required fields for validation
+    required_fields = ['InventoryID', 'ProductID', 'Name', 'Material', 'TotalQuantity', 
+                      'Manufacturer', 'PurchaseDealer', 'PurchaseAmount', 'RepairQuantity', 
+                      'RepairCost', 'OnRent', 'VendorName', 'TotalRent', 
+                      'RentedInventoryReturned', 'OnEvent', 'InOffice', 'InWarehouse', 
+                      'IssuedQty', 'BalanceQty', 'PurchaseDate', 'PurchaseAmount', 'VendorName', 'TotalRent', 'Sno']
+    
+    added_items = []
+    today = datetime.now().date()
+    
+    # Get all widgets in the scrollable frame
+    widgets = scrollable_frame.grid_slaves()
+    
+    # Find the highest row number (excluding header row 0)
+    max_row = 0
+    for widget in widgets:
+        row = widget.grid_info()['row']
+        if row > max_row:
+            max_row = row
+    
+    # Process each data row (starting from row 1)
+    for row in range(1, max_row + 1):
+        try:
+            # Collect data from this row
+            item_data = {}
+            has_data = False
+            
+            for col, field in enumerate(header_labels):
+                var_name = f"{field}_{row}" if row > 1 else field
+                
+                if var_name in entries:
+                    widget = entries[var_name]
+                    
+                    if isinstance(widget, tk.Entry):
+                        value = widget.get().strip()
+                    elif hasattr(widget, 'get_date'):  # DateEntry
+                        try:
+                            date_value = widget.get_date()
+                            value = date_value.strftime("%Y-%m-%d") if date_value else ""
+                        except:
+                            value = ""
+                    elif isinstance(widget, tk.Checkbutton):
+                        checkbox_var = checkbox_vars.get(var_name)
+                        value = checkbox_var.get() if checkbox_var else False
+                    else:
+                        value = ""
+                    
+                    # Convert field name to API format
+                    api_field = field.lower().replace(' ', '_')
+                    item_data[api_field] = value
+                    
+                    # Check if this row has any data
+                    if value and str(value).strip():
+                        has_data = True
+            
+            # Only process rows that have some data
+            if has_data:
+                # Add current date to the item data
+                item_data['added_date'] = today.strftime("%Y-%m-%d")
+                added_item = add_new_inventory_item(item_data)
+                added_items.append(added_item)
+        except Exception as e:
+            logger.error(f"Failed to add item (row {row}): {str(e)}")
+            messagebox.showerror("Error", f"Failed to add item from row {row}\\nError: {str(e)}")
+            continue
+    
+    # Check if no items were processed
+    if not added_items:
+        messagebox.showwarning("Warning", "No valid data found to add")
+        return
+
+    # Display results if any items were added
+    if added_items:
+        global added_items_listbox
+        if added_items_listbox:
+            # Only clear if we're starting a new day
+            current_list_date = getattr(added_items_listbox, 'current_date', None)
+            if current_list_date != today:
+                added_items_listbox.delete(0, tk.END)
+                added_items_listbox.current_date = today
+            
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            for idx, item in enumerate(added_items, start=1):
+                display_str = (
+                    f"[Today] ID: {idx}. {item.get('id', 'N/A')} | "
+                    f"Serial No.: {item.get('sno', 'N/A')} | "
+                    f"InventoryID: {item.get('inventory_id', 'N/A')} | "
+                    f"ProductID: {item.get('product_id', 'N/A')} | "
+                    f"Name: {item.get('name', 'N/A')} | "
+                    f"Material: {item.get('material', 'N/A')} | "
+                    f"Total Quantity: {item.get('total_quantity', 'N/A')} | "
+                    f"Manufacturer: {item.get('manufacturer', 'N/A')} | "
+                    f"Purchase Dealer: {item.get('purchase_dealer', 'N/A')} | "
+                    f"Purchase Date: {item.get('purchase_date', 'N/A')} | "
+                    f"Purchase Amount: {item.get('purchase_amount', 'N/A')} | "
+                    f"Repair Quantity: {item.get('repair_quantity', 'N/A')} | "
+                    f"Repair Cost: {item.get('repair_cost', 'N/A')} | "
+                    f"submitted_by: {item.get('submitted_by', 'N/A')}"
+                    f"BarCode: {item.get('inventory_barcode', 'N/A')} | "
+                )
+                added_items_listbox.insert(tk.END, display_str)
+        
+        # Refresh form and generate new IDs
+        refresh_form(scrollable_frame, header_labels)
+        messagebox.showinfo("Success", f"{len(added_items)} items added successfully")
+    else:
+        messagebox.showwarning("Warning", "No items were added")
 
 def remove_last_row(scrollable_frame):
     """Remove the last row from the form"""
@@ -288,6 +405,57 @@ def create_new_entry_tab(notebook):
     add_row_button.pack(side='left', padx=2)
         
     # Added Items List section
+    added_items_frame = tk.Frame(new_entry_frame, bg='white')
+    added_items_frame.pack(fill='both', expand=True, padx=12, pady=(5, 12))
+    
+    # Added Items List header
+    added_items_header = tk.Label(
+        added_items_frame, 
+        text="Added Items List (Today)", 
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+        bg='white', fg='#2c3e50'
+    )
+    added_items_header.pack(anchor='w', pady=(0, 5))
+    
+    # Added Items List container with scrollbars
+    added_list_container = tk.Frame(added_items_frame, bg='white', relief='sunken', bd=1)
+    added_list_container.pack(fill='both', expand=True)
+    
+    # Create scrollbars for added items list
+    added_h_scrollbar = tk.Scrollbar(added_list_container, orient='horizontal')
+    added_h_scrollbar.pack(side='bottom', fill='x')
+    
+    added_v_scrollbar = tk.Scrollbar(added_list_container, orient='vertical')
+    added_v_scrollbar.pack(side='right', fill='y')
+    
+    # Create the added items listbox
+    global added_items_listbox
+    added_items_listbox = tk.Listbox(
+        added_list_container,
+        height=universal_font_box_size.added_items_height,
+        font=(universal_font_box_size.added_items_font_family, universal_font_box_size.added_items_font_size),
+        activestyle='none',
+        selectbackground='#3498db',
+        selectforeground='white',
+        bg='#ffffff',
+        fg='#2c3e50',
+        borderwidth=0,
+        highlightthickness=0,
+        xscrollcommand=added_h_scrollbar.set,
+        yscrollcommand=added_v_scrollbar.set
+    )
+    added_items_listbox.pack(side='left', fill='both', expand=True)
+    
+    # Configure scrollbars
+    added_h_scrollbar.config(command=added_items_listbox.xview)
+    added_v_scrollbar.config(command=added_items_listbox.yview)
+    
+    # Setup modern scrolling for added items list
+    setup_modern_scrolling(added_items_listbox)
+    
+    # Set current date for the listbox
+    today = datetime.now().date()
+    added_items_listbox.current_date = today
     list_frame = tk.Frame(new_entry_frame)
     list_frame.pack(fill='both', expand=True, padx=12, pady=5)
     
