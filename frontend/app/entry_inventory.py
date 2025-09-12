@@ -4,12 +4,8 @@ from api_request.entry_inventory_api_request import (
     sync_inventory,
     upload_inventory,
     show_all_inventory,
-    filter_inventory_by_date_range,
-    add_new_inventory_item,
-    search_inventory_by_id,
-    update_existing_inventory
+    filter_inventory_by_date_range
 )
-from api_request.to_event_inventory_request import search_project_details_by_id
 from to_event import ToEventWindow
 from from_event import FromEventWindow
 from assign_inventory import AssignInventoryWindow
@@ -87,32 +83,35 @@ def display_inventory_items(items):
             
             # Extract values for each column
             values = (
-                item.get('id', ''),
-                item.get('sno', ''),
-                item.get('inventory_id', ''),
-                item.get('product_id', ''),
-                item.get('name', ''),
-                item.get('material', ''),
-                item.get('total_quantity', ''),
-                item.get('manufacturer', ''),
-                item.get('purchase_dealer', ''),
-                item.get('purchase_date', ''),
-                item.get('purchase_amount', ''),
-                item.get('repair_quantity', ''),
-                item.get('repair_cost', ''),
-                item.get('on_rent', ''),
-                item.get('vendor_name', ''),
-                item.get('total_rent', ''),
-                item.get('rented_inventory_returned', ''),
-                item.get('returned_date', ''),
-                item.get('on_event', ''),
-                item.get('in_office', ''),
-                item.get('in_warehouse', ''),
-                item.get('issued_qty', ''),
-                item.get('balance_qty', ''),
-                item.get('bar_code', ''),
-                item.get('barcode_url', ''),
-                item.get('submitted_by', '')
+                item.get('ID', item.get('id', '')),
+                item.get('Serial No.', item.get('sno', '')),
+                item.get('InventoryID', item.get('inventory_id', '')),
+                item.get('Product ID', item.get('product_id', '')),
+                item.get('Name', item.get('inventory_name', '')),
+                item.get('Material', item.get('material', '')),
+                item.get('Total Quantity', item.get('total_quantity', '')),
+                item.get('Manufacturer', item.get('manufacturer', '')),
+                item.get('Purchase Dealer', item.get('purchase_dealer', '')),
+                item.get('Purchase Date', item.get('purchase_date', '')),
+                item.get('Purchase Amount', item.get('purchase_amount', '')),
+                item.get('Repair Quantity', item.get('repair_quantity', '')),
+                item.get('Repair Cost', item.get('repair_cost', '')),
+                item.get('On Rent', item.get('on_rent', '')),
+                item.get('Vendor Name', item.get('vendor_name', '')),
+                item.get('Total Rent', item.get('total_rent', '')),
+                item.get('Rented Inventory Returned', item.get('rented_inventory_returned', '')),
+                item.get('Returned Date', item.get('returned_date', '')),
+                item.get('On Event', item.get('on_event', '')),
+                item.get('In Office', item.get('in_office', '')),
+                item.get('In Warehouse', item.get('in_warehouse', '')),
+                item.get('Issued Qty', item.get('issued_qty', '')),
+                item.get('Balance Qty', item.get('balance_qty', '')),
+                item.get('BarCode', item.get('bar_code', item.get('inventory_barcode', ''))),
+                item.get('BacodeUrl', item.get('barcode_url', item.get('inventory_barcode_url', ''))),
+                item.get('QrCodeUrl', item.get('qrcode_url', item.get('inventory_qrcode_url', ''))),
+                item.get('Created At', item.get('created_at', '')),
+                item.get('Updated At', item.get('updated_at', '')),
+                item.get('Submitted By', item.get('submitted_by', ''))
             )
             
             # Insert row into treeview
@@ -382,11 +381,13 @@ def create_list_frames(root):
     global inventory_listbox
     
     # Smart column definition - just names, loop handles the rest
-    columns = ['ID','Sno', 'InventoryID', 'ProductID', 'Name', 'Material', 'Total Quantity', 
+    columns = ['ID','Serial No.', 'InventoryID', 'ProductID', 'Name', 'Material', 'Total Quantity', 
                'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
                'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
                'Rented Inventory Returned', 'Returned Date', 'On Event', 'In Office', 
-               'In Warehouse', 'Issued Qty', 'Balance Qty', 'Bar Code', 'Barcode URL', 'Submitted by']
+               'In Warehouse', 'Issued Qty', 'Balance Qty', 'Bar Code', 'Barcode URL', 
+               'QrCodeUrl', 'Created At', 'Updated At', 'Submitted by'
+            ]
     
     inventory_listbox = ttk.Treeview(list_container, columns=columns, show='headings', height=listbox_height)
     
