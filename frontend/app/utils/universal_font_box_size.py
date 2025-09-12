@@ -118,7 +118,7 @@ class UniversalFontBoxSize:
     # QR & Barcode table headers
     qr_barcode_table_headers = ["Select", "Serial No.", "Inventory ID", "Inventory Name", "Barcode URL", "QR Code URL"]
     qr_barcode_header_font_family = 'Helvetica'
-    qr_barcode_header_font_size = 24
+    qr_barcode_header_font_size = 20
     qr_barcode_header_font_weight = 'bold'
     qr_barcode_header_borderwidth = 1
     qr_barcode_header_relief = "solid"
@@ -217,9 +217,9 @@ class UniversalFontBoxSize:
     
     #  All fields 
     ID=50
-    S_No=30
-    InventoryID=20
-    Product_ID=20
+    S_No=50
+    InventoryID=40
+    Product_ID=40
     Name=50
     Material=40
     Total_Quantity=25

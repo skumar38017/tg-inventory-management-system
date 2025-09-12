@@ -20,54 +20,78 @@ class RevealQrAndBarcodeWindow:
             
         # Create modern window
         self.reveal_qr_and_barcode_window = tk.Toplevel(self.root)
-        self.reveal_qr_and_barcode_window.title("QR & Barcode Manager")
-        self.reveal_qr_and_barcode_window.geometry("1200x700")
+        self.reveal_qr_and_barcode_window.title(universal_font_box_size.qr_barcode_window_title)
+        self.reveal_qr_and_barcode_window.geometry(universal_font_box_size.qr_barcode_window_geometry)
         self.reveal_qr_and_barcode_window.configure(bg='#f0f0f0')
         
         # Modern styling
         style = ttk.Style()
         style.theme_use('clam')
         style.configure('Modern.TFrame', background='#ffffff', relief='flat')
-        style.configure('Header.TLabel', background='#2c3e50', foreground='white', font=('Segoe UI', 16, 'bold'))
-        style.configure('Modern.TButton', font=('Segoe UI', 10), padding=10)
+        style.configure('Header.TLabel', background='#2c3e50', foreground='white', 
+                       font=(universal_font_box_size.qr_barcode_header_font_family, 
+                            universal_font_box_size.qr_barcode_header_font_size, 
+                            universal_font_box_size.qr_barcode_header_font_weight))
+        style.configure('Modern.TButton', 
+                       font=(universal_font_box_size.qr_barcode_button_font_family, 
+                            universal_font_box_size.qr_barcode_button_font_size), 
+                       padding=10)
+        style.configure('Treeview', font=('Helvetica', universal_font_box_size.qr_barcode_header_font_size))
+        style.configure('Treeview.Heading', font=('Helvetica', universal_font_box_size.qr_barcode_header_font_size, 'bold'))
         
         # Header frame
         header_frame = ttk.Frame(self.reveal_qr_and_barcode_window, style='Modern.TFrame')
-        header_frame.pack(fill='x', padx=20, pady=(20, 10))
+        header_frame.pack(fill='x', padx=universal_font_box_size.qr_barcode_main_frame_padx, 
+                         pady=(universal_font_box_size.qr_barcode_main_frame_pady, 10))
         
         # Title
         title_label = ttk.Label(header_frame, text="QR & Barcode Manager", 
-                               font=('Segoe UI', 20, 'bold'), foreground='#2c3e50', background='#ffffff')
+                               font=(universal_font_box_size.qr_barcode_title_font_family, 
+                                    universal_font_box_size.qr_barcode_title_font_size, 
+                                    universal_font_box_size.qr_barcode_title_font_weight), 
+                               foreground='#2c3e50', background='#ffffff')
         title_label.pack(side='left')
         
         # Search frame
         search_frame = ttk.Frame(header_frame, style='Modern.TFrame')
         search_frame.pack(side='right')
         
-        ttk.Label(search_frame, text="Search:", font=('Segoe UI', 10), background='#ffffff').pack(side='left', padx=(0, 5))
+        ttk.Label(search_frame, text="Search:", 
+                 font=(universal_font_box_size.search_label_font_family, 
+                      universal_font_box_size.search_label_font_size), 
+                 background='#ffffff').pack(side='left', padx=(0, 5))
         self.search_var = tk.StringVar()
-        search_entry = ttk.Entry(search_frame, textvariable=self.search_var, font=('Segoe UI', 10), width=20)
+        search_entry = ttk.Entry(search_frame, textvariable=self.search_var, 
+                               font=(universal_font_box_size.search_entry_font_family, 
+                                    universal_font_box_size.search_entry_font_size), 
+                               width=universal_font_box_size.search_entry_width)
         search_entry.pack(side='left', padx=(0, 10))
         search_entry.bind('<KeyRelease>', self.filter_data)
         
         # Main content frame
         content_frame = ttk.Frame(self.reveal_qr_and_barcode_window, style='Modern.TFrame')
-        content_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        content_frame.pack(fill='both', expand=True, 
+                          padx=universal_font_box_size.qr_barcode_main_frame_padx, 
+                          pady=10)
         
         # Create modern table
         self.create_modern_table(content_frame)
         
         # Button frame with modern styling
         button_frame = ttk.Frame(self.reveal_qr_and_barcode_window, style='Modern.TFrame')
-        button_frame.pack(fill='x', padx=20, pady=(10, 20))
+        button_frame.pack(fill='x', padx=universal_font_box_size.qr_barcode_main_frame_padx, 
+                         pady=(universal_font_box_size.qr_barcode_button_frame_pady, 
+                              universal_font_box_size.qr_barcode_main_frame_pady))
         
         # Modern buttons
         ttk.Button(button_frame, text="Load Data", style='Modern.TButton',
-                  command=self.load_data).pack(side='left', padx=(0, 10))
+                  command=self.load_data).pack(side='left', 
+                                              padx=(0, universal_font_box_size.qr_barcode_button_padx))
         
         self.image_view_button = ttk.Button(button_frame, text="View Images", 
-                                          style='Modern.TButton', command=self.open_image_view, state='disabled')
-        self.image_view_button.pack(side='left', padx=(0, 10))
+                                          style='Modern.TButton', command=self.open_image_view, 
+                                          state='disabled')
+        self.image_view_button.pack(side='left', padx=(0, universal_font_box_size.qr_barcode_button_padx))
         
         ttk.Button(button_frame, text="Close", style='Modern.TButton',
                   command=self.reveal_qr_and_barcode_window.destroy).pack(side='right')
@@ -75,7 +99,8 @@ class RevealQrAndBarcodeWindow:
         # Status bar
         self.status_var = tk.StringVar(value="Ready")
         status_bar = ttk.Label(self.reveal_qr_and_barcode_window, textvariable=self.status_var, 
-                              font=('Segoe UI', 9), background='#ecf0f1', foreground='#7f8c8d')
+                              font=(universal_font_box_size.search_label_font_family, 9), 
+                              background='#ecf0f1', foreground='#7f8c8d')
         status_bar.pack(fill='x', side='bottom')
         
         self.reveal_qr_and_barcode_window.resizable(True, True)
@@ -98,13 +123,13 @@ class RevealQrAndBarcodeWindow:
         self.tree.heading('Barcode URL', text='Barcode URL')
         self.tree.heading('QR Code URL', text='QR Code URL')
         
-        # Configure column widths
-        self.tree.column('Select', width=80, anchor='center')
-        self.tree.column('Serial', width=100, anchor='center')
-        self.tree.column('Inventory ID', width=150, anchor='center')
-        self.tree.column('Name', width=200, anchor='w')
-        self.tree.column('Barcode URL', width=250, anchor='w')
-        self.tree.column('QR Code URL', width=250, anchor='w')
+        # Configure column widths - full size for horizontal scrolling
+        self.tree.column('Select', width=100, anchor='w', stretch=True)
+        self.tree.column('Serial', width=universal_font_box_size.S_No * 10, anchor='w', stretch=True)
+        self.tree.column('Inventory ID', width=universal_font_box_size.InventoryID * 10, anchor='w', stretch=True)
+        self.tree.column('Name', width=universal_font_box_size.Name * 10, anchor='w', stretch=True)
+        self.tree.column('Barcode URL', width=universal_font_box_size.BarcodeUrl * 10, anchor='w', stretch=True)
+        self.tree.column('QR Code URL', width=universal_font_box_size.BarcodeUrl * 10, anchor='w', stretch=True)
         
         # Modern scrollbars - proper positioning
         v_scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=self.tree.yview)
