@@ -3,6 +3,7 @@ from common_imports import *
 from api_request.entry_inventory_api_request import search_inventory_by_id
 from api_request.to_event_inventory_request import search_project_details_by_id
 from reveal_qr_barcode_window import *
+from utils.universal_font_box_size import universal_font_box_size
 
 class SearchResults:
     def __init__(self, root):
@@ -26,28 +27,42 @@ class SearchResults:
             search_fields_frame.grid_columnconfigure(i, weight=1)
 
         # Row 1: First three search fields
-        tk.Label(search_fields_frame, text="Inventory ID:", font=('Helvetica', 12, 'bold'), 
+        tk.Label(search_fields_frame, text="Inventory ID:", 
+                font=(universal_font_box_size.search_label_font_family, universal_font_box_size.search_label_font_size, universal_font_box_size.search_label_font_weight), 
                 bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, sticky='e', padx=5, pady=8)
-        self.search_inventory_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
-                                           relief='flat', bd=5)
+        self.search_inventory_id_entry = tk.Entry(search_fields_frame, 
+                                           font=(universal_font_box_size.search_entry_font_family, universal_font_box_size.search_entry_font_size), 
+                                           width=universal_font_box_size.search_entry_width,
+                                           relief=universal_font_box_size.search_entry_relief, 
+                                           bd=universal_font_box_size.search_entry_bd)
         self.search_inventory_id_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=8)
 
-        tk.Label(search_fields_frame, text="Project ID:", font=('Helvetica', 12, 'bold'), 
+        tk.Label(search_fields_frame, text="Project ID:", 
+                font=(universal_font_box_size.search_label_font_family, universal_font_box_size.search_label_font_size, universal_font_box_size.search_label_font_weight), 
                 bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, sticky='e', padx=5, pady=8)
-        self.search_project_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
-                                         relief='flat', bd=5)
+        self.search_project_id_entry = tk.Entry(search_fields_frame, 
+                                         font=(universal_font_box_size.search_entry_font_family, universal_font_box_size.search_entry_font_size), 
+                                         width=universal_font_box_size.search_entry_width,
+                                         relief=universal_font_box_size.search_entry_relief, 
+                                         bd=universal_font_box_size.search_entry_bd)
         self.search_project_id_entry.grid(row=0, column=3, sticky='ew', padx=5, pady=8)
 
-        tk.Label(search_fields_frame, text="Product ID:", font=('Helvetica', 12, 'bold'), 
+        tk.Label(search_fields_frame, text="Product ID:", 
+                font=(universal_font_box_size.search_label_font_family, universal_font_box_size.search_label_font_size, universal_font_box_size.search_label_font_weight), 
                 bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=4, sticky='e', padx=5, pady=8)
-        self.search_product_id_entry = tk.Entry(search_fields_frame, font=('Helvetica', 12), width=15,
-                                         relief='flat', bd=5)
+        self.search_product_id_entry = tk.Entry(search_fields_frame, 
+                                         font=(universal_font_box_size.search_entry_font_family, universal_font_box_size.search_entry_font_size), 
+                                         width=universal_font_box_size.search_entry_width,
+                                         relief=universal_font_box_size.search_entry_relief, 
+                                         bd=universal_font_box_size.search_entry_bd)
         self.search_product_id_entry.grid(row=0, column=5, sticky='ew', padx=5, pady=8)
 
         # Search button with modern styling
         search_btn = tk.Button(search_fields_frame, text="Search", command=self.perform_search, 
-                            font=('Helvetica', 12, 'bold'), height=1, width=12,
-                            bg='#2c3e50', fg='white', relief='flat',
+                            font=(universal_font_box_size.search_button_font_family, universal_font_box_size.search_button_font_size, universal_font_box_size.search_button_font_weight), 
+                            height=universal_font_box_size.search_button_height, 
+                            width=universal_font_box_size.search_button_width,
+                            bg='#2c3e50', fg='white', relief=universal_font_box_size.search_button_relief,
                             activebackground='#34495e', activeforeground='white')
         search_btn.grid(row=0, column=6, sticky='ew', padx=5, pady=8)
 
@@ -55,9 +70,10 @@ class SearchResults:
         reveal_btn = tk.Button(
             search_fields_frame,
             text="QR & Barcode", 
-            font=('Helvetica', 12, 'bold'),
-            width=15, height=1,
-            bg='#95a5a6', fg='white', relief='flat',
+            font=(universal_font_box_size.search_button_font_family, universal_font_box_size.search_button_font_size, universal_font_box_size.search_button_font_weight),
+            width=universal_font_box_size.qr_barcode_button_width, 
+            height=universal_font_box_size.qr_barcode_button_height,
+            bg='#95a5a6', fg='white', relief=universal_font_box_size.search_button_relief,
             activebackground='#7f8c8d', activeforeground='white',
             command=self.open_reveal_window 
         )
@@ -97,7 +113,7 @@ class SearchResults:
         self.search_results_listbox = tk.Listbox(
             search_list_container,
             height=listbox_height,
-            font=('Courier New', 11),
+            font=(universal_font_box_size.search_results_font_family, universal_font_box_size.search_results_font_size),
             activestyle='none',
             selectbackground='#4a6984',
             selectforeground='white',

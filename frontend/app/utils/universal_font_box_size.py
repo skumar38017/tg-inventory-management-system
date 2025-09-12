@@ -9,17 +9,27 @@ class UniversalFontBoxSize:
     new_entry_header_width = 20
     new_entry_header_height = 1
 
-    # Search results specific
-    search_results_header_font_size = 18
+    # Search fields specific
+    search_label_font_size = 18
+    search_label_font_family = 'Helvetica'
+    search_label_font_weight = 'bold'
+    search_entry_font_size = 18
+    search_entry_font_family = 'Helvetica'
+    search_entry_width = 20
+    search_entry_relief = 'flat'
+    search_entry_bd = 5
 
-    search_results_header_font_family = 'Courier New'
-    search_results_header_font_weight = 'bold'
+    # Search buttons specific
+    search_button_font_size = 18
+    search_button_font_family = 'Helvetica'
+    search_button_font_weight = 'bold'
+    search_button_height = 1
+    search_button_width = 12
+    search_button_relief = 'flat'
 
-    search_results_header_bottom_font_size = 18
-    search_results_header_bottom_width = 20
-    search_results_header_bottom_height = 1
-    search_results_header_bottom_font_family = 'Courier New'
-    search_results_header_bottom_font_weight = 'bold'
+    # QR & Barcode button specific
+    qr_barcode_button_width = 15
+    qr_barcode_button_height = 1
 
     # Legacy sizes (keep for backward compatibility)
     regular_font_size = 24
