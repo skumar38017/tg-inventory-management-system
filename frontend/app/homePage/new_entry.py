@@ -108,8 +108,8 @@ def create_single_date_entry(parent_frame, row, col):
         date_pattern='yyyy-mm-dd',
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
         calendar_font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
-        calendar_width=universal_font_box_size.ID * 5,
-        calendar_height=universal_font_box_size.ID * 5
+        calendar_width=universal_font_box_size.ID * 10,
+        calendar_height=universal_font_box_size.ID * 10
     )
     date_entry.delete(0, 'end')
     date_entry.pack(side='left', fill=tk.X, expand=True)
@@ -119,7 +119,7 @@ def create_single_date_entry(parent_frame, row, col):
         date_frame,
         text="X",
         command=lambda e=date_entry: e.delete(0, 'end'),
-        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
+        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
         width=3,
         relief='flat',
     )
@@ -223,7 +223,7 @@ def create_new_entry_tab(notebook):
     for col, label in enumerate(header_labels):
         header = tk.Label(scrollable_frame, text=label, 
                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size, 'bold'), borderwidth=1, relief='solid',
-                         height=1, width=universal_font_box_size.common * 2, anchor='w')
+                         height=1, width=int(universal_font_box_size.common * 2), anchor='center')
         header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
     
     # Create first row of input fields using reusable function

@@ -143,7 +143,7 @@ class UniversalFontBoxSize:
     regular_box_size = 24
     regular_drop_down_box_size = 24
 
-    date_box_size = 22
+    date_box_size = 24
     button_font_size = 18
     button_box_size = 20
     header_button_font_size = 14
