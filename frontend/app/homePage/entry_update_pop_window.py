@@ -6,6 +6,9 @@ from api_request.entry_inventory_api_request import (
 )
 from utils.universal_font_box_size import universal_font_box_size
 from utils.universal_font_box_size import universal_font_box_size
+from PIL import Image, ImageTk
+import requests
+from io import BytesIO
 
 
 class UpdatePopUpWindow:
@@ -28,6 +31,36 @@ class UpdatePopUpWindow:
             height=universal_font_box_size.button_height_standard
         )
         return update_btn
+
+    @staticmethod
+    def load_barcode_image(barcode_url):
+        """Load and display barcode image from URL"""
+        global barcode_image_label
+        try:
+            if not barcode_url or barcode_url.strip() == '':
+                barcode_image_label.config(image='', text="No barcode available")
+                return
+                
+            # Fetch barcode image
+            response = requests.get(barcode_url, timeout=10)
+            response.raise_for_status()
+            
+            # Load and resize image
+            image = Image.open(BytesIO(response.content))
+            # Resize to fit the display area (maintain aspect ratio)
+            image = image.resize((300, 100), Image.Resampling.LANCZOS)
+            
+            # Convert to PhotoImage
+            photo = ImageTk.PhotoImage(image)
+            
+            # Update label
+            barcode_image_label.config(image=photo, text="")
+            barcode_image_label.image = photo  # Keep a reference
+            
+        except requests.RequestException as e:
+            barcode_image_label.config(image='', text=f"Failed to load barcode: Network error")
+        except Exception as e:
+            barcode_image_label.config(image='', text=f"Failed to load barcode: {str(e)}")
 
     @staticmethod
     def clear_date_entry(date_entry):
@@ -165,6 +198,9 @@ class UpdatePopUpWindow:
             update_window_entries["Barcode URL"].delete(0, tk.END)
             update_window_entries["Barcode URL"].insert(0, inventory_data.get('inventory_barcode_url', ''))
             update_window_entries["Barcode URL"].config(state='readonly')
+            
+            # Load barcode image
+            UpdatePopUpWindow.load_barcode_image(inventory_data.get('inventory_barcode_url', ''))
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load inventory data: {str(e)}")
@@ -339,6 +375,20 @@ class UpdatePopUpWindow:
                 cb.pack(side='left')
                 update_window_entries[label_text.strip(":")] = var
         
+        # Barcode display section (read-only)
+        barcode_frame = tk.LabelFrame(main_frame, text="Barcode", 
+                                     font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight))
+        barcode_frame.pack(fill='x', pady=10)
+        
+        # Barcode image display
+        barcode_display_frame = tk.Frame(barcode_frame)
+        barcode_display_frame.pack(pady=10)
+        
+        global barcode_image_label
+        barcode_image_label = tk.Label(barcode_display_frame, text="No barcode available", 
+                                      bg='white', width=40, height=5, relief='sunken', bd=1)
+        barcode_image_label.pack()
+        
         # Additional information section (read-only)
         info_frame = tk.LabelFrame(main_frame, text="Additional Information (auto-generated)", 
                                   font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight))
@@ -412,6 +462,8 @@ class UpdatePopUpWindow:
         
         def clear_form():
             """Clear all form fields while maintaining readonly states"""
+            global barcode_image_label
+            
             for key, widget in update_window_entries.items():
                 if isinstance(widget, tk.Entry):
                     current_state = widget['state']
@@ -427,6 +479,11 @@ class UpdatePopUpWindow:
                         widget.clear_btn.config(state=current_state)
                 elif isinstance(widget, tk.BooleanVar):
                     widget.set(False)
+            
+            # Clear barcode image
+            barcode_image_label.config(image='', text="No barcode available")
+            if hasattr(barcode_image_label, 'image'):
+                barcode_image_label.image = None
             
             inventory_name_combo.set('')
             toggle_edit_mode(False)
