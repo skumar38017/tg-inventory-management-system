@@ -16,12 +16,17 @@ class SearchResults:
     def create_search_results_tab(self, notebook):
         """Create the Search Results tab with all functionality"""
         # Frame 3: Search Results
-        search_frame = tk.Frame(notebook, bg='white')
+        search_frame = tk.Frame(notebook, bg=universal_font_box_size.search_frame_bg)
         notebook.add(search_frame, text="Search Results")
 
         # Search fields with modern styling
-        search_fields_frame = tk.Frame(search_frame, bg='#ecf0f1', relief='raised', bd=1)
-        search_fields_frame.pack(fill="x", pady=8, padx=8)
+        search_fields_frame = tk.Frame(search_frame, 
+                                     bg=universal_font_box_size.search_fields_frame_bg, 
+                                     relief=universal_font_box_size.search_fields_frame_relief, 
+                                     bd=universal_font_box_size.search_fields_frame_bd)
+        search_fields_frame.pack(fill="x", 
+                               pady=universal_font_box_size.search_frame_pady, 
+                               padx=universal_font_box_size.search_frame_padx)
         
         for i in range(8):
             search_fields_frame.grid_columnconfigure(i, weight=1)
@@ -29,33 +34,48 @@ class SearchResults:
         # Row 1: First three search fields
         tk.Label(search_fields_frame, text="Inventory ID:", 
                 font=(universal_font_box_size.search_label_font_family, universal_font_box_size.search_label_font_size, universal_font_box_size.search_label_font_weight), 
-                bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=0, sticky='e', padx=5, pady=8)
+                bg=universal_font_box_size.search_fields_frame_bg, 
+                fg=universal_font_box_size.search_label_fg).grid(row=0, column=0, sticky='e', 
+                                                                padx=universal_font_box_size.search_grid_padx, 
+                                                                pady=universal_font_box_size.search_grid_pady)
         self.search_inventory_id_entry = tk.Entry(search_fields_frame, 
                                            font=(universal_font_box_size.search_entry_font_family, universal_font_box_size.search_entry_font_size), 
                                            width=universal_font_box_size.search_entry_width,
                                            relief=universal_font_box_size.search_entry_relief, 
                                            bd=universal_font_box_size.search_entry_bd)
-        self.search_inventory_id_entry.grid(row=0, column=1, sticky='ew', padx=5, pady=8)
+        self.search_inventory_id_entry.grid(row=0, column=1, sticky='ew', 
+                                          padx=universal_font_box_size.search_grid_padx, 
+                                          pady=universal_font_box_size.search_grid_pady)
 
         tk.Label(search_fields_frame, text="Project ID:", 
                 font=(universal_font_box_size.search_label_font_family, universal_font_box_size.search_label_font_size, universal_font_box_size.search_label_font_weight), 
-                bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=2, sticky='e', padx=5, pady=8)
+                bg=universal_font_box_size.search_fields_frame_bg, 
+                fg=universal_font_box_size.search_label_fg).grid(row=0, column=2, sticky='e', 
+                                                                padx=universal_font_box_size.search_grid_padx, 
+                                                                pady=universal_font_box_size.search_grid_pady)
         self.search_project_id_entry = tk.Entry(search_fields_frame, 
                                          font=(universal_font_box_size.search_entry_font_family, universal_font_box_size.search_entry_font_size), 
                                          width=universal_font_box_size.search_entry_width,
                                          relief=universal_font_box_size.search_entry_relief, 
                                          bd=universal_font_box_size.search_entry_bd)
-        self.search_project_id_entry.grid(row=0, column=3, sticky='ew', padx=5, pady=8)
+        self.search_project_id_entry.grid(row=0, column=3, sticky='ew', 
+                                         padx=universal_font_box_size.search_grid_padx, 
+                                         pady=universal_font_box_size.search_grid_pady)
 
         tk.Label(search_fields_frame, text="Product ID:", 
                 font=(universal_font_box_size.search_label_font_family, universal_font_box_size.search_label_font_size, universal_font_box_size.search_label_font_weight), 
-                bg='#ecf0f1', fg='#2c3e50').grid(row=0, column=4, sticky='e', padx=5, pady=8)
+                bg=universal_font_box_size.search_fields_frame_bg, 
+                fg=universal_font_box_size.search_label_fg).grid(row=0, column=4, sticky='e', 
+                                                                padx=universal_font_box_size.search_grid_padx, 
+                                                                pady=universal_font_box_size.search_grid_pady)
         self.search_product_id_entry = tk.Entry(search_fields_frame, 
                                          font=(universal_font_box_size.search_entry_font_family, universal_font_box_size.search_entry_font_size), 
                                          width=universal_font_box_size.search_entry_width,
                                          relief=universal_font_box_size.search_entry_relief, 
                                          bd=universal_font_box_size.search_entry_bd)
-        self.search_product_id_entry.grid(row=0, column=5, sticky='ew', padx=5, pady=8)
+        self.search_product_id_entry.grid(row=0, column=5, sticky='ew', 
+                                         padx=universal_font_box_size.search_grid_padx, 
+                                         pady=universal_font_box_size.search_grid_pady)
 
         # Search button with modern styling
         search_btn = tk.Button(search_fields_frame, text="Search", command=self.perform_search, 
@@ -64,7 +84,9 @@ class SearchResults:
                             width=universal_font_box_size.search_button_width,
                             bg='#2c3e50', fg='white', relief=universal_font_box_size.search_button_relief,
                             activebackground='#34495e', activeforeground='white')
-        search_btn.grid(row=0, column=6, sticky='ew', padx=5, pady=8)
+        search_btn.grid(row=0, column=6, sticky='ew', 
+                       padx=universal_font_box_size.search_grid_padx, 
+                       pady=universal_font_box_size.search_grid_pady)
 
         # QR & Barcode button with modern styling
         reveal_btn = tk.Button(
@@ -77,11 +99,13 @@ class SearchResults:
             activebackground='#7f8c8d', activeforeground='white',
             command=self.open_reveal_window 
         )
-        reveal_btn.grid(row=0, column=7, sticky='ew', padx=5, pady=8)
+        reveal_btn.grid(row=0, column=7, sticky='ew', 
+                       padx=universal_font_box_size.search_grid_padx, 
+                       pady=universal_font_box_size.search_grid_pady)
         search_fields_frame.grid_columnconfigure(7, weight=1)
 
         # Separator line
-        ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=5)
+        ttk.Separator(search_frame, orient='horizontal').pack(fill="x", pady=universal_font_box_size.search_separator_pady)
 
         # Search Results list container
         search_list_container = tk.Frame(search_frame)
@@ -89,9 +113,9 @@ class SearchResults:
 
         # Calculate listbox height
         screen_height = self.root.winfo_screenheight()
-        available_height = screen_height - 180
-        list_frame_height = int(available_height * 0.8)
-        listbox_height = max(8, list_frame_height // 35)
+        available_height = screen_height - universal_font_box_size.search_screen_height_offset
+        list_frame_height = int(available_height * universal_font_box_size.search_height_multiplier)
+        listbox_height = max(universal_font_box_size.search_min_listbox_height, list_frame_height // universal_font_box_size.search_height_divisor)
 
         # Create horizontal scrollbar first (placed at bottom)
         h_scrollbar = tk.Scrollbar(
@@ -159,26 +183,11 @@ class SearchResults:
                     f"Barcode: {project.get('barcode', '')}\n"
                 )
                 self.search_results_listbox.insert(tk.END, header)
-                self.search_results_listbox.insert(tk.END, "-"*125)
+                self.search_results_listbox.insert(tk.END, "-"*universal_font_box_size.search_separator_length)
                 self.search_results_listbox.insert(tk.END, "Inventory Items:")
                 
-                # Define inventory item headers
-                item_headers = [
-                    ("S.No", 30),
-                    ("Name", 50),
-                    ("Description", 50),
-                    ("Qty", 16),
-                    ("Zone", 35),
-                    ("Material", 40),
-                    ("Comments", 50),
-                    ("Total", 16),
-                    ("Unit", 16),
-                    ("Per Unit Power", 25),
-                    ("Total Power", 25),
-                    ("Status", 25),
-                    ("POC", 40),
-                    ("Item ID", 40)
-                ]
+                # Use centralized inventory item headers
+                item_headers = universal_font_box_size.inventory_item_headers
                 
                 # Create header row for inventory items
                 header_row = "".join(f"{h[0]:<{h[1]}}" for h in item_headers)
@@ -233,37 +242,8 @@ class SearchResults:
                     messagebox.showinfo("Search Results", "No matching items found")
                     return
                     
-                # Define the column headers and their display widths
-                headers = [
-                    ("ID", 50),
-                    ("Serial No.", 30),
-                    ("InventoryID", 20),
-                    ("Product ID", 20),
-                    ("Name", 50),
-                    ("Material", 40),
-                    ("Total Quantity", 25),
-                    ("Manufacturer", 40),
-                    ("Purchase Dealer", 40),
-                    ("Purchase Date", 35),
-                    ("Purchase Amount", 25),
-                    ("Repair Quantity", 25),
-                    ("Repair Cost", 25),
-                    ("On Rent", 30),
-                    ("Vendor Name", 40),
-                    ("Total Rent", 25),
-                    ("Rented Inventory Returned", 30),
-                    ("Returned Date", 30),
-                    ("On Event", 25),
-                    ("In Office", 30),
-                    ("In Warehouse", 35),
-                    ("Issued Qty", 25),
-                    ("Balance Qty", 25),
-                    ("Submitted By", 35),
-                    ("Created At", 40),
-                    ("Updated At", 40),
-                    ("BarCode", 40),
-                    ("BacodeUrl", 150)
-                ]
+                # Use centralized column headers
+                headers = universal_font_box_size.inventory_column_headers
 
                 # Calculate total width needed
                 total_width = sum(h[1] for h in headers)
