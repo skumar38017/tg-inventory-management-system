@@ -12,7 +12,7 @@ Base = declarative_base()
 
 # Google Sheets Configuration
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ICON_PATH = os.getenv("ICON_PATH", "/media/tagglabs/2ea93523-c6f3-4709-ba37-1439101f43843/home/tagglabs/Videos/tg-inventory-management-system/backend/app/public/icon.png")
+ICON_PATH = os.getenv("ICON_PATH", "app/public/icon.png")
 
 # Redis Configuration
 REDIS_USERNAME = os.getenv("REDIS_USERNAME", "")  # empty fallback

@@ -86,20 +86,20 @@ class QRCodeGenerator:
                 icon_path = config.ICON_PATH
                 if os.path.exists(icon_path):
                     icon = Image.open(icon_path).convert("RGBA")
-                    # Resize icon to be smaller to maintain QR code scannability (1/10 of QR code size)
-                    icon_size = min(img.width, img.height) // 10
+                    # Resize icon to be smaller to maintain QR code scannability (1/8 of QR code size)
+                    icon_size = min(img.width, img.height) // 8
                     icon = icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
                     
                     # Add white background circle for better visibility
                     circle_size = icon_size + 4
                     circle = Image.new('RGBA', (circle_size, circle_size), (255, 255, 255, 255))
-                    circle_x = (img.width - circle_size) // 3
-                    circle_y = (img.height - circle_size) // 3
+                    circle_x = (img.width - circle_size) // 2
+                    circle_y = (img.height - circle_size) // 2
                     img.paste(circle, (circle_x, circle_y), circle)
                     
                     # Calculate center position for icon
-                    icon_x = (img.width - icon_size) // 3
-                    icon_y = (img.height - icon_size) // 3
+                    icon_x = (img.width - icon_size) // 2
+                    icon_y = (img.height - icon_size) // 2
                     
                     # Paste icon onto QR code
                     img.paste(icon, (icon_x, icon_y), icon)
@@ -107,7 +107,7 @@ class QRCodeGenerator:
                 logger.warning(f"Could not add icon to QR code: {e}")
 
             # Add inventory name text at bottom
-            text_height = 8
+            text_height = 1
             new_img = Image.new('RGBA', (img.width, img.height + text_height), (255, 255, 255, 0))
             new_img.paste(img, (0, 0))
             
@@ -119,9 +119,9 @@ class QRCodeGenerator:
                 font = ImageFont.load_default()
             
             text_bbox = draw.textbbox((0, 0), inventory_name, font=font)
-            text_width = text_bbox[1] - text_bbox[0]
+            text_width = text_bbox[2] - text_bbox[0]
             text_x = (new_img.width - text_width) // 2
-            text_y = img.height + 1
+            text_y = img.height
             
             draw.text((text_x, text_y), inventory_name, fill=(0, 0, 0, 255), font=font)
 

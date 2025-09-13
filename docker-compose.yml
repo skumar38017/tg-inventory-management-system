@@ -51,6 +51,7 @@ services:
       nofile:
         soft: 100032
         hard: 100032
+      
   # backend:
   #   image: ${IMAGE_NAME}
   #   container_name: ${BACKEND_CONTAINER_NAME}
