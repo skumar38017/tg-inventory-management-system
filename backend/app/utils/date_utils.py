@@ -1,12 +1,11 @@
-#  backend/app/utils/date_utils.py
-from app.utils.common_imports import *
+# backend/app/utils/date_utils.py
+from datetime import datetime, date, timezone
+from typing import Union, Optional
 
 UTC_TIMEZONE = timezone.utc
 
 class UTCDateUtils:
-    """
-    Utility class for handling dates in UTC timezone
-    """
+    """Utility class for handling dates in UTC timezone"""
     
     @staticmethod
     def get_current_datetime() -> datetime:
@@ -26,7 +25,7 @@ class UTCDateUtils:
     @staticmethod
     def get_current_date() -> date:
         """Get current date in UTC timezone"""
-        return datetime.now(UTC_TIMEZONE).date()  # Changed from UTCDateUtils to datetime
+        return datetime.now(UTC_TIMEZONE).date()
     
     @staticmethod
     def format_date(dt: Union[date, datetime, None]) -> Optional[str]:
@@ -73,34 +72,3 @@ class UTCDateUtils:
         except ValueError:
             return None
     
-    @staticmethod
-    def validate_date_field(value: Union[str, date, datetime, None]) -> Optional[date]:
-        """Pydantic validator for date fields"""
-        if value is None:
-            return None
-        if isinstance(value, date):
-            return value
-        if isinstance(value, datetime):
-            return value.date()
-        if isinstance(value, str):
-            parsed = UTCDateUtils.parse_date(value)  # Now UTCDateUtils is fully defined
-            if parsed is None:
-                raise ValueError("Date must be in YYYY-MM-DD format")
-            return parsed
-        raise ValueError("Invalid date format")
-    
-    @staticmethod
-    def validate_datetime_field(value: Union[str, datetime, None]) -> Optional[datetime]:
-        """Pydantic validator for datetime fields"""
-        if value is None:
-            return None
-        if isinstance(value, datetime):
-            if value.tzinfo is None:
-                return value.replace(tzinfo=UTC_TIMEZONE)
-            return value.astimezone(UTC_TIMEZONE)
-        if isinstance(value, str):
-            parsed = UTCDateUtils.parse_datetime(value)  # Now UTCDateUtils is fully defined
-            if parsed is None:
-                raise ValueError("Datetime must be in ISO format")
-            return parsed
-        raise ValueError("Invalid datetime format")

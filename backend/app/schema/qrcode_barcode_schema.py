@@ -137,14 +137,7 @@ class BarcodeScan(BaseValidators, BaseModel):
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None
 
-    @field_validator(
-        'on_rent', 'rented_inventory_returned', 'on_event', 
-        'in_office', 'in_warehouse', mode='before'
-    )
-    def convert_bool_to_string(cls, v):
-        if isinstance(v, bool):
-            return str(v).lower()
-        return v
+
 
     class Config:
         extra = "allow"

@@ -62,6 +62,7 @@ oauthlib==3.2.2
 olefile==0.47
 packageurl-python==0.16.0
 packaging==24.2
+panda==0.3.1
 pandas==2.2.3
 pillow==11.2.1
 pip-api==0.0.34

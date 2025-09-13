@@ -16,15 +16,7 @@ class InventoryItemBase(BaseModel):
     status: Optional[str] = None
     poc: Optional[str] = None
 
-    @field_validator('per_unit_power', 'quantity', 'unit', 'total_power', mode='before')
-    def convert_numbers_to_strings(cls, v):
-        if v is None:
-            return None
-        return str(v) if not isinstance(v, str) else v
 
-    @field_validator('RecQty', 'comments', mode='before')
-    def empty_to_none(cls, v):
-        return None if v == '' else v
 
     model_config = ConfigDict(
         json_encoders={
@@ -53,42 +45,6 @@ class InventoryItemOut(BaseModel):
     status: Optional[str] = None
     poc: Optional[str] = None
 
-    @field_validator('id', mode='before')
-    def set_id_from_uuid(cls, v, info):
-        # Changed to properly handle ValidationInfo object
-        if v is None:
-            if hasattr(info, 'data') and info.data and 'uuid' in info.data:
-                return info.data['uuid']
-        return v
-    
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            return None  # Allow None values
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
-    
-    @field_validator('quantity', 'unit', 'quantity', 'total_power', 'per_unit_power', mode='before')
-    def normalize_quantity(cls, v):
-        if v in ('', None):
-            return None
-        try:
-            return int(float(v)) if v is not None else None
-        except (ValueError, TypeError):
-            return None
-        return str(v) if not isinstance(v, str) else v
-
-    @field_validator('quantity', mode='before')
-    def validate_quantity(cls, v):
-        if v == '':
-            return 0  # or return None, based on your preference
-        return v
-        
-    @field_validator('RecQty', 'comments', mode='before')
-    def empty_to_none(cls, v):
-        return None if v == '' else v
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -109,25 +65,7 @@ class ToEventInventoryBase(BaseModel):
     submitted_by: Optional[str] = None
     inventory_items: List[InventoryItemBase]
 
-    @field_validator('setup_date', 'event_date', mode='before')
-    def parse_dates(cls, v):
-        if isinstance(v, str):
-            try:
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                return datetime.fromisoformat(v).date()
-        elif isinstance(v, datetime):
-            return v.date()
-        return v
-    
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            raise ValueError("Project_id cannot be empty")
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
+
         
     model_config = ConfigDict(
         json_encoders={
@@ -154,10 +92,7 @@ class ToEventInventoryUpdate(BaseModel):
     project_barcode_image_url: Optional[str] = None
     updated_at: datetime = datetime.now(timezone.utc)
 
-    @field_validator('updated_at', mode='before')
-    def set_timestamp(cls, v):
-        return datetime.now(timezone.utc)
-    
+
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -182,50 +117,20 @@ class ToEventInventoryOut(ToEventInventoryBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator('id', mode='before')
-    def set_id_from_uuid(cls, v, info):
-        # Updated to properly handle ValidationInfo object
-        if v is None:
-            if hasattr(info, 'data') and info.data and 'uuid' in info.data:
-                return info.data['uuid']
-        return v
-    
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            raise ValueError("Project_id cannot be empty")
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
-    
-    @field_validator('inventory_items', mode='before')
-    def parse_inventory_items(cls, v):
-        if isinstance(v, list):
-            return [InventoryItemOut(**item) if isinstance(item, dict) else item for item in v]
-        return v
+
 
     
 class ToEventInventoryUpdateOut(ToEventInventoryOut):
     updated_at: datetime
 
-    @field_validator('updated_at', mode='before')
-    def set_timestamp(cls, v):
-        return datetime.now(timezone.utc)
+
     
     model_config = ConfigDict(from_attributes=True)
     
 class ToEventInventorySearch(BaseModel):
     project_id: str
     
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            raise ValueError("Project_id cannot be empty")
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
+
 
 class ToEventRedis(BaseModel):
     """Schema for storing inventory in Redis"""
@@ -245,17 +150,7 @@ class ToEventRedis(BaseModel):
     project_barcode_image_url: Optional[str] = None
     inventory_items: List[Dict[str, Any]] = []
 
-    @field_validator('created_at', mode='before')
-    def set_created_at(cls, v, values):
-        # Set created_at only once when record is created (not updated)
-        if v is None:
-            return datetime.now(timezone.utc)
-        return v
 
-    @field_validator('updated_at', mode='before')
-    def set_updated_at(cls, v, values):
-        # Set updated_at every time the record is updated
-        return datetime.now(timezone.utc)
 
     model_config = ConfigDict(
         json_encoders={
@@ -275,16 +170,7 @@ class ToEventRedisUpdateIn(BaseModel):
     submitted_by: Optional[str] = None
     inventory_items: Optional[List[InventoryItemBase]] = None
 
-    @field_validator('setup_date', 'event_date', mode='before')
-    def parse_dates(cls, v):
-        if isinstance(v, str):
-            try:
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                return datetime.fromisoformat(v).date()
-        elif isinstance(v, datetime):
-            return v.date()
-        return v
+
 
     model_config = ConfigDict(
         json_encoders={
@@ -312,22 +198,8 @@ class ToEventRedisUpdateOut(BaseModel):
     created_at: Optional[Union[str, datetime]] = None  
     updated_at: Optional[Union[str, datetime]] = None  
 
-    @model_validator(mode='before')
-    def handle_timestamps(cls, values):
-        if not isinstance(values, dict):
-            return values
-            
-        # Handle created_at
-        if 'created_at' not in values or values['created_at'] is None:
-            if 'cretaed_at' in values and values['cretaed_at'] is not None:
-                values['created_at'] = values['cretaed_at']
-            else:
-                values['created_at'] = datetime.now(timezone.utc)
+
         
-        # Always set updated_at to now
-        values['updated_at'] = datetime.now(timezone.utc)
-            
-        return values
 
     model_config = ConfigDict(
         json_encoders={
@@ -341,28 +213,7 @@ class ToEventRedisOut(ToEventInventoryOut):
     updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
     cretaed_at: Optional[datetime] = None  # Handle the typo field
 
-    @model_validator(mode='before')
-    def handle_timestamps(cls, values):
-        if not isinstance(values, dict):
-            return values
-            
-        # Handle the typo field
-        if 'cretaed_at' in values:
-            if values['cretaed_at'] == 'string' or values['cretaed_at'] is None:
-                values['cretaed_at'] = datetime.now(timezone.utc)
-            if 'created_at' not in values or values['created_at'] is None:
-                values['created_at'] = values['cretaed_at']
-        
-        # Ensure created_at is set
-        if 'created_at' not in values or values['created_at'] is None:
-            values['created_at'] = datetime.now(timezone.utc)
-        
-        # Ensure updated_at is set
-        if 'updated_at' not in values or values['updated_at'] is None:
-            values['updated_at'] = datetime.now(timezone.utc)
-            
-        return values
-    
+
 # ......................................................................................................
 class RedisInventoryItem(BaseModel):
     zone_active: Optional[str] = None
@@ -381,30 +232,6 @@ class RedisInventoryItem(BaseModel):
     id: Optional[str] = None
     project_id: Optional[str] = None
 
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            return None
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
-
-    @field_validator('RecQty', 'comments', mode='before')
-    def empty_to_none(cls, v):
-        return None if v == '' else v
-    
-    @field_validator('quantity', mode='before')
-    def validate_quantity(cls, v):
-        if v == '':
-            return 0  # or return None, based on your preference
-        return v
-    
-    @field_validator('unit', mode='before')
-    def convert_unit_to_string(cls, v):
-        if v is None:
-            return None
-        return str(v) if not isinstance(v, str) else v
 
 
 class ToEventUploadSchema(BaseModel):
@@ -424,36 +251,7 @@ class ToEventUploadSchema(BaseModel):
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
 
-    # Handle the 'cretaed_at' typo in Redis data
-    @field_validator('created_at', 'updated_at', mode='before')
-    def handle_created_at_typo(cls, v, values):
-        if v is None and 'cretaed_at' in values.data:
-            return values.data['cretaed_at']
-        return v
 
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            raise ValueError("Project_id cannot be empty")
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
-    
-    @field_validator('setup_date', 'event_date', mode='before')
-    def parse_dates(cls, v):
-        if isinstance(v, str):
-            try:
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                return datetime.fromisoformat(v).date()
-        elif isinstance(v, datetime):
-            return v.date()
-        return v
-
-    @field_validator('project_barcode_image_url', mode='before')
-    def empty_url_to_none(cls, v):
-        return None if v == '' else v
 
     def to_orm_dict(self):
         """Convert to dictionary suitable for SQLAlchemy model"""
@@ -470,35 +268,7 @@ class ToEventUploadResponse(BaseModel):
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None   
 
-    @model_validator(mode='before')
-    def handle_timestamps(cls, data: dict) -> dict:
-        now = datetime.now(timezone.utc)
-        
-        # Handle the typo field first
-        if 'cretaed_at' in data and data['cretaed_at'] is not None:
-            if data.get('created_at') is None:
-                data['created_at'] = data['cretaed_at']
-        
-        # Ensure we have values for required timestamps
-        if data.get('created_at') is None:
-            data['created_at'] = now
-        if data.get('updated_at') is None:
-            data['updated_at'] = now
-            
-        # Clean up the typo field if it's None
-        if 'cretaed_at' in data and data['cretaed_at'] is None:
-            del data['cretaed_at']
-            
-        return data
 
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            raise ValueError("Project_id cannot be empty")
-        clean_id = re.sub(r'^PRJ', '', str(v))
-        if not clean_id.isdigit():
-            raise ValueError("Project_id must contain only numbers after prefix")
-        return f"PRJ{clean_id}"
 
     model_config = ConfigDict(
         json_encoders={

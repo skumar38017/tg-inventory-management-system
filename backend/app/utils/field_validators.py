@@ -1,5 +1,12 @@
 # backend/app/utils/field_validators.py
-from app.utils.common_imports import *
+import re
+import json
+from typing import Dict, Any, Optional, Union
+from datetime import datetime, date, timezone
+from enum import Enum
+from pydantic import field_validator, model_validator, ConfigDict, ValidationInfo
+from app.utils.date_utils import UTCDateUtils
+from app.utils.date_utils import UTC_TIMEZONE
 
 class BaseValidators:
     """Contains reusable validators that can be inherited by different schemas"""
@@ -8,13 +15,13 @@ class BaseValidators:
         extra="forbid",
         from_attributes=True,
         json_encoders={
-            datetime: lambda v: UTCDateUtils.format_datetime(v),  # Changed to UTC format
+            datetime: lambda v: UTCDateUtils.format_datetime(v),
             date: lambda v: UTCDateUtils.format_date(v),
             Enum: lambda v: v.value
         }
     )
 
-    # ---------------------------- Generic Field Validators ----------------------------
+    # ---------------------------- Static Helper Methods ----------------------------
     @staticmethod
     def empty_string_to_none(v: Optional[str]) -> Optional[str]:
         """Convert empty strings to None"""
@@ -35,15 +42,7 @@ class BaseValidators:
 
     @staticmethod
     def format_id_field(v: Optional[str], prefix: str) -> Optional[str]:
-        """Generic ID formatter that adds prefix if missing and validates format
-        
-        Rules:
-        1. If input is None or empty string, return None
-        2. Remove any existing prefix (case insensitive)
-        3. Extract all digits from the remaining string
-        4. If no digits found, raise ValueError
-        5. Combine prefix with extracted digits
-        """
+        """Generic ID formatter that adds prefix if missing and validates format"""
         if v is None:
             return None
         
@@ -93,7 +92,12 @@ class BaseValidators:
     def check_empty_strings(cls, v):
         """Generic validator to convert empty strings to None for all fields"""
         return cls.empty_string_to_none(v)
-     
+
+    @field_validator('sno', mode='before', check_fields=False)
+    def convert_sno_to_string(cls, v):
+        if v is None:
+            return None
+        return str(v)
 
     @field_validator('product_id', mode='before', check_fields=False)
     def validate_product_id(cls, v):
@@ -121,7 +125,7 @@ class BaseValidators:
         result = cls.format_id_field(v, 'PRJ')
         if result is None:
             return None
-        if len(result) > 20:  # Example length check
+        if len(result) > 20:
             raise ValueError("Project ID too long (max 20 chars)")
         return result
 
@@ -152,11 +156,11 @@ class BaseValidators:
         """Standard datetime fields validator with timezone handling"""
         if isinstance(v, str):
             try:
-                dt = UTCDateUtils.parse_datetime(v)  # Changed to UTC
-                return UTCDateUtils.format_datetime(dt) if dt else v  # Changed to UTC format
+                dt = UTCDateUtils.parse_datetime(v)
+                return UTCDateUtils.format_datetime(dt) if dt else v
             except ValueError:
                 return v
-        return UTCDateUtils.validate_datetime_field(v)  # Changed to UTC
+        return UTCDateUtils.validate_datetime_field(v)
 
     @field_validator(
         'inventory_barcode_url', 'barcode_image_url', 
@@ -207,10 +211,10 @@ class BaseValidators:
             if 'cretaed_at' in values and values['cretaed_at'] is not None:
                 values['created_at'] = values['cretaed_at']
             else:
-                values['created_at'] = UTCDateUtils.get_current_datetime_iso()  # Changed to UTC ISO format
+                values['created_at'] = UTCDateUtils.get_current_datetime_iso()
         
         # Always set updated_at to now in UTC
-        values['updated_at'] = UTCDateUtils.get_current_datetime_iso()  # Changed to UTC ISO format
+        values['updated_at'] = UTCDateUtils.get_current_datetime_iso()
             
         return values
 
@@ -226,9 +230,9 @@ class BaseValidators:
             
             if from_date and to_date:
                 if isinstance(from_date, str):
-                    from_date = UTCDateUtils.parse_date(from_date)  # Changed to UTC
+                    from_date = UTCDateUtils.parse_date(from_date)
                 if isinstance(to_date, str):
-                    to_date = UTCDateUtils.parse_date(to_date)  # Changed to UTC
+                    to_date = UTCDateUtils.parse_date(to_date)
                 
                 if from_date and to_date and to_date < from_date:
                     raise ValueError("To date must be after From date")
@@ -247,4 +251,35 @@ class BaseValidators:
         if hasattr(self, 'inventory_items'):
             data['items'] = [item.model_dump(exclude={'project_id'}) for item in self.inventory_items]
         return data
+
+
     # ---------------------------- Common Enums ----------------------------
+    @staticmethod
+    def validate_date_field(value: Union[str, date, datetime, None]) -> Optional[date]:
+        """Pydantic validator for date fields"""
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, str):
+            parsed = UTCDateUtils.parse_date(value)
+            if parsed is None:
+                raise ValueError("Date must be in YYYY-MM-DD format")
+            return parsed
+    
+    @staticmethod
+    def validate_datetime_field(value: Union[str, datetime, None]) -> Optional[datetime]:
+        """Pydantic validator for datetime fields"""
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                return value.replace(tzinfo=UTC_TIMEZONE)
+            return value.astimezone(UTC_TIMEZONE)
+        if isinstance(value, str):
+            parsed = UTCDateUtils.parse_datetime(value)
+            if parsed is None:
+                raise ValueError("Datetime must be in ISO format")
+            return parsed

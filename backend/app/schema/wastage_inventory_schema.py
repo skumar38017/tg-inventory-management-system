@@ -33,66 +33,7 @@ class WastageInventoryBase(BaseModel):
     wastage_approved_by: Optional[str] = None
     wastage_status: Optional[str] = None
 
-    @field_validator('inventory_id', mode='before')
-    def format_inventory_id(cls, v):
-        if v is None:
-            return None
-        v = str(v).strip()
-        if not v:
-            return None
-        if not v.startswith('INV'):
-            return f"INV{v}"
-        return v
 
-    @field_validator('project_id', mode='before')
-    def format_project_id(cls, v):
-        if v is None:
-            return None
-        v = str(v).strip()
-        if not v:
-            return None
-        if not v.startswith('PRJ'):
-            return f"PRJ{v}"
-        return v
-
-    @field_validator('product_id', mode='before')
-    def format_product_id(cls, v):
-        if v is None:
-            return None
-        v = str(v).strip()
-        if not v:
-            return None
-        if not v.startswith('PRD'):
-            return f"PRD{v}"
-        return v
-
-    @field_validator('quantity', mode='before')
-    def validate_quantity(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str):
-            if not v.strip():
-                return None
-            try:
-                return int(float(v))
-            except ValueError:
-                raise ValueError("Quantity must be a whole number")
-        elif isinstance(v, (float, int)):
-            return int(v)
-        return v
-
-    @field_validator('receive_date', 'event_date', 'wastage_date', mode='before')
-    def validate_dates(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str):
-            try:
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError("Date must be in YYYY-MM-DD format")
-        elif isinstance(v, datetime):
-            return v.date()
-        return v
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -138,19 +79,7 @@ class WastageInventoryOut(BaseModel):
     created_at: Optional[Union[datetime, str]]  = Field(None, frozen=True) 
     updated_at: Optional[Union[datetime, str]] = None
 
-    @field_validator('updated_at', 'created_at', mode='before')
-    def parse_datetime(cls, value):
-        if value is None:
-            return None
-        if isinstance(value, str):
-            try:
-                # Parse and make timezone-naive for consistent comparison
-                return datetime.fromisoformat(value).replace(tzinfo=None)
-            except ValueError:
-                return None
-        elif isinstance(value, datetime):
-            return value.replace(tzinfo=None)
-        return value
+
     
     model_config = ConfigDict(
         json_encoders={
@@ -193,33 +122,7 @@ class WastageInventoryRedisIn(BaseModel):
     created_at: Optional[Union[datetime, str]]  = Field(None, frozen=True) 
     updated_at: Optional[Union[datetime, str]] = None
 
-    @field_validator('receive_date', 'event_date', 'wastage_date', mode='before')
-    def validate_dates(cls, v):
-        if v is None:
-            return None
-        if isinstance(v, str):
-            try:
-                # Parse date string and return date object
-                return datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError("Date must be in YYYY-MM-DD format")
-        elif isinstance(v, datetime):
-            return v.date()
-        return v
 
-    @field_validator('created_at', 'updated_at', mode='before')
-    def parse_datetime(cls, value):
-        if value is None:
-            return None
-        if isinstance(value, str):
-            try:
-                # Parse ISO format string
-                return datetime.fromisoformat(value).replace(tzinfo=None)
-            except ValueError:
-                return None
-        elif isinstance(value, datetime):
-            return value.replace(tzinfo=None)
-        return value
 
 class WastageInventoryRedisOut(WastageInventoryOut):
     success: Optional[bool] = Field(None, exclude=True) 
@@ -237,16 +140,7 @@ class WastageInventorySearch(BaseModel):
     employee_name: Optional[str] = None
     inventory_id: Optional[str] = None
 
-    @field_validator('inventory_id', mode='before')
-    def format_inventory_id(cls, v):
-        if v is None:
-            return None
-        v = str(v).strip()
-        if not v:
-            return None
-        if not v.startswith('INV'):
-            return f"INV{v}"
-        return v
+
 
 class WastageInventoryUpdate(BaseModel):
     assign_to: Optional[str] = None

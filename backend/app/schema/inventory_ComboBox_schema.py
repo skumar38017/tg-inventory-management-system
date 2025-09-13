@@ -79,14 +79,7 @@ class InventoryComboBoxItem(BaseModel):
     inventory_unique_code: Optional[Union[str, int]] = None
     inventory_barcode_url: Optional[str] = None
 
-    @field_validator(
-        'on_rent', 'rented_inventory_returned', 'on_event', 
-        'in_office', 'in_warehouse', mode='before'
-    )
-    def convert_bool_to_string(cls, v):
-        if isinstance(v, bool):
-            return str(v).lower()
-        return v
+
 
 class InventoryComboBoxResponse(BaseModel):
     items: List[InventoryComboBoxItem]
