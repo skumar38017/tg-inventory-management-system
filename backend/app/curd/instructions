@@ -40,3 +40,22 @@ Click Share
 Paste the service account’s email (e.g., your-service@project-id.iam.gserviceaccount.com)
 
 Give Viewer or Editor access
+
+
+
+
+
+1. Fetches from both sources - Database and Redis always
+2. Merges data using pandas - Combines both datasets
+3. Redis takes priority - For duplicate product_id + inventory_id, Redis data is kept
+4. Shows unique records only - No duplicates in final result
+5. Preserves all data - Nothing gets deleted from either source
+
+How it works:
+• Database has: PRD123 + INV456 
+• Redis has: PRD123 + INV456 (same combination)
+• **Result:** Shows Redis version (more recent/priority)
+
+• Database has: PRD789 + INV101
+• Redis has: PRD999 + INV202 (different combination)  
+• **Result:** Shows both records

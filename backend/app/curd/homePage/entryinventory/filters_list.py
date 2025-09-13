@@ -107,91 +107,85 @@ class FiltersListPaginationService(EntryInventoryInterface):
 
 #  Show all inventory entries directly from local Redis after clicking {Show All} button
 
-    async def show_all_inventory_paginated(self, db: AsyncSession, page: int = 1, per_page: int = 20):
-        """Get paginated inventory - Redis first, database fallback with deduplication"""
+    async def show_all_inventory_paginated(self, db: AsyncSession, page: int = 1, per_page: int = 50):
+        """Get paginated inventory - Live processing with data merging (Redis priority)"""
         try:
+            from app.schema.entry_inventory_schema import PaginatedInventoryResponse
             from app.pagination import paginate_data
             import pandas as pd
             
-            # Get data from database first
+            # Fetch from both sources always
             db_records = []
+            redis_records = []
+            
+            # Get database data
             try:
-                from app.curd.entry_inverntory_curd import EntryInventoryService
-                db_service = EntryInventoryService(self.redis)
-                
-                # Get from database using proper service
-                result = await db_service.get_all_entries(db)
-                if result:
-                    stmt = select(EntryInventory)
-                    db_result = await db.execute(stmt)
-                    db_items = db_result.scalars().all()
-                    db_records = [item.__dict__ for item in db_items]
-                    logger.info(f"Found {len(db_records)} records in database")
+                stmt = select(EntryInventory).order_by(EntryInventory.inventory_name)
+                db_result = await db.execute(stmt)
+                db_items = db_result.scalars().all()
+                db_records = [item.__dict__ for item in db_items]
+                logger.info(f"Found {len(db_records)} records in database")
             except Exception as e:
                 logger.warning(f"Database fetch failed: {e}")
-                db_records = []
             
-            # Get data from Redis (always fetch for merging)
-            redis_records = []
+            # Get Redis data
             try:
-                keys = await self.redis.keys("inventory:*")
+                keys = []
+                async for key in self.redis.scan_iter(match="inventory:*"):
+                    keys.append(key)
+                
                 for key in keys:
                     data = await self.redis.get(key)
                     if data:
                         try:
                             inventory_data = json.loads(data)
-                            # Remove fields not in schema
                             inventory_data.pop('inventory_type', None)
+                            
+                            # Clean NaN values
+                            for k, v in inventory_data.items():
+                                if pd.isna(v) or v == 'nan':
+                                    inventory_data[k] = v
+                            
                             redis_records.append(inventory_data)
                         except Exception as e:
-                            logger.warning(f"Failed to parse Redis data for key {key}: {e}")
+                            logger.warning(f"Failed to parse Redis key {key}: {e}")
                             continue
+                
                 logger.info(f"Found {len(redis_records)} records in Redis")
             except Exception as e:
                 logger.warning(f"Redis fetch failed: {e}")
-                redis_records = []
             
             # Merge data with Redis priority using pandas
             all_records = []
             if db_records or redis_records:
-                import pandas as pd
-                
-                # Combine both sources
+                # Combine both sources (database first, then Redis)
                 combined_data = db_records + redis_records
                 
                 if combined_data:
                     df = pd.DataFrame(combined_data)
                     
-                    # Remove duplicates based on product_id + inventory_id, keep Redis data (last occurrence)
+                    # Remove duplicates - Redis takes priority (keep='last')
                     df_unique = df.drop_duplicates(
                         subset=['product_id', 'inventory_id'], 
                         keep='last'  # Redis records come last, so they take priority
                     )
                     
+                    # Sort alphabetically
+                    df_unique = df_unique.sort_values('inventory_name', key=lambda x: x.str.lower())
                     all_records = df_unique.to_dict('records')
                     logger.info(f"After merging: {len(all_records)} unique records (Redis priority)")
-            
-            # Use merged data or fallback
-            if not all_records:
-                all_records = db_records if db_records else redis_records
             
             if not all_records:
                 raise HTTPException(status_code=404, detail="No inventory data available")
             
-            # Sort alphabetically
-            df_sorted = pd.DataFrame(all_records)
-            df_sorted = df_sorted.sort_values('inventory_name', key=lambda x: x.str.lower())
-            sorted_records = df_sorted.to_dict('records')
-            
-            # Apply pagination
-            paginated_result = paginate_data(sorted_records, page=page, per_page=per_page)
+            # Apply pagination to merged data
+            paginated_result = paginate_data(all_records, page=page, per_page=per_page)
             
             # Convert to schema format
-            from app.schema.entry_inventory_schema import PaginatedInventoryResponse
             inventory_items = []
             for item in paginated_result['data']:
                 try:
-                    # Handle NaN values and clean data
+                    # Clean NaN values
                     cleaned_item = {}
                     for key, value in item.items():
                         if pd.isna(value) or value == 'nan':
@@ -204,14 +198,12 @@ class FiltersListPaginationService(EntryInventoryInterface):
                     logger.warning(f"Skipping invalid item: {e}")
                     continue
             
-            return PaginatedInventoryResponse(
-                data=inventory_items,
-                pagination=paginated_result['pagination']
-            )
+            logger.info(f"Merged data: Retrieved {len(inventory_items)} items from page {page}")
+            return PaginatedInventoryResponse(data=inventory_items, pagination=paginated_result['pagination'])
             
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Pagination failed: {str(e)}", exc_info=True)
+            logger.error(f"Merged pagination failed: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Failed to retrieve inventory data: {str(e)}")
 

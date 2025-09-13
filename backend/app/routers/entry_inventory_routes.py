@@ -247,7 +247,7 @@ async def create_inventory_item_route(
 )
 async def show_all_paginated(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
-    per_page: int = Query(20, ge=1, le=100, description="Items per page (max 100)"),
+    per_page: int = Query(50, ge=1, le=100, description="Items per page (max 100, default 50)"),
     db: AsyncSession = Depends(get_async_db),
     service: FiltersListPaginationService = Depends(get_filters_list_service)
 ):
