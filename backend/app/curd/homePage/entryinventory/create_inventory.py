@@ -24,16 +24,21 @@ class CreateInventoryService(EntryInventoryInterface):
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Create new entry of inventory for which is directly stored in redis
-    async def create_entry_inventory(self, db: AsyncSession, inventory_type: str, entry_data: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory(self, db: AsyncSession, inventory_type: str, entry_inventory: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new inventory entry stored permanently in Redis (no database storage).
         """
         try:
+            inventory_type = "inventory"
             # Convert input data to dictionary
-            if isinstance(entry_data, EntryInventoryCreate):
-                inventory_data = entry_data.model_dump(exclude_unset=True)
+            if isinstance(entry_inventory, EntryInventoryCreate):
+                inventory_data = entry_inventory.model_dump(exclude_unset=True)
             else:
-                inventory_data = entry_data
+                inventory_data = entry_inventory
+
+            # Handle field mapping - map 'name' to 'inventory_name'
+            if 'name' in inventory_data and 'inventory_name' not in inventory_data:
+                inventory_data['inventory_name'] = inventory_data.pop('name')
 
             # Handle null/empty date fields
             for date_field in ['purchase_date', 'returned_date']:
@@ -48,7 +53,8 @@ class CreateInventoryService(EntryInventoryInterface):
             # Set timestamps (server-side only)
             current_time = UTCDateUtils.get_current_datetime()
             inventory_data['updated_at'] = current_time
-            inventory_data['created_at'] = current_time 
+            inventory_data['created_at'] = current_time
+            inventory_data['inventory_type'] = inventory_type  # Add inventory_type for QR generation 
 
             # Process and validate boolean fields
             boolean_fields = {
@@ -65,7 +71,6 @@ class CreateInventoryService(EntryInventoryInterface):
 
             # Generate barcode if not provided
             if not inventory_data.get('inventory_barcode'):
-                # Generate minimal barcode with only bars, code, and unique code
                 try:
                     # Generate minimal barcode with only bars, code, and unique code
                     barcode_value, unique_code, barcode_img = self.barcode_generator.generate_dynamic_barcode({
@@ -101,7 +106,7 @@ class CreateInventoryService(EntryInventoryInterface):
                         data=qr_content,
                         inventory_id=inventory_data['inventory_id'],
                         inventory_name=inventory_data['inventory_name'],
-                        inventory_type="inventory"
+                        inventory_type=inventory_type
                     )
                 
                     # Add QR code URL to inventory data
@@ -120,7 +125,9 @@ class CreateInventoryService(EntryInventoryInterface):
                 json.dumps(inventory_data, default=str)
             )
 
-            return EntryInventory(**inventory_data)
+            # Remove inventory_type before creating EntryInventory instance
+            model_data = {k: v for k, v in inventory_data.items() if k != 'inventory_type'}
+            return EntryInventory(**model_data)
 
         except KeyError as ke:
             logger.error(f"Missing required field: {str(ke)}")

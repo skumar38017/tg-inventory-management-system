@@ -1,5 +1,7 @@
 # backend/app/utils/transparent_barcode.py
 
+# backend/app/utils/transparent_barcode.py
+
 from app.utils.common_imports import *
 import uuid
 import hashlib
@@ -10,7 +12,7 @@ import string
 from typing import Tuple, Dict, Any
 from barcode.writer import ImageWriter
 import barcode
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from app import config
 import boto3
@@ -24,31 +26,52 @@ class TransparentBlackBarsWriter(ImageWriter):
 
     def __init__(self):
         super().__init__()
-        self.background = None  # No background
-        self.foreground = 'black'  # Solid black bars
+        self.background = None
+        self.foreground = 'black'
         self.module_height = 15
         self.quiet_zone = 6
-        self.font_size = 0  # No text
-        self.text_distance = 0  # No text
+        self.font_size = 0
+        self.text_distance = 0
+        self.write_text = False  # Completely disable text writing
 
     def render(self, code):
         """Render barcode with transparent background and opaque black bars."""
+        # Completely disable text functionality
+        self.text = ""  # Empty text
+        self.font = None  # No font
+        
         img = super().render(code)
 
-        # Ensure image is in RGBA mode
+        # Convert to transparent background
         img = img.convert('RGBA')
         pixels = img.getdata()
 
-        # Convert white background to transparent, keep black bars opaque
         new_pixels = []
         for pixel in pixels:
             if pixel[:3] == (255, 255, 255):
-                new_pixels.append((255, 255, 255, 0))  # Fully transparent
+                new_pixels.append((255, 255, 255, 0))  # Transparent
             else:
-                new_pixels.append((0, 0, 0, 255))  # Fully opaque black
+                new_pixels.append((0, 0, 0, 255))  # Opaque black
 
         img.putdata(new_pixels)
         return img
+
+    # Override text-related methods to prevent any text rendering
+    def _paint_text(self, xpos, ypos):
+        """Override to completely disable text painting"""
+        pass
+
+    def calculate_text_size(self, text):
+        """Override to return zero size"""
+        return 0, 0
+
+    def get_text_width(self, text):
+        """Override to return zero width"""
+        return 0
+
+    def get_text_height(self, text):
+        """Override to return zero height"""
+        return 0
 
 class DynamicBarcodeGenerator:
     def __init__(self):
@@ -61,9 +84,7 @@ class DynamicBarcodeGenerator:
         self.bucket_name = config.AWS_STORAGE_BUCKET_NAME
         self.barcode_folder = config.AWS_S3_BUCKET_FOLDER_PATH_BARCODE
         self.public_api_url = config.PUBLIC_API_URL
-        self.barcode_type = 'code128'  # Using Code128 for best density
-
-        self.barcode_path = None  # This is send by user [entry, assign, to_event, from_event, wastage]
+        self.barcode_type = 'code128'
 
     def _generate_alphanumeric_code(self, length: int = 8) -> str:
         chars = string.ascii_uppercase + string.digits
@@ -90,7 +111,9 @@ class DynamicBarcodeGenerator:
                 'module_height': 15,
                 'quiet_zone': 6,
                 'format': 'PNG',
-                'dpi': 300
+                'dpi': 300,
+                'write_text': False,  # Explicitly disable text
+                'text': ''  # Empty text
             })
 
             return barcode_value, unique_code, img_bytes.getvalue()
@@ -160,4 +183,3 @@ class DynamicBarcodeGenerator:
         except Exception as e:
             logger.error(f"Failed to save barcode image: {str(e)}", exc_info=True)
             raise ValueError(f"Failed to save barcode image: {str(e)}")
-        

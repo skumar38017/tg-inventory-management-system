@@ -26,7 +26,7 @@ class GoogleSyncInventoryInterface:
 
 class EntryInventoryInterface:
     #  Upload all inventory entries from local Redis to the database after click on upload data button
-    async def upload_entry_inventory(self, db: AsyncSession) -> List[InventoryRedisOut]:
+    async def upload_entry_inventory(self, db: AsyncSession, inventory_type: str) -> List[InventoryRedisOut]:
         """
         Upload all inventory entries from Redis to the database.
         
@@ -50,7 +50,7 @@ class EntryInventoryInterface:
 
     """Interface for EntryInventory operations with immutable core fields."""
     
-    async def create_entry_inventory(self, db: AsyncSession, entry_inventory: EntryInventoryCreate) -> EntryInventory:
+    async def create_entry_inventory(self, db: AsyncSession, inventory_type: str, entry_inventory: EntryInventoryCreate) -> EntryInventory:
         """
         Create a new EntryInventory entry.
         This method will receive an EntryInventoryCreate schema instance

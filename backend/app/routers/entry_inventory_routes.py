@@ -287,12 +287,13 @@ async def get_inventory_by_date_range(
 async def create_inventory_item_route(
     item: EntryInventoryCreate,
     db: AsyncSession = Depends(get_async_db),
-    service: CreateInventoryService = Depends(get_entry_inventory_service)
+    service: CreateInventoryService = Depends(get_create_inventory_service)
 ):
     try:
         logger.info(f"Creating new inventory item")
         return await service.create_entry_inventory(
             db=db,
+            inventory_type="inventory",
             entry_inventory=item
         )
     except HTTPException:

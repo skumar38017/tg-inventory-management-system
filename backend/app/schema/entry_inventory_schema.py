@@ -10,7 +10,7 @@ class EntryInventoryBase(BaseValidators, BaseModel):
     product_id: Optional[str] = None  
     inventory_id: Optional[str] = None  
     sno: Optional[str] = None
-    inventory_name: Optional[str] = None
+    inventory_name: Optional[str] = Field(None, alias='name')
     material: Optional[str] = None
     total_quantity: Optional[Union[str, float, int]] = None
     manufacturer: Optional[str] = None
@@ -33,6 +33,7 @@ class EntryInventoryBase(BaseValidators, BaseModel):
 
     model_config = ConfigDict(
         extra="ignore",
+        populate_by_name=True,
         json_encoders={
             datetime: lambda v: UTCDateUtils.format_datetime(v),
             date: lambda v: UTCDateUtils.format_date(v)

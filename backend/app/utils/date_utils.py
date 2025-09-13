@@ -85,3 +85,14 @@ class UTCDateUtils:
             return UTCDateUtils.parse_date(value)
         return None
     
+    @staticmethod
+    def validate_datetime_field(value: Union[str, datetime, None]) -> Optional[datetime]:
+        """Pydantic validator for datetime fields"""
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            return UTCDateUtils.parse_datetime(value)
+        return None
+    
