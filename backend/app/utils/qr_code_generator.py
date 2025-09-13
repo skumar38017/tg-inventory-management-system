@@ -125,7 +125,7 @@ class QRCodeGenerator:
             draw = ImageDraw.Draw(new_img)
             text_width = text_bbox[2] - text_bbox[0]
             text_x = (new_img.width - text_width) // 2
-            text_y = img.height + 5  # 5px padding from QR code
+            text_y = img.height + 1  # 5px padding from QR code
             
             draw.text((text_x, text_y), inventory_name, fill=(0, 0, 0, 255), font=font)
 
