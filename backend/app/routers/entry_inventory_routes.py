@@ -16,6 +16,7 @@ from app.interface.entry_inverntory_interface import (
     EntryInventoryInterface
 )
 from app.curd.homePage.entryinventory.create_inventory import CreateInventoryService
+from app.curd.homePage.entryinventory.filters_list import FiltersListPaginationService
 
 # Dependency to get the entry inventory service
 def get_entry_inventory_service(
@@ -28,6 +29,12 @@ def get_create_inventory_service(
     redis: aioredis.Redis = Depends(get_redis_dependency)
 ) -> CreateInventoryService:
     return CreateInventoryService(redis)
+
+# Dependency to get the entry inventory service
+def get_filters_list_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> FiltersListPaginationService:
+    return FiltersListPaginationService(redis)
 
 # Dependency to get the entry inventory service
 def get_entryget_inventory_from_google_sheet(
@@ -146,83 +153,6 @@ async def upload_inventory_data(
         )
 
 # -------------------------------------------------------------------------------------------------
-# Show all inventory entries directly from local Redis Database  (no search) according in sequence alphabetical order after clicking `Show All` button
-@router.get("/show-all/",
-    response_model=List[InventoryRedisOut],
-    status_code=200,
-    summary="Show all Redis-cached inventory",
-    description="Retrieves all inventory entries from Redis cache sorted alphabetically by inventory_name",
-    responses={
-        200: {"description": "Successfully retrieved cached data"},
-        404: {"description": "No cached data found"},
-        500: {"description": "Internal server error during retrieval"}
-    },
-    tags=["Show all Inventory (Redis)"]
-)
-async def show_all_redis(
-    skip: int = 0,
-    limit: int = 1000,  # Add pagination limit
-    db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
-):
-    """
-    Retrieve all inventory data from Redis cache sorted alphabetically.
-    
-    This endpoint will:
-    1. Fetch all cached inventory entries from Redis
-    2. Validate and deserialize the data
-    3. Sort alphabetically by inventory_name
-    4. Apply pagination (skip and limit)
-    5. Return the sorted list of inventory items
-    """
-    try:
-        logger.info("Fetching all inventory data from Redis")
-        
-        # Get all entries from Redis
-        cached_data = await service.show_all_inventory_from_redis()
-        
-        if not cached_data:
-            logger.warning("No inventory data found in Redis cache")
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "status": "not_found",
-                    "message": "No inventory data available in cache"
-                }
-            )
-        
-        # Sort alphabetically by inventory_name (case insensitive)
-        cached_data.sort(key=lambda x: x.inventory_name.lower())
-        
-        # Apply pagination
-        paginated_data = cached_data[skip : skip + limit]
-        
-        logger.info(f"Successfully retrieved {len(paginated_data)} cached entries (showing {skip} to {skip + limit})")
-        return paginated_data
-        
-    except HTTPException:
-        raise
-    except ValueError as e:
-        logger.error(f"Data validation error: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "failed",
-                "message": "Invalid data format in Redis cache",
-                "error": str(e)
-            }
-        )
-    except Exception as e:
-        logger.error(f"Failed to retrieve cached data: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "failed",
-                "message": "Failed to retrieve cached data",
-                "error": str(e)
-            }
-        )
-# -------------------------------------------------------------------------------------------------
 
 #  Filter inventory from database by date range without passing any `IDs`
 @router.get(
@@ -301,6 +231,126 @@ async def create_inventory_item_route(
     except Exception as e:
         logger.error(f"Error creating inventory item: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+# Show all inventory entries with pagination - Redis first, fallback to Database
+@router.get("/show-all/",
+    response_model=List[InventoryRedisOut],
+    status_code=200,
+    summary="Show all inventory with pagination",
+    description="Retrieves inventory from Redis first, fallback to database, with pagination and deduplication",
+    responses={
+        200: {"description": "Successfully retrieved paginated data"},
+        404: {"description": "No data found"},
+        500: {"description": "Internal server error during retrieval"}
+    },
+    tags=["Show all Inventory (Redis + Database)"]
+)
+async def show_all_paginated(
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page (max 100)"),
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_entry_inventory_service)
+):
+    """
+    Retrieve inventory data with pagination - redis first, Database fallback.
+    
+    This endpoint will:
+    1. Fetch data from Redis first
+    2. Fallback to Database if redis is empty
+    3. Deduplicate records (redis takes priority)
+    4. Apply pagination using pagination.py
+    5. Return paginated results with metadata
+    """
+    try:
+        from app.pagination import paginate_data
+        import pandas as pd
+        
+        logger.info(f"Fetching paginated inventory data - page {page}, per_page {per_page}")
+        
+        # Get data from database first
+        db_data = await service.list_entry_inventories_curd(db)
+        db_records = [item.model_dump() for item in db_data] if db_data else []
+        
+        # Get data from Redis as fallback
+        redis_data = await service.show_all_inventory_from_redis()
+        redis_records = [item.model_dump() for item in redis_data] if redis_data else []
+        
+        # Combine and deduplicate using pandas
+        all_records = []
+        
+        if db_records:
+            all_records.extend(db_records)
+            logger.info(f"Found {len(db_records)} records in database")
+        
+        if redis_records:
+            # Create DataFrame for deduplication
+            df_combined = pd.DataFrame(db_records + redis_records)
+            
+            if not df_combined.empty:
+                # Remove duplicates - database records take priority
+                df_unique = df_combined.drop_duplicates(
+                    subset=['product_id', 'inventory_id'], 
+                    keep='first'  # Keep first occurrence (database records come first)
+                )
+                all_records = df_unique.to_dict('records')
+                logger.info(f"After deduplication: {len(all_records)} unique records")
+            else:
+                all_records = redis_records
+                logger.info(f"Using {len(redis_records)} Redis records only")
+        
+        if not all_records:
+            logger.warning("No inventory data found in database or Redis")
+            raise HTTPException(
+                status_code=404,
+                detail="No inventory data available"
+            )
+        
+        # Sort alphabetically by inventory_name
+        df_sorted = pd.DataFrame(all_records)
+        df_sorted = df_sorted.sort_values('inventory_name', key=lambda x: x.str.lower())
+        sorted_records = df_sorted.to_dict('records')
+        
+        # Apply pagination
+        paginated_result = paginate_data(sorted_records, page=page, per_page=per_page)
+        
+        logger.info(f"Successfully retrieved page {page} with {len(paginated_result['data'])} items")
+        return paginated_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve paginated data: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve inventory data: {str(e)}"
+        )
+        
+# -------------------------------------------------------------------------------------------------
+
+# READ ALL: Get entire inventory entries direct from databaseand fallback redis cache and fallow pagination(no search) according in sequence alphabetical order
+
+@router.get("/getlist",
+            response_model=list[EntryInventoryOut],
+            status_code=200,
+            summary="Get all entries from the inventory",
+            description="This endpoint is used to get all entries from the inventory. It returns a list of entries.",
+            response_model_exclude_unset=True,
+            tags=["Get Inventory (Redis)"]
+)
+async def get_all_entire_inventory(
+    skip: int = 0,
+    db: AsyncSession = Depends(get_async_db),
+    service: EntryInventoryService = Depends(get_filters_list_service)
+):
+    """Get all inventory items"""
+    try:
+        items = await service.get_all_entries(db, skip)
+        logger.info(f"Retrieved {len(items)} inventory items")
+        return items
+    except Exception as e:
+        logger.error(f"Error fetching inventory items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ________________________________________________________________________________________
 
 # READ: Get an inventory which is match from inventry ID
@@ -341,30 +391,6 @@ async def get_inventory_item(
         raise HTTPException(status_code=404, detail="EntryInventory not found")
     return entry_inventory
 
-
-
-# READ ALL: Get entire inventory entries direct from database (no search) according in sequence alphabetical order
-@router.get("/getlist",
-            response_model=list[EntryInventoryOut],
-            status_code=200,
-            summary="Get all entries from the inventory",
-            description="This endpoint is used to get all entries from the inventory. It returns a list of entries.",
-            response_model_exclude_unset=True,
-            tags=["Get Inventory (Redis)"]
-)
-async def get_all_entire_inventory(
-    skip: int = 0,
-    db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
-):
-    """Get all inventory items"""
-    try:
-        items = await service.get_all_entries(db, skip)
-        logger.info(f"Retrieved {len(items)} inventory items")
-        return items
-    except Exception as e:
-        logger.error(f"Error fetching inventory items: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 #  Search inventory items by various criteria {Product ID, Inventory ID}
 @router.get(
