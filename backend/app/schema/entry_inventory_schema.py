@@ -1,11 +1,6 @@
 # backend/app/schema/entry_inventory_schema.py
-import json
-from typing import Optional, Union
-from datetime import datetime, date
-from pydantic import BaseModel, Field, ConfigDict
-from app.utils.field_validators import BaseValidators
-from app.utils.date_utils import UTCDateUtils
-from app.utils.common_imports import *
+
+from app.schema.common_schema import *
 
 class EntryInventoryBase(BaseValidators, BaseModel):
     product_id: Optional[str] = None  

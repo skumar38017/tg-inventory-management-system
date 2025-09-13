@@ -1,10 +1,10 @@
 #  backend/app/schema/qrcode_barcode_schema.py
-from app.utils.common_imports import *
+# backend/app/schema/qrcode_barcode_schema.py
+from app.schema.common_schema import *
 
 class InventoryQrCodeResponse(BaseValidators, BaseModel):
     company: Optional[str] = "Tagglabs Experiential PVT. LTD."
     type: Optional[str] = "inventory"
-    # Include all possible fields from Redis
     id: Optional[Union[str, int]] = None
     product_id: Optional[str] = None
     inventory_id: Optional[str] = None
@@ -70,8 +70,6 @@ class BarcodeClallanScan(BaseValidators, BaseModel):
 
 class BarcodeScan(BaseValidators, BaseModel):
     id: Optional[str] = None
-
-    # Common fields
     sno: Optional[Union[str, int]] = None
     inventory_id: Optional[Union[str, int]] = None
     product_id: Optional[Union[str, int]] = None
@@ -89,16 +87,12 @@ class BarcodeScan(BaseValidators, BaseModel):
     zone_activity: Optional[Union[str, int]] = None
     zone_active: Optional[Union[str, int]] = None
     submitted_by: Optional[str] = "Inventory Admin"
-    
-    # Assignment specific fields
     assign_to: Optional[str] = "Employee"
     employee_name: Optional[str] = "Unknown"
     purpose_reason: Optional[str] = None
     assigned_date: Optional[Union[str, int, date]] = Field(default_factory=lambda: date.today().isoformat())
     assign_by: Optional[str] = "Inventory_Admin"
     submission_date: Optional[Union[str, int, date]] = Field(default_factory=lambda: date.today().isoformat())
-    
-    # Receiving/Wastage specific fields
     receive_date: Optional[Union[str, int, date]] = Field(default_factory=lambda: date.today().isoformat())
     receive_by: Optional[str] = "Inventory Admin"
     check_status: Optional[str] = "Ok"
@@ -106,16 +100,12 @@ class BarcodeScan(BaseValidators, BaseModel):
     wastage_date: Optional[Union[str, int, date]] = Field(default_factory=lambda: date.today().isoformat())
     wastage_approved_by: Optional[str] = "Inventory Admin"
     wastage_status: Optional[Union[str, int]] = "Approved"
-    
-    # Event/Project specific fields
     material: Optional[str] = None
     total: Optional[Union[str, int, float]] = 1
     unit: Optional[Union[str, int]] = "PCS"
     per_unit_power: Optional[Union[str, int]] = 1
     total_power: Optional[Union[str, int]] = 1
     poc: Optional[Union[str, int]] = "Admin"
-    
-    # Inventory item specific fields
     total_quantity: Optional[Union[str, int]] = 1
     manufacturer: Optional[str] = "Tahgglabs"
     purchase_dealer: Optional[str] = "Unknown"
@@ -136,8 +126,6 @@ class BarcodeScan(BaseValidators, BaseModel):
     inventory_qrcode_url: Optional[str] = None
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None
-
-
 
     class Config:
         extra = "allow"

@@ -1,7 +1,8 @@
 # backend/app/schema/to_event_inventry_schma.py
-from app.utils.common_imports import *
+# backend/app/schema/to_event_inventry_schma.py
+from app.schema.common_schema import *
 
-class InventoryItemBase(BaseModel):
+class InventoryItemBase(BaseValidators, BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")
     sno: Optional[str] = Field(None, description="Serial number of the equipment")
     name: Optional[str] = None
@@ -16,8 +17,6 @@ class InventoryItemBase(BaseModel):
     status: Optional[str] = None
     poc: Optional[str] = None
 
-
-
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -28,7 +27,7 @@ class InventoryItemBase(BaseModel):
 class InventoryItemCreate(InventoryItemBase):
     pass
 
-class InventoryItemOut(BaseModel):
+class InventoryItemOut(BaseValidators, BaseModel):
     id: Optional[str] = Field(None, frozen=True)
     project_id: Optional[str] = Field(None, frozen=True)
     zone_active: Optional[str] = None
@@ -45,7 +44,6 @@ class InventoryItemOut(BaseModel):
     status: Optional[str] = None
     poc: Optional[str] = None
 
-
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
@@ -54,7 +52,7 @@ class InventoryItemOut(BaseModel):
         }
     )
 
-class ToEventInventoryBase(BaseModel):
+class ToEventInventoryBase(BaseValidators, BaseModel):
     project_id: Optional[str] = None
     employee_name: Optional[str] = None
     location: Optional[str] = None
@@ -64,8 +62,6 @@ class ToEventInventoryBase(BaseModel):
     event_date: Optional[Union[str, date]] = None
     submitted_by: Optional[str] = None
     inventory_items: List[InventoryItemBase]
-
-
         
     model_config = ConfigDict(
         json_encoders={
@@ -79,7 +75,7 @@ class ToEventInventoryCreate(ToEventInventoryBase):
         exclude={'id', 'created_at', 'updated_at'}
     )
 
-class ToEventInventoryUpdate(BaseModel):
+class ToEventInventoryUpdate(BaseValidators, BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
     client_name: Optional[str] = None
@@ -91,7 +87,6 @@ class ToEventInventoryUpdate(BaseModel):
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
     updated_at: datetime = datetime.now(timezone.utc)
-
 
     model_config = ConfigDict(
         json_encoders={
@@ -116,24 +111,16 @@ class ToEventInventoryOut(ToEventInventoryBase):
     inventory_items: List[InventoryItemOut] = []
 
     model_config = ConfigDict(from_attributes=True)
-
-
-
     
 class ToEventInventoryUpdateOut(ToEventInventoryOut):
     updated_at: datetime
-
-
     
     model_config = ConfigDict(from_attributes=True)
     
 class ToEventInventorySearch(BaseModel):
     project_id: str
-    
-
 
 class ToEventRedis(BaseModel):
-    """Schema for storing inventory in Redis"""
     id: Optional[str] = None
     project_id: Optional[str] = None
     employee_name: Optional[str] = None
@@ -150,8 +137,6 @@ class ToEventRedis(BaseModel):
     project_barcode_image_url: Optional[str] = None
     inventory_items: List[Dict[str, Any]] = []
 
-
-
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -159,7 +144,6 @@ class ToEventRedis(BaseModel):
         }
     )
 
-# Update Input Schema (fields that can be updated)
 class ToEventRedisUpdateIn(BaseModel):
     employee_name: Optional[str] = None
     location: Optional[str] = None
@@ -170,8 +154,6 @@ class ToEventRedisUpdateIn(BaseModel):
     submitted_by: Optional[str] = None
     inventory_items: Optional[List[InventoryItemBase]] = None
 
-
-
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -179,7 +161,6 @@ class ToEventRedisUpdateIn(BaseModel):
         }
     )
  
-# Update Output Schema (fields that should be returned)
 class ToEventRedisUpdateOut(BaseModel):
     project_id: Optional[str] = None
     employee_name: Optional[str] = None
@@ -198,9 +179,6 @@ class ToEventRedisUpdateOut(BaseModel):
     created_at: Optional[Union[str, datetime]] = None  
     updated_at: Optional[Union[str, datetime]] = None  
 
-
-        
-
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
@@ -211,10 +189,8 @@ class ToEventRedisUpdateOut(BaseModel):
 class ToEventRedisOut(ToEventInventoryOut):
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc))
-    cretaed_at: Optional[datetime] = None  # Handle the typo field
+    cretaed_at: Optional[datetime] = None
 
-
-# ......................................................................................................
 class RedisInventoryItem(BaseModel):
     zone_active: Optional[str] = None
     sno: Optional[str] = None
@@ -231,8 +207,6 @@ class RedisInventoryItem(BaseModel):
     poc: Optional[str] = None
     id: Optional[str] = None
     project_id: Optional[str] = None
-
-
 
 class ToEventUploadSchema(BaseModel):
     id: Optional[str] = None
@@ -251,14 +225,10 @@ class ToEventUploadSchema(BaseModel):
     project_barcode_unique_code: Optional[str] = None
     project_barcode_image_url: Optional[str] = None
 
-
-
     def to_orm_dict(self):
-        """Convert to dictionary suitable for SQLAlchemy model"""
         data = self.model_dump(exclude={'inventory_items', 'created_at', 'updated_at'})
         data['items'] = [item.model_dump(exclude={'project_id'}) for item in self.inventory_items]
         return data
-
 
 class ToEventUploadResponse(BaseModel):
     success: bool
@@ -268,12 +238,10 @@ class ToEventUploadResponse(BaseModel):
     created_at: Optional[Union[str, datetime]] = None
     updated_at: Optional[Union[str, datetime]] = None   
 
-
-
     model_config = ConfigDict(
         json_encoders={
             datetime: lambda v: v.isoformat(),
             date: lambda v: v.isoformat()
         },
-        extra='ignore'  # Ignore extra fields in response
+        extra='ignore'
     )

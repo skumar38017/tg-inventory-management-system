@@ -1,10 +1,5 @@
 #  backend/app/models/assign_inventory_model.py
-import uuid
-from sqlalchemy import Column, String, Integer, Float, Date, DateTime, Enum, Index, text, Numeric
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime, date, timezone
-from enum import Enum as PyEnum
-from app.database.base import Base  # Assuming you have a base class for your models
+from app.models.common_imports import *
 
 class WastageInventory(Base):
     __tablename__ = "wastage_inventories"

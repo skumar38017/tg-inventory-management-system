@@ -1,33 +1,25 @@
 #  backend/app/schema/assign_inventory_schema
-from app.utils.common_imports import *
+# backend/app/schema/assign_inventory_schema
+from app.schema.common_schema import *
 
-from app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
-from app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
-
-
-
-class StatusEnum(str, Enum):
-    ASSIGNED = "assigned"
-    RETURN = "returned"
 
 class AssignmentInventoryBase(BaseModel):
     assign_to: Optional[str] = None
     employee_name: Optional[str] = None
     sno: Optional[str] = None
-    zone_activity:  Optional[str] = None
+    zone_activity: Optional[str] = None
     inventory_id: Optional[str] = None
     project_id: Optional[str] = None
     product_id: Optional[str] = None
-    inventory_name:  Optional[str] = None
+    inventory_name: Optional[str] = None
     description: Optional[str] = None
     quantity: Optional[Union[float, int, str]] = Field(None, ge=0)
     status: Optional[str] = None
-    purpose_reason:  Optional[str] = None
+    purpose_reason: Optional[str] = None
     assigned_date: Optional[date] = None
-    assign_by:  Optional[str] = None
+    assign_by: Optional[str] = None
     assignment_return_date: Optional[date] = None
     comment: Optional[str] = None
- 
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -103,8 +95,6 @@ class AssignmentInventoryRedisIn(BaseModel):
     created_at: Optional[Union[str, datetime]] = None  
     updated_at: Optional[Union[str, datetime]] = None
 
-
-
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
@@ -121,8 +111,8 @@ class AssignmentInventoryRedisIn(BaseModel):
         return dt.isoformat()
 
 class AssignmentInventoryRedisOut(AssignmentInventoryOut):
-    success: Optional[bool] = Field(None, exclude=True)  # Mark as excluded from schema
-    message: Optional[str] = Field(None, exclude=True)  # Mark as excluded from schema
+    success: Optional[bool] = Field(None, exclude=True)
+    message: Optional[str] = Field(None, exclude=True)
 
     model_config = ConfigDict(
         from_attributes=True,
@@ -130,19 +120,14 @@ class AssignmentInventoryRedisOut(AssignmentInventoryOut):
             date: lambda v: v.isoformat(),
             StatusEnum: lambda v: v.value
         },
-        extra='ignore'  # Changed from 'forbid' to 'ignore'
+        extra='ignore'
     )
 
 class AssignmentInventorySearch(BaseModel):
     employee_name: Optional[str] = None
     inventory_id: Optional[str] = None
 
-
-
 class AssignmentInventoryUpdate(BaseModel):
-    # Search fields (required)
-   
-    # Updatable fields
     assign_to: Optional[str] = None
     sno: Optional[str] = None
     zone_activity: Optional[str] = None
@@ -153,7 +138,7 @@ class AssignmentInventoryUpdate(BaseModel):
     assign_by: Optional[str] = None
     comment: Optional[str] = None
     submission_date: Optional[Union[str, datetime]] = None
-    assigned_date: Optional[date]  = Field(None, frozen=True) 
+    assigned_date: Optional[date] = Field(None, frozen=True) 
     assignment_return_date: Optional[date] = None
        
     model_config = ConfigDict(
@@ -165,8 +150,6 @@ class AssignmentInventoryUpdate(BaseModel):
     )
 
 class AssignmentInventoryUpdateOut(AssignmentInventoryRedisOut):
-    pass
-
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={

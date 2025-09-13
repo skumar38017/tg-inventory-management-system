@@ -1,7 +1,7 @@
 # backend/app/schema/inventory_ComboBox_schema.py
-from app.utils.common_imports import *
+from app.schema.common_schema import *
     
-class InventoryComboBoxItem(BaseModel):
+class InventoryComboBoxItem(BaseValidators, BaseModel):
     # Common fields
     key_type: Optional[str] = None
     uuid: Optional[str] = None
@@ -78,8 +78,6 @@ class InventoryComboBoxItem(BaseModel):
     inventory_barcode: Optional[Union[str, int]] = None
     inventory_unique_code: Optional[Union[str, int]] = None
     inventory_barcode_url: Optional[str] = None
-
-
 
 class InventoryComboBoxResponse(BaseModel):
     items: List[InventoryComboBoxItem]

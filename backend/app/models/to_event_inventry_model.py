@@ -1,18 +1,6 @@
 #  backend/app/models/to_event_inventry_model.py
 
-import uuid
-from sqlalchemy import Column, String, Date, DateTime, Index, Integer, ForeignKey
-from sqlalchemy.sql import func
-from app.database.base import Base
-from datetime import datetime, timezone
-from barcode import Code128
-from barcode.writer import ImageWriter
-from sqlalchemy.orm import relationship
-import os
-import hashlib
-from typing import Dict, Any
-import logging
-from sqlalchemy.dialects.postgresql import UUID
+from app.models.common_imports import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

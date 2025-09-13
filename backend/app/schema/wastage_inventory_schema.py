@@ -1,13 +1,7 @@
-#  backend/app/schema/wastage_inventory_schema
+# backend/app/schema/wastage_inventory_schema
+from app.schema.common_schema import *
 
-from app.utils.common_imports import *
-
-from app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
-from app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
-from app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
-from app.models.wastege_inventory_model import WastageInventory
-
-class WastageInventoryBase(BaseModel):
+class WastageInventoryBase(BaseValidators, BaseModel):
     assign_to: Optional[str] = None
     sno: Optional[str] = None
     employee_name: Optional[str] = None
@@ -26,15 +20,11 @@ class WastageInventoryBase(BaseModel):
     event_date: Optional[Union[date, str]] = None
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
-    
-    # Wastage specific fields
     wastage_reason: Optional[str] = None
     wastage_date: Optional[Union[date, str]] = None
     wastage_approved_by: Optional[str] = None
     wastage_status: Optional[str] = None
 
-
-    
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
@@ -47,10 +37,10 @@ class WastageInventoryBase(BaseModel):
 class WastageInventoryCreate(WastageInventoryBase):
     pass
 
-class WastageInventoryOut(BaseModel):
-    id: Optional[str]  = Field(None, frozen=True) 
+class WastageInventoryOut(BaseValidators, BaseModel):
+    id: Optional[str] = Field(None, frozen=True) 
     assign_to: Optional[str] = None
-    sno: Optional[Union[str, int, str]] = None
+    sno: Optional[Union[str, int]] = None
     employee_name: Optional[str] = None
     inventory_id: Optional[str] = None
     project_id: Optional[str] = None
@@ -67,20 +57,15 @@ class WastageInventoryOut(BaseModel):
     event_date: Optional[Union[date, str]] = None
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
-    wastage_barcode:  Optional[str] = Field(None, frozen=True) 
+    wastage_barcode: Optional[str] = Field(None, frozen=True) 
     wastage_barcode_image_url: Optional[str] = Field(None, frozen=True) 
-    
-    # Wastage specific fields
     wastage_reason: Optional[str] = None
     wastage_date: Optional[Union[date, str]] = None
     wastage_approved_by: Optional[str] = None
     wastage_status: Optional[str] = None
-    
-    created_at: Optional[Union[datetime, str]]  = Field(None, frozen=True) 
+    created_at: Optional[Union[datetime, str]] = Field(None, frozen=True) 
     updated_at: Optional[Union[datetime, str]] = None
 
-
-    
     model_config = ConfigDict(
         json_encoders={
             date: lambda v: v.isoformat(),
@@ -89,8 +74,8 @@ class WastageInventoryOut(BaseModel):
         extra='ignore'
     )
 
-class WastageInventoryRedisIn(BaseModel):
-    id: Optional[str]  = Field(None, frozen=True) 
+class WastageInventoryRedisIn(BaseValidators, BaseModel):
+    id: Optional[str] = Field(None, frozen=True) 
     assign_to: Optional[str] = None
     sno: Optional[Union[str, float, int]] = None
     employee_name: Optional[str] = None
@@ -106,25 +91,20 @@ class WastageInventoryRedisIn(BaseModel):
     check_status: Optional[str] = None
     location: Optional[str] = None
     project_name: Optional[str] = None
-    event_date: Optional[date]  = Field(None, frozen=True) 
+    event_date: Optional[date] = Field(None, frozen=True) 
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
-    wastage_barcode:  Optional[str] = Field(None, frozen=True) 
-    wastage_barcode_unique_code:  Optional[str]  = Field(None, frozen=True) 
+    wastage_barcode: Optional[str] = Field(None, frozen=True) 
+    wastage_barcode_unique_code: Optional[str] = Field(None, frozen=True) 
     wastage_barcode_image_url: Optional[str] = Field(None, frozen=True) 
-    
-    # Wastage specific fields
     wastage_reason: Optional[str] = None
     wastage_date: Optional[Union[date, str]] = None
     wastage_approved_by: Optional[str] = None
     wastage_status: Optional[str] = None
-    
-    created_at: Optional[Union[datetime, str]]  = Field(None, frozen=True) 
+    created_at: Optional[Union[datetime, str]] = Field(None, frozen=True) 
     updated_at: Optional[Union[datetime, str]] = None
 
-
-
-class WastageInventoryRedisOut(WastageInventoryOut):
+class WastageInventoryRedisOut(BaseValidators, WastageInventoryOut):
     success: Optional[bool] = Field(None, exclude=True) 
     message: Optional[str] = Field(None, exclude=True)  
     
@@ -136,13 +116,11 @@ class WastageInventoryRedisOut(WastageInventoryOut):
         extra='ignore'
     )
 
-class WastageInventorySearch(BaseModel):
+class WastageInventorySearch(BaseValidators, BaseModel):
     employee_name: Optional[str] = None
     inventory_id: Optional[str] = None
 
-
-
-class WastageInventoryUpdate(BaseModel):
+class WastageInventoryUpdate(BaseValidators, BaseModel):
     assign_to: Optional[str] = None
     sno: Optional[Union[str, float, int]] = None
     description: Optional[str] = None
@@ -155,8 +133,6 @@ class WastageInventoryUpdate(BaseModel):
     project_name: Optional[str] = Field(None, frozen=True) 
     comment: Optional[str] = None
     zone_activity: Optional[str] = None
-    
-    # Wastage specific fields
     wastage_reason: Optional[str] = None
     wastage_date: Optional[Union[date, str]] = None
     wastage_approved_by: Optional[str] = None
@@ -171,9 +147,7 @@ class WastageInventoryUpdate(BaseModel):
         extra='forbid'
     )
 
-class WastageInventoryUpdateOut(WastageInventoryRedisOut):
-    pass
-
+class WastageInventoryUpdateOut(BaseValidators, WastageInventoryRedisOut):
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
@@ -182,7 +156,7 @@ class WastageInventoryUpdateOut(WastageInventoryRedisOut):
         extra='forbid'
     )
 
-class RedisSearchResult(BaseModel):
+class RedisSearchResult(BaseValidators, BaseModel):
     key: str
     data: Union[
         AssignmentInventoryRedisOut, 
@@ -198,4 +172,3 @@ class RedisSearchResult(BaseModel):
     model_config = ConfigDict(
         extra="allow"
     )
-
