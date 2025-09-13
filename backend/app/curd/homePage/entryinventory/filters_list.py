@@ -131,29 +131,49 @@ class FiltersListPaginationService(EntryInventoryInterface):
                 logger.warning(f"Database fetch failed: {e}")
                 db_records = []
             
-            # Get data from Redis as fallback
+            # Get data from Redis (always fetch for merging)
             redis_records = []
-            if not db_records:  # Only use Redis if database is empty
-                try:
-                    keys = await self.redis.keys("inventory:*")
-                    for key in keys:
-                        data = await self.redis.get(key)
-                        if data:
-                            try:
-                                inventory_data = json.loads(data)
-                                # Remove fields not in schema
-                                inventory_data.pop('inventory_type', None)
-                                redis_records.append(inventory_data)
-                            except Exception as e:
-                                logger.warning(f"Failed to parse Redis data for key {key}: {e}")
-                                continue
-                    logger.info(f"Using {len(redis_records)} Redis records as fallback")
-                except Exception as e:
-                    logger.warning(f"Redis fallback failed: {e}")
-                    redis_records = []
+            try:
+                keys = await self.redis.keys("inventory:*")
+                for key in keys:
+                    data = await self.redis.get(key)
+                    if data:
+                        try:
+                            inventory_data = json.loads(data)
+                            # Remove fields not in schema
+                            inventory_data.pop('inventory_type', None)
+                            redis_records.append(inventory_data)
+                        except Exception as e:
+                            logger.warning(f"Failed to parse Redis data for key {key}: {e}")
+                            continue
+                logger.info(f"Found {len(redis_records)} records in Redis")
+            except Exception as e:
+                logger.warning(f"Redis fetch failed: {e}")
+                redis_records = []
             
-            # Use database data primarily, Redis only as complete fallback
-            all_records = db_records if db_records else redis_records
+            # Merge data with Redis priority using pandas
+            all_records = []
+            if db_records or redis_records:
+                import pandas as pd
+                
+                # Combine both sources
+                combined_data = db_records + redis_records
+                
+                if combined_data:
+                    df = pd.DataFrame(combined_data)
+                    
+                    # Remove duplicates based on product_id + inventory_id, keep Redis data (last occurrence)
+                    df_unique = df.drop_duplicates(
+                        subset=['product_id', 'inventory_id'], 
+                        keep='last'  # Redis records come last, so they take priority
+                    )
+                    
+                    all_records = df_unique.to_dict('records')
+                    logger.info(f"After merging: {len(all_records)} unique records (Redis priority)")
+            
+            # Use merged data or fallback
+            if not all_records:
+                all_records = db_records if db_records else redis_records
             
             if not all_records:
                 raise HTTPException(status_code=404, detail="No inventory data available")
