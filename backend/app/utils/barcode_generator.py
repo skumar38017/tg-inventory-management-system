@@ -133,7 +133,7 @@ class DynamicBarcodeGenerator:
                 font = ImageFont.load_default()
             
             text_bbox = draw.textbbox((0, 0), barcode_value, font=font)
-            text_width = text_bbox[1] - text_bbox[0]
+            text_width = text_bbox[2] - text_bbox[0]
             text_x = (new_img.width - text_width) // 2
             text_y = img.height + 1
             
