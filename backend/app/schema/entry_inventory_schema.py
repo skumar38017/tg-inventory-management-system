@@ -1,6 +1,6 @@
 # backend/app/schema/entry_inventory_schema.py
 import json
-from typing import Optional, Union
+from typing import Optional, Union, List
 from datetime import datetime, date
 from pydantic import BaseModel, Field, ConfigDict
 from app.utils.field_validators import BaseValidators
@@ -174,6 +174,20 @@ class InventoryRedisOut(StoreInventoryRedis):
     def from_redis(cls, redis_data: str):
         data = json.loads(redis_data)
         return cls(**data)
+
+class PaginationMeta(BaseModel):
+    current_page: int
+    per_page: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+    next_page: Optional[int]
+    prev_page: Optional[int]
+
+class PaginatedInventoryResponse(BaseModel):
+    data: Optional[List[InventoryRedisOut]]
+    pagination: Optional[PaginationMeta]
 
 class GoogleSyncInventoryBase(BaseValidators, BaseModel):
     id: Optional[str] = None

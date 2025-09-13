@@ -69,7 +69,6 @@ class FiltersListPaginationService(EntryInventoryInterface):
         except Exception as e:
             logger.error(f"Redis error fetching entries: {e}")
 
-
 ## List all inventory entries function
     async def list_entry_inventories_curd(self, db: AsyncSession):
         try:
@@ -106,34 +105,93 @@ class FiltersListPaginationService(EntryInventoryInterface):
                 detail="Error listing inventory items"
             )
 
-
 #  Show all inventory entries directly from local Redis after clicking {Show All} button
-    async def show_all_inventory_from_redis(self) -> List[InventoryRedisOut]:
-        """Retrieve all inventory entries from Redis"""
+
+    async def show_all_inventory_paginated(self, db: AsyncSession, page: int = 1, per_page: int = 20):
+        """Get paginated inventory - Redis first, database fallback with deduplication"""
         try:
-            # Get all inventory keys from Redis
-            keys = await self.redis.keys("inventory:*")
-
-            # Retrieve and parse all entries
-            entries = []
-            for key in keys:
-                data = await self.redis.get(key)
-                if data:
-                    try:
-                        entry_data = json.loads(data)
-                        entries.append(InventoryRedisOut(**entry_data))
-                    except (json.JSONDecodeError, ValidationError) as e:
-                        logger.warning(f"Skipping invalid inventory data in key {key}: {str(e)}")
-                        continue
-
-            # Sort by inventory_name (alphabetical)
-            entries.sort(key=lambda x: x.inventory_name.lower())
-            return entries
-
-        except Exception as e:
-            logger.error(f"Redis retrieval error: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=500, 
-                detail="Failed to load inventory from Redis"
+            from app.pagination import paginate_data
+            import pandas as pd
+            
+            # Get data from Redis first
+            redis_records = []
+            try:
+                keys = await self.redis.keys("inventory:*")
+                for key in keys:
+                    data = await self.redis.get(key)
+                    if data:
+                        try:
+                            inventory_data = json.loads(data)
+                            # Remove fields not in schema
+                            inventory_data.pop('inventory_type', None)
+                            redis_records.append(inventory_data)
+                        except Exception as e:
+                            logger.warning(f"Failed to parse Redis data for key {key}: {e}")
+                            continue
+                logger.info(f"Found {len(redis_records)} records in Redis")
+            except Exception as e:
+                logger.warning(f"Redis fetch failed: {e}")
+                redis_records = []
+            
+            # Get data from database as fallback
+            db_records = []
+            if not redis_records:  # Only use database if Redis is empty
+                try:
+                    from app.curd.entry_inverntory_curd import EntryInventoryService
+                    db_service = EntryInventoryService(self.redis)
+                    
+                    # Get from database using proper service
+                    result = await db_service.get_all_entries(db)
+                    if result:
+                        stmt = select(EntryInventory)
+                        db_result = await db.execute(stmt)
+                        db_items = db_result.scalars().all()
+                        db_records = [item.__dict__ for item in db_items]
+                        logger.info(f"Using {len(db_records)} database records as fallback")
+                except Exception as e:
+                    logger.warning(f"Database fallback failed: {e}")
+                    db_records = []
+            
+            # Use Redis data primarily, database only as complete fallback
+            all_records = redis_records if redis_records else db_records
+            
+            if not all_records:
+                raise HTTPException(status_code=404, detail="No inventory data available")
+            
+            # Sort alphabetically
+            df_sorted = pd.DataFrame(all_records)
+            df_sorted = df_sorted.sort_values('inventory_name', key=lambda x: x.str.lower())
+            sorted_records = df_sorted.to_dict('records')
+            
+            # Apply pagination
+            paginated_result = paginate_data(sorted_records, page=page, per_page=per_page)
+            
+            # Convert to schema format
+            from app.schema.entry_inventory_schema import PaginatedInventoryResponse
+            inventory_items = []
+            for item in paginated_result['data']:
+                try:
+                    # Handle NaN values and clean data
+                    cleaned_item = {}
+                    for key, value in item.items():
+                        if pd.isna(value) or value == 'nan':
+                            cleaned_item[key] = None
+                        else:
+                            cleaned_item[key] = value
+                    
+                    inventory_items.append(InventoryRedisOut(**cleaned_item))
+                except Exception as e:
+                    logger.warning(f"Skipping invalid item: {e}")
+                    continue
+            
+            return PaginatedInventoryResponse(
+                data=inventory_items,
+                pagination=paginated_result['pagination']
             )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Pagination failed: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to retrieve inventory data: {str(e)}")
 

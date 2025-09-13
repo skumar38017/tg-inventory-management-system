@@ -7,7 +7,7 @@ from app.schema.entry_inventory_schema import (
     EntryInventoryOut,
     InventoryRedisOut,
     DateRangeFilter,
-    InventoryRedisOut
+    PaginatedInventoryResponse
 )
 from fastapi import Depends, Request
 from app.curd.entry_inverntory_curd import EntryInventoryService
@@ -234,7 +234,7 @@ async def create_inventory_item_route(
 
 # Show all inventory entries with pagination - Redis first, fallback to Database
 @router.get("/show-all/",
-    response_model=List[InventoryRedisOut],
+    response_model=PaginatedInventoryResponse,
     status_code=200,
     summary="Show all inventory with pagination",
     description="Retrieves inventory from Redis first, fallback to database, with pagination and deduplication",
@@ -249,81 +249,17 @@ async def show_all_paginated(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     per_page: int = Query(20, ge=1, le=100, description="Items per page (max 100)"),
     db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
+    service: FiltersListPaginationService = Depends(get_filters_list_service)
 ):
-    """
-    Retrieve inventory data with pagination - redis first, Database fallback.
-    
-    This endpoint will:
-    1. Fetch data from Redis first
-    2. Fallback to Database if redis is empty
-    3. Deduplicate records (redis takes priority)
-    4. Apply pagination using pagination.py
-    5. Return paginated results with metadata
-    """
+    """Retrieve inventory data with pagination - Redis first, database fallback."""
     try:
-        from app.pagination import paginate_data
-        import pandas as pd
-        
         logger.info(f"Fetching paginated inventory data - page {page}, per_page {per_page}")
-        
-        # Get data from database first
-        db_data = await service.list_entry_inventories_curd(db)
-        db_records = [item.model_dump() for item in db_data] if db_data else []
-        
-        # Get data from Redis as fallback
-        redis_data = await service.show_all_inventory_from_redis()
-        redis_records = [item.model_dump() for item in redis_data] if redis_data else []
-        
-        # Combine and deduplicate using pandas
-        all_records = []
-        
-        if db_records:
-            all_records.extend(db_records)
-            logger.info(f"Found {len(db_records)} records in database")
-        
-        if redis_records:
-            # Create DataFrame for deduplication
-            df_combined = pd.DataFrame(db_records + redis_records)
-            
-            if not df_combined.empty:
-                # Remove duplicates - database records take priority
-                df_unique = df_combined.drop_duplicates(
-                    subset=['product_id', 'inventory_id'], 
-                    keep='first'  # Keep first occurrence (database records come first)
-                )
-                all_records = df_unique.to_dict('records')
-                logger.info(f"After deduplication: {len(all_records)} unique records")
-            else:
-                all_records = redis_records
-                logger.info(f"Using {len(redis_records)} Redis records only")
-        
-        if not all_records:
-            logger.warning("No inventory data found in database or Redis")
-            raise HTTPException(
-                status_code=404,
-                detail="No inventory data available"
-            )
-        
-        # Sort alphabetically by inventory_name
-        df_sorted = pd.DataFrame(all_records)
-        df_sorted = df_sorted.sort_values('inventory_name', key=lambda x: x.str.lower())
-        sorted_records = df_sorted.to_dict('records')
-        
-        # Apply pagination
-        paginated_result = paginate_data(sorted_records, page=page, per_page=per_page)
-        
-        logger.info(f"Successfully retrieved page {page} with {len(paginated_result['data'])} items")
-        return paginated_result
-        
+        return await service.show_all_inventory_paginated(db, page, per_page)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to retrieve paginated data: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve inventory data: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve inventory data: {str(e)}")
         
 # -------------------------------------------------------------------------------------------------
 
