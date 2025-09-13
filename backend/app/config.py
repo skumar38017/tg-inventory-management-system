@@ -72,8 +72,6 @@ AWS_ARN = os.getenv("AWS_ARN")
 AWS_S3_BUCKET_FOLDER_PATH_QR = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_QR", "qrcode")
 AWS_S3_BUCKET_FOLDER_PATH_BARCODE = os.getenv("AWS_S3_BUCKET_FOLDER_PATH_BARCODE", "barcode")
 
-
-
 # Handle multiple PUBLIC_API_URL options
 PUBLIC_API_URLS = [
     url.strip() 

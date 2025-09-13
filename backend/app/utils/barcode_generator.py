@@ -62,6 +62,8 @@ class DynamicBarcodeGenerator:
         self.barcode_folder = config.AWS_S3_BUCKET_FOLDER_PATH_BARCODE
         self.public_api_url = config.PUBLIC_API_URL
         self.barcode_type = 'code128'  # Using Code128 for best density
+        
+        self.barcode_path = "AWS_BARCODE_PATH"  # This is send by user [entry, assign, to_event, from_event, wastage]
 
     def _generate_alphanumeric_code(self, length: int = 8) -> str:
         chars = string.ascii_uppercase + string.digits

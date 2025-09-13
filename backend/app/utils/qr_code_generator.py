@@ -22,6 +22,8 @@ class QRCodeGenerator:
         self.bucket_name = config.AWS_STORAGE_BUCKET_NAME
         self.qr_folder = config.AWS_S3_BUCKET_FOLDER_PATH_QR
         self.public_api_url = config.PUBLIC_API_URL
+        
+        self.qr_path = "AWS_QR_PATH" # This is send by user [entry, assign, to_event, from_event, wastage]
 
     def generate_qr_code(
         self,
