@@ -106,22 +106,26 @@ class QRCodeGenerator:
             except Exception as e:
                 logger.warning(f"Could not add icon to QR code: {e}")
 
-            # Add inventory name text at bottom
-            text_height = 1
-            new_img = Image.new('RGBA', (img.width, img.height + text_height), (255, 255, 255, 0))
-            new_img.paste(img, (0, 0))
-            
-            # Add text
-            draw = ImageDraw.Draw(new_img)
+            # Add inventory name text at bottom-center
             try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
             except:
                 font = ImageFont.load_default()
             
-            text_bbox = draw.textbbox((0, 0), inventory_name, font=font)
+            # Calculate text dimensions
+            temp_draw = ImageDraw.Draw(img)
+            text_bbox = temp_draw.textbbox((0, 0), inventory_name, font=font)
+            text_height = text_bbox[3] - text_bbox[1] + 10  # Add padding
+            
+            # Create new image with space for text
+            new_img = Image.new('RGBA', (img.width, img.height + text_height), (255, 255, 255, 0))
+            new_img.paste(img, (0, 0))
+            
+            # Add text at bottom-center
+            draw = ImageDraw.Draw(new_img)
             text_width = text_bbox[2] - text_bbox[0]
             text_x = (new_img.width - text_width) // 2
-            text_y = img.height
+            text_y = img.height + 5  # 5px padding from QR code
             
             draw.text((text_x, text_y), inventory_name, fill=(0, 0, 0, 255), font=font)
 
