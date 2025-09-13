@@ -6,9 +6,6 @@ from api_request.entry_inventory_api_request import (
     upload_inventory,
     show_all_inventory,
     filter_inventory_by_date_range,
-    next_page,
-    prev_page,
-    go_to_page,
     get_current_page
 )
 from to_event import ToEventWindow
@@ -136,9 +133,14 @@ def display_inventory_items(items):
         for item in inventory_listbox.get_children():
             inventory_listbox.delete(item)
         
-        if not items:
-            # Insert a message row when no items found
-            inventory_listbox.insert('', 'end', values=('No inventory items found'), font=(universal_font_box_size.inventory_list_font_size))
+        if not items or len(items) == 0:
+            # Insert a centered message when no items found
+            empty_values = [''] * 22  # Create empty values for all columns
+            empty_values[11] = 'No inventory items found'  # Put message in middle column
+            inventory_listbox.insert('', 'end', values=empty_values, tags=('no_data',))
+            
+            # Configure the no_data tag for better visibility
+            inventory_listbox.tag_configure('no_data', foreground='#7f8c8d', font=('Arial', 12, 'italic'))
             return
 
         # Add each item as a row in the treeview
@@ -455,7 +457,7 @@ def create_list_frames(root):
             ]
     
     inventory_listbox = ttk.Treeview(list_container, columns=columns, show='headings', height=listbox_height)
-    
+        
     # Smart loop for headers and widths
     for col in columns:
         inventory_listbox.heading(col, text=col)
@@ -472,22 +474,22 @@ def create_list_frames(root):
     # Bind arrow key scrolling
     def scroll_left(event):
         """Scroll table left with arrow key"""
-        inventory_listbox.xview_scroll(-20, "units")
+        inventory_listbox.xview_scroll(-50, "units")
         return "break"
     
     def scroll_right(event):
         """Scroll table right with arrow key"""
-        inventory_listbox.xview_scroll(20, "units")
+        inventory_listbox.xview_scroll(50, "units")
         return "break"
     
     def scroll_up(event):
         """Scroll table up with arrow key"""
-        inventory_listbox.yview_scroll(-20, "units")
+        inventory_listbox.yview_scroll(-50, "units")
         return "break"
     
     def scroll_down(event):
         """Scroll table down with arrow key"""
-        inventory_listbox.yview_scroll(20, "units")
+        inventory_listbox.yview_scroll(50, "units")
         return "break"
     
     # Bind keys to inventory listbox
@@ -500,8 +502,10 @@ def create_list_frames(root):
     # Styling
     style = ttk.Style()
     style.configure('Treeview', font=(universal_font_box_size.qr_barcode_title_font_family))
+    style.configure("Treeview", rowheight=universal_font_box_size.input_height)  # Increase row height to 40 pixels
     style.configure('Treeview.Heading', font=(universal_font_box_size.qr_barcode_title_font_family))
-    
+    style.configure('Treeview.Heading', rowheight=universal_font_box_size.input_height)
+
     inventory_listbox.tag_configure('evenrow', background='#f8f9fa')
     inventory_listbox.tag_configure('oddrow', background='#ffffff')
     
