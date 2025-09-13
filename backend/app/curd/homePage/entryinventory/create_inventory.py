@@ -5,23 +5,7 @@ from app.utils.common_imports import *
 from app.models.entry_inventory_model import EntryInventory
 from app.schema.entry_inventory_schema import (
     EntryInventoryCreate, 
-    EntryInventoryUpdate,
-    EntryInventoryOut,
-    InventoryRedisOut,
-    StoreInventoryRedis,
-    DateRangeFilter
 )
-
-# Google Sheets API
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-import os.path
-import pickle
-import gspread
-import requests
-from oauth2client.service_account import ServiceAccountCredentials
-from google.oauth2 import service_account
 from app.interface.entry_inverntory_interface import EntryInventoryInterface
 
 
@@ -116,7 +100,8 @@ class CreateInventoryService(EntryInventoryInterface):
                     qr_bytes, filename, qr_url = self.qr_generator.generate_qr_code(
                         data=qr_content,
                         inventory_id=inventory_data['inventory_id'],
-                        inventory_name=inventory_data['inventory_name']
+                        inventory_name=inventory_data['inventory_name'],
+                        inventory_type="inventory"
                     )
                 
                     # Add QR code URL to inventory data

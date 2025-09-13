@@ -3,6 +3,7 @@ from app.utils.common_imports import *
 
 from app.interface.assign_inventory_interface import AssignmentInventoryInterface
 from app.models.assign_inventory_model import AssignmentInventory
+from app.models.wastege_inventory_model import WastageInventory
 from app.schema.wastage_inventory_schema import *
 from app.interface.wastage_inventory_interface import WastageInventoryInterface
 from app.schema.inventory_ComboBox_schema import InventoryComboBoxResponse

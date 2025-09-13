@@ -72,3 +72,16 @@ class UTCDateUtils:
         except ValueError:
             return None
     
+    @staticmethod
+    def validate_date_field(value: Union[str, date, datetime, None]) -> Optional[date]:
+        """Pydantic validator for date fields"""
+        if value is None:
+            return None
+        if isinstance(value, date):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, str):
+            return UTCDateUtils.parse_date(value)
+        return None
+    

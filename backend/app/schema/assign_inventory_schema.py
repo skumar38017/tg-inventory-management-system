@@ -1,6 +1,14 @@
 #  backend/app/schema/assign_inventory_schema
-# backend/app/schema/assign_inventory_schema
-from app.schema.common_schema import *
+import json
+from typing import Optional, Union, List, Dict, Any
+from datetime import datetime, date
+from enum import Enum
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from app.utils.field_validators import BaseValidators
+from app.utils.date_utils import UTCDateUtils
+
+from app.schema.entry_inventory_schema import EntryInventoryOut, InventoryRedisOut
+from app.schema.to_event_inventry_schma import ToEventRedisOut, ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut
 
 
 class AssignmentInventoryBase(BaseModel):
@@ -25,8 +33,7 @@ class AssignmentInventoryBase(BaseModel):
         from_attributes=True,
         json_encoders={
             datetime: lambda v: v.isoformat(),
-            date: lambda v: v.isoformat(),
-            StatusEnum: lambda v: v.value
+            date: lambda v: v.isoformat()
         },
         extra='forbid'
     )
@@ -98,8 +105,7 @@ class AssignmentInventoryRedisIn(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            date: lambda v: v.isoformat(),
-            StatusEnum: lambda v: v.value
+            date: lambda v: v.isoformat()
         },
         extra='forbid'
     )
@@ -117,8 +123,7 @@ class AssignmentInventoryRedisOut(AssignmentInventoryOut):
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            date: lambda v: v.isoformat(),
-            StatusEnum: lambda v: v.value
+            date: lambda v: v.isoformat()
         },
         extra='ignore'
     )

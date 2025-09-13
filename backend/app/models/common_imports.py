@@ -22,7 +22,8 @@ from sqlalchemy import (
     ForeignKey,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID, Numeric
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Numeric
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy import event, select

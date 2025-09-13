@@ -22,8 +22,6 @@ class QRCodeGenerator:
         self.bucket_name = config.AWS_STORAGE_BUCKET_NAME
         self.qr_folder = config.AWS_S3_BUCKET_FOLDER_PATH_QR
         self.public_api_url = config.PUBLIC_API_URL
-        
-        self.qr_path = "AWS_QR_PATH" # This is send by user [entry, assign, to_event, from_event, wastage]
 
     def generate_qr_code(
         self,
@@ -34,7 +32,8 @@ class QRCodeGenerator:
         border: int = 4,
         error_correction: str = "H",
         qr_color: str = "black",
-        save_to_disk: bool = True
+        save_to_disk: bool = True,
+        inventory_type: str = None
     ) -> Tuple[bytes, str, str]:
         """
         Generate a simple QR code with transparent background
@@ -87,9 +86,10 @@ class QRCodeGenerator:
             # Generate filename and URL
             filename = f"{inventory_name.replace(' ', '_').lower()}{inventory_id}_qr.png"
             filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
+            qr_path = inventory_type  # This is send by user [entry, assign, to_event, from_event, wastage]
             
             # Upload to S3
-            s3_key = f"{self.qr_folder}/{filename}"
+            s3_key = f"{self.qr_folder}/{qr_path}/{filename}"
             self.s3_client.put_object(
                 Bucket=self.bucket_name,
                 Key=s3_key,
@@ -111,6 +111,7 @@ class QRCodeGenerator:
         # Handle both dictionary and object access
         name = instance_data['inventory_name'] if isinstance(instance_data, dict) else instance_data.inventory_name
         inventory_id = instance_data['inventory_id'] if isinstance(instance_data, dict) else instance_data.inventory_id
+        inventory_type = instance_data['inventory_type'] if isinstance(instance_data, dict) else instance_data.inventory_type
         
         encoded_name = urllib.parse.quote(name)
-        return f"{self.public_api_url}/api/v1/scan/{encoded_name}{inventory_id}/"
+        return f"{self.public_api_url}/api/v1/scan/{encoded_name}{inventory_id}/{inventory_type}/"

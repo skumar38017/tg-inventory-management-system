@@ -1,6 +1,9 @@
 # backend/app/schema/to_event_inventry_schma.py
-# backend/app/schema/to_event_inventry_schma.py
-from app.schema.common_schema import *
+from typing import Optional, Union, List, Dict, Any
+from datetime import datetime, date, timezone
+from pydantic import BaseModel, Field, ConfigDict
+from app.utils.field_validators import BaseValidators
+from app.utils.date_utils import UTCDateUtils
 
 class InventoryItemBase(BaseValidators, BaseModel):
     zone_active: Optional[str] = Field(None, description="The active zone for this equipment")

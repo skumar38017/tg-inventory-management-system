@@ -1,5 +1,13 @@
 # backend/app/schema/wastage_inventory_schema
-from app.schema.common_schema import *
+from typing import Optional, Union, List, Dict, Any
+from datetime import datetime, date
+from pydantic import BaseModel, Field, ConfigDict
+from app.utils.field_validators import BaseValidators
+from app.utils.date_utils import UTCDateUtils
+
+from app.schema.entry_inventory_schema import StoreInventoryRedis, InventoryRedisOut
+from app.schema.assign_inventory_schema import AssignmentInventoryRedisOut
+from app.schema.to_event_inventry_schma import ToEventInventoryOut, ToEventRedisUpdateOut, InventoryItemOut, ToEventRedisOut
 
 class WastageInventoryBase(BaseValidators, BaseModel):
     assign_to: Optional[str] = None
@@ -104,7 +112,7 @@ class WastageInventoryRedisIn(BaseValidators, BaseModel):
     created_at: Optional[Union[datetime, str]] = Field(None, frozen=True) 
     updated_at: Optional[Union[datetime, str]] = None
 
-class WastageInventoryRedisOut(BaseValidators, WastageInventoryOut):
+class WastageInventoryRedisOut(WastageInventoryOut):
     success: Optional[bool] = Field(None, exclude=True) 
     message: Optional[str] = Field(None, exclude=True)  
     
@@ -147,7 +155,7 @@ class WastageInventoryUpdate(BaseValidators, BaseModel):
         extra='forbid'
     )
 
-class WastageInventoryUpdateOut(BaseValidators, WastageInventoryRedisOut):
+class WastageInventoryUpdateOut(WastageInventoryRedisOut):
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={

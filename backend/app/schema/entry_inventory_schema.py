@@ -1,6 +1,10 @@
 # backend/app/schema/entry_inventory_schema.py
-
-from app.schema.common_schema import *
+import json
+from typing import Optional, Union
+from datetime import datetime, date
+from pydantic import BaseModel, Field, ConfigDict
+from app.utils.field_validators import BaseValidators
+from app.utils.date_utils import UTCDateUtils
 
 class EntryInventoryBase(BaseValidators, BaseModel):
     product_id: Optional[str] = None  
@@ -28,7 +32,7 @@ class EntryInventoryBase(BaseValidators, BaseModel):
     submitted_by: Optional[str] = None
 
     model_config = ConfigDict(
-        extra="forbid",
+        extra="ignore",
         json_encoders={
             datetime: lambda v: UTCDateUtils.format_datetime(v),
             date: lambda v: UTCDateUtils.format_date(v)

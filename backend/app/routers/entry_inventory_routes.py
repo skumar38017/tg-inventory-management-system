@@ -15,12 +15,19 @@ from app.curd.google_sheet_redis_inventory import GoogleSheetsToRedisSyncService
 from app.interface.entry_inverntory_interface import (
     EntryInventoryInterface
 )
+from app.curd.homePage.entryinventory.create_inventory import CreateInventoryService
 
 # Dependency to get the entry inventory service
 def get_entry_inventory_service(
     redis: aioredis.Redis = Depends(get_redis_dependency)
 ) -> EntryInventoryService:
     return EntryInventoryService(redis)
+
+# Dependency to get the entry inventory service
+def get_create_inventory_service(
+    redis: aioredis.Redis = Depends(get_redis_dependency)
+) -> CreateInventoryService:
+    return CreateInventoryService(redis)
 
 # Dependency to get the entry inventory service
 def get_entryget_inventory_from_google_sheet(
@@ -280,16 +287,13 @@ async def get_inventory_by_date_range(
 async def create_inventory_item_route(
     item: EntryInventoryCreate,
     db: AsyncSession = Depends(get_async_db),
-    service: EntryInventoryService = Depends(get_entry_inventory_service)
+    service: CreateInventoryService = Depends(get_entry_inventory_service)
 ):
     try:
         logger.info(f"Creating new inventory item")
-        # Determine inventory type based on the item's properties
-        inventory_type = "inventory"  # Default type for this endpoint
         return await service.create_entry_inventory(
             db=db,
-            inventory_type=inventory_type,
-            entry_data=item
+            entry_inventory=item
         )
     except HTTPException:
         raise

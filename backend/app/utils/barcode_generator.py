@@ -62,8 +62,8 @@ class DynamicBarcodeGenerator:
         self.barcode_folder = config.AWS_S3_BUCKET_FOLDER_PATH_BARCODE
         self.public_api_url = config.PUBLIC_API_URL
         self.barcode_type = 'code128'  # Using Code128 for best density
-        
-        self.barcode_path = "AWS_BARCODE_PATH"  # This is send by user [entry, assign, to_event, from_event, wastage]
+
+        self.barcode_path = None  # This is send by user [entry, assign, to_event, from_event, wastage]
 
     def _generate_alphanumeric_code(self, length: int = 8) -> str:
         chars = string.ascii_uppercase + string.digits
@@ -132,12 +132,13 @@ class DynamicBarcodeGenerator:
             else:
                 # Match QR code pattern exactly (just without "_qr" suffix)
                 filename = f"{clean_primary}{clean_secondary}.png"
+                barcode_path = inventory_type  # This is send by user [entry, assign, to_event, from_event, wastage]
             
             # Final sanitization
             filename = ''.join(c for c in filename if c.isalnum() or c in ('_', '.'))
             
             # ----- SAVE TO S3 -----
-            s3_key = f"{self.barcode_folder}/{filename}"
+            s3_key = f"{self.barcode_folder}/{barcode_path}/{filename}"
             
             # Upload to S3
             self.s3_client.put_object(
