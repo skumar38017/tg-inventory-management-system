@@ -7,6 +7,7 @@ from qrcode.image.svg import SvgImage
 import logging
 import boto3
 from botocore.exceptions import ClientError
+from PIL import Image, ImageDraw, ImageFont
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -78,9 +79,28 @@ class QRCodeGenerator:
             
             img.putdata(new_data)
 
+            # Add inventory name text at bottom
+            text_height = 20
+            new_img = Image.new('RGBA', (img.width, img.height + text_height), (255, 255, 255, 0))
+            new_img.paste(img, (0, 0))
+            
+            # Add text
+            draw = ImageDraw.Draw(new_img)
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+            except:
+                font = ImageFont.load_default()
+            
+            text_bbox = draw.textbbox((0, 0), inventory_name, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_x = (new_img.width - text_width) // 2
+            text_y = img.height + 1
+            
+            draw.text((text_x, text_y), inventory_name, fill=(0, 0, 0, 255), font=font)
+
             # Save to bytes
             img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='PNG')
+            new_img.save(img_byte_arr, format='PNG')
             image_bytes = img_byte_arr.getvalue()
 
             # Generate filename and URL

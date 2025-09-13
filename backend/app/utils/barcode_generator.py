@@ -116,7 +116,34 @@ class DynamicBarcodeGenerator:
                 'text': ''  # Empty text
             })
 
-            return barcode_value, unique_code, img_bytes.getvalue()
+            # Add barcode number text at bottom
+            img_bytes.seek(0)
+            img = Image.open(img_bytes)
+            
+            # Create new image with extra space for text
+            text_height = 20
+            new_img = Image.new('RGBA', (img.width, img.height + text_height), (255, 255, 255, 0))
+            new_img.paste(img, (0, 0))
+            
+            # Add text
+            draw = ImageDraw.Draw(new_img)
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+            except:
+                font = ImageFont.load_default()
+            
+            text_bbox = draw.textbbox((0, 0), barcode_value, font=font)
+            text_width = text_bbox[2] - text_bbox[0]
+            text_x = (new_img.width - text_width) // 2
+            text_y = img.height + 1
+            
+            draw.text((text_x, text_y), barcode_value, fill=(0, 0, 0, 255), font=font)
+            
+            # Convert back to bytes
+            final_bytes = BytesIO()
+            new_img.save(final_bytes, format='PNG')
+
+            return barcode_value, unique_code, final_bytes.getvalue()
 
         except Exception as e:
             logger.error(f"Barcode generation failed: {str(e)}", exc_info=True)
@@ -154,7 +181,7 @@ class DynamicBarcodeGenerator:
                 filename = f"from_event_{clean_primary}_{clean_secondary}.png"
             else:
                 # Match QR code pattern exactly (just without "_qr" suffix)
-                filename = f"{clean_primary}{clean_secondary}.png"
+                filename = f"{clean_primary}{clean_secondary}_barcode.png"
                 barcode_path = inventory_type  # This is send by user [entry, assign, to_event, from_event, wastage]
             
             # Final sanitization
