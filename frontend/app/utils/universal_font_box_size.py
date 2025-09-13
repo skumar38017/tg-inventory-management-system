@@ -181,7 +181,7 @@ class UniversalFontBoxSize:
     button_font_size_standard = 18
     button_width_small = 8      # Edit button
     button_width_medium = 10    # Update button
-    button_width_large = 12     # Load Record, bottom buttons
+    button_width_large = 14  # Load Record, bottom buttons
     button_height_standard = 1
     
     # New Entry Tab specific (24pt fonts)
@@ -202,7 +202,7 @@ class UniversalFontBoxSize:
     date_clear_button_font = 18
     
     # Main inventory list
-    inventory_list_font_size = 9
+    inventory_list_font_size = 12
     inventory_list_font_family = 'Consolas'
     
     # Search results

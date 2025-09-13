@@ -110,7 +110,7 @@ def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
                 canvas_or_widget.yview_scroll(1, "units")
             elif event.keysym == 'Up':
                 canvas_or_widget.yview_scroll(-1, "units")
-    
+        
     # Bind mouse wheel events for touchpad scrolling
     canvas_or_widget.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac
     canvas_or_widget.bind("<Button-4>", lambda e: canvas_or_widget.yview_scroll(-1, "units"))  # Linux scroll up
@@ -130,7 +130,7 @@ def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
         canvas_or_widget.focus_set()
     
     canvas_or_widget.bind("<Button-1>", on_widget_click)
-
+    
 def open_calendar_window(parent_window, callback=None):
     """Open a standard calendar window with clear view"""
     cal_window = tk.Toplevel(parent_window)
