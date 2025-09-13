@@ -7,6 +7,7 @@ from app.schema.entry_inventory_schema import (
     EntryInventoryCreate, 
 )
 from app.interface.entry_inverntory_interface import EntryInventoryInterface
+from app.utils.ids_verification import IDVerification
 
 
 
@@ -18,6 +19,7 @@ class CreateInventoryService(EntryInventoryInterface):
         self.InventoryUpdater = InventoryUpdater(redis_client)
         self.barcode_generator = DynamicBarcodeGenerator()
         self.base_url = config.BASE_URL
+        self.id_verifier = IDVerification(redis_client)
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 #  inventory entries directly to local databases  (Redis) 
@@ -40,6 +42,15 @@ class CreateInventoryService(EntryInventoryInterface):
             if 'name' in inventory_data and 'inventory_name' not in inventory_data:
                 inventory_data['inventory_name'] = inventory_data.pop('name')
 
+            # Check for duplicates before processing
+            is_duplicate, duplicate_message = await self.id_verifier.is_duplicate(
+                inventory_data['inventory_name'], 
+                inventory_data['inventory_id'], 
+                inventory_data.get('product_id')
+            )
+            if is_duplicate:
+                raise HTTPException(status_code=409, detail=duplicate_message)
+
             # Handle null/empty date fields
             for date_field in ['purchase_date', 'returned_date']:
                 if date_field in inventory_data and inventory_data[date_field] in [None, "", "null", "n/a"]:
@@ -51,7 +62,7 @@ class CreateInventoryService(EntryInventoryInterface):
                 inventory_data['id'] = inventory_id
 
             # Set timestamps (server-side only)
-            current_time = UTCDateUtils.get_current_datetime()
+            current_time = UTCDateUtils.get_current_datetime_str()
             inventory_data['updated_at'] = current_time
             inventory_data['created_at'] = current_time
             inventory_data['inventory_type'] = inventory_type  # Add inventory_type for QR generation 
