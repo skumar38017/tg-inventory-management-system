@@ -18,7 +18,7 @@ class AssignmentInventory(Base):
         Index('idx_employee_name', 'employee_name'),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
+    id = Column(String, primary_key=True)
     assign_to = Column(String, index=True, nullable=True)
     employee_name = Column(String, nullable=False, index=True)  # Made non-nullable since you'll query by this
     sno = Column(String, nullable=True)

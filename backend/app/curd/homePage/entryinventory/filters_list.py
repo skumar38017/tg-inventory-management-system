@@ -123,10 +123,26 @@ class FiltersListPaginationService(EntryInventoryInterface):
                 stmt = select(EntryInventory).order_by(EntryInventory.inventory_name)
                 db_result = await db.execute(stmt)
                 db_items = db_result.scalars().all()
-                db_records = [item.__dict__ for item in db_items]
+                
+                # Clean database records - remove SQLAlchemy state and convert types
+                for item in db_items:
+                    item_dict = {}
+                    for key, value in item.__dict__.items():
+                        if key.startswith('_'):  # Skip SQLAlchemy internal fields
+                            continue
+                        if hasattr(value, '__dict__'):  # Skip complex objects
+                            continue
+                        # Convert UUID to string
+                        if str(type(value)) == "<class 'uuid.UUID'>":
+                            item_dict[key] = str(value)
+                        else:
+                            item_dict[key] = value
+                    db_records.append(item_dict)
+                
                 logger.info(f"Found {len(db_records)} records in database")
             except Exception as e:
                 logger.warning(f"Database fetch failed: {e}")
+                db_records = []
             
             # Get Redis data
             try:
