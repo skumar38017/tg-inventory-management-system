@@ -316,22 +316,21 @@ def create_new_entry_tab(notebook):
         'In Warehouse', 'Issued Qty', 'Balance Qty', 'submitted_by'
     ]
     
-    # Create unified table container with header and data in same scrollable area
+    # Create unified container with fixed header and scrollable data
     scroll_container = tk.Frame(form_container)
     scroll_container.pack(fill='both', expand=True)
     
-    # Create canvas and scrollbars
-    canvas = tk.Canvas(scroll_container)
-    h_scrollbar = ttk.Scrollbar(scroll_container, orient='horizontal', command=canvas.xview)
-    v_scrollbar = ttk.Scrollbar(scroll_container, orient='vertical', command=canvas.yview)
+    # Fixed header that only scrolls horizontally
+    header_canvas = tk.Canvas(scroll_container, height=40, bg='#d4e6f1')
+    header_canvas.grid(row=0, column=0, sticky='ew')
     
-    # Create table frame that contains both header and data
-    table_frame = tk.Frame(canvas, relief='solid', bd=1)
+    header_frame = tk.Frame(header_canvas, bg='#d4e6f1')
+    header_canvas.create_window((0, 0), window=header_frame, anchor='nw')
     
-    # Create HEADER ROW (row 0) in the same table
+    # Create HEADER ROW
     for col, label in enumerate(header_labels):
         header_cell = tk.Label(
-            table_frame, 
+            header_frame, 
             text=label, 
             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size, 'bold'),
             bg='#d4e6f1', 
@@ -342,37 +341,51 @@ def create_new_entry_tab(notebook):
             anchor='center'
         )
         header_cell.grid(row=0, column=col, sticky='ew', padx=0, pady=0)
-        table_frame.grid_columnconfigure(col, weight=1, minsize=350)
+        header_frame.grid_columnconfigure(col, weight=1, minsize=350)
     
-    # Configure canvas
-    table_frame.bind(
+    # Scrollable data canvas (only for data rows)
+    data_canvas = tk.Canvas(scroll_container)
+    data_canvas.grid(row=1, column=0, sticky='nsew')
+    
+    # Scrollbars
+    def sync_horizontal_scroll(*args):
+        data_canvas.xview(*args)
+        header_canvas.xview(*args)
+    
+    h_scrollbar = ttk.Scrollbar(scroll_container, orient='horizontal', command=sync_horizontal_scroll)
+    v_scrollbar = ttk.Scrollbar(scroll_container, orient='vertical', command=data_canvas.yview)
+    
+    h_scrollbar.grid(row=2, column=0, sticky='ew')
+    v_scrollbar.grid(row=1, column=1, sticky='ns')
+    
+    # Data frame (only contains data rows, no header)
+    data_frame = tk.Frame(data_canvas, relief='solid', bd=1)
+    
+    # Configure canvases
+    data_frame.bind(
         "<Configure>",
-        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        lambda e: [
+            data_canvas.configure(scrollregion=data_canvas.bbox("all")),
+            header_canvas.configure(scrollregion=header_canvas.bbox("all"))
+        ]
     )
     
-    canvas.create_window((0, 0), window=table_frame, anchor='nw')
-    canvas.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
+    data_canvas.create_window((0, 0), window=data_frame, anchor='nw')
+    data_canvas.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
+    header_canvas.configure(xscrollcommand=h_scrollbar.set)
     
-    # Disable modern scrolling to prevent horizontal scrolling
-    # setup_modern_scrolling(canvas, table_frame)
+    # Configure grid weights
+    scroll_container.grid_rowconfigure(1, weight=1)  # Data canvas gets all vertical space
+    scroll_container.grid_columnconfigure(0, weight=1)
     
-    # Create first row of input fields (row 1, since row 0 is header)
+    # Create first row of input fields (row 0 in data_frame)
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
-        create_field_for_row(table_frame, field, col, 1, var_name)
+        create_field_for_row(data_frame, field, col, 0, var_name)
                         
     # Configure column weights with minimum size
     for col in range(len(header_labels)):
-        table_frame.grid_columnconfigure(col, weight=1, minsize=350)
-
-    # Apply scrollbar layout
-    canvas.grid(row=0, column=0, sticky='nsew')
-    v_scrollbar.grid(row=0, column=1, sticky='ns')
-    h_scrollbar.grid(row=1, column=0, sticky='ew')
-    
-    # Configure grid weights
-    scroll_container.grid_rowconfigure(0, weight=1)
-    scroll_container.grid_columnconfigure(0, weight=1)
+        data_frame.grid_columnconfigure(col, weight=1, minsize=350)
 
     # Button container
     button_frame = tk.Frame(form_container)
@@ -391,7 +404,7 @@ def create_new_entry_tab(notebook):
     refresh_button = tk.Button(
         button_frame, 
         text="Refresh", 
-        command=lambda: refresh_form(table_frame, header_labels),
+        command=lambda: refresh_form(data_frame, header_labels),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
         width=universal_font_box_size.button_width
     )
@@ -401,7 +414,7 @@ def create_new_entry_tab(notebook):
     add_button = tk.Button(
         button_frame, 
         text="Add Item", 
-        command=lambda: create_inventory_item(table_frame, header_labels),
+        command=lambda: create_inventory_item(data_frame, header_labels),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
         width=universal_font_box_size.button_width
     )
@@ -411,7 +424,7 @@ def create_new_entry_tab(notebook):
     remove_row_button = tk.Button(
         button_frame, 
         text="Remove Row", 
-        command=lambda: remove_last_row(table_frame),
+        command=lambda: remove_last_row(data_frame),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size,),
         width=universal_font_box_size.button_width
     )
@@ -420,7 +433,7 @@ def create_new_entry_tab(notebook):
     add_row_button = tk.Button(
         button_frame, 
         text="Add Row", 
-        command=lambda: add_new_row(table_frame, header_labels),
+        command=lambda: add_new_row(data_frame, header_labels),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
         width=universal_font_box_size.button_width
     )
