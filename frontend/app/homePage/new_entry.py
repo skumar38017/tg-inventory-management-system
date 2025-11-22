@@ -378,6 +378,25 @@ def create_new_entry_tab(notebook):
     scroll_container.grid_rowconfigure(1, weight=1)  # Data canvas gets all vertical space
     scroll_container.grid_columnconfigure(0, weight=1)
     
+    # Add scroll bindings for both canvases to sync horizontal scrolling
+    def on_mousewheel_vertical(event):
+        data_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def on_mousewheel_horizontal(event):
+        sync_horizontal_scroll("scroll", int(-1*(event.delta/120)), "units")
+    
+    # Bind vertical scrolling to data canvas only
+    data_canvas.bind("<MouseWheel>", on_mousewheel_vertical)
+    data_canvas.bind("<Button-4>", lambda e: data_canvas.yview_scroll(-1, "units"))
+    data_canvas.bind("<Button-5>", lambda e: data_canvas.yview_scroll(1, "units"))
+    
+    # Bind horizontal scrolling to both canvases
+    data_canvas.bind("<Shift-MouseWheel>", on_mousewheel_horizontal)
+    header_canvas.bind("<Shift-MouseWheel>", on_mousewheel_horizontal)
+    
+    # Focus management
+    data_canvas.focus_set()
+    
     # Create first row of input fields (row 0 in data_frame)
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
