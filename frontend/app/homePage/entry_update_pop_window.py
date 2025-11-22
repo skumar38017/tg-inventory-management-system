@@ -48,7 +48,7 @@ class UpdatePopUpWindow:
             # Load and resize image
             image = Image.open(BytesIO(response.content))
             # Resize to fit the display area (maintain aspect ratio)
-            image = image.resize((300, 150), Image.Resampling.LANCZOS)
+            image = image.resize((300, 300), Image.Resampling.LANCZOS)
             
             # Convert to PhotoImage
             photo = ImageTk.PhotoImage(image)
@@ -360,8 +360,13 @@ class UpdatePopUpWindow:
 
             elif field_type == "checkbox":
                 var = tk.BooleanVar()
-                cb = tk.Checkbutton(frame, variable=var)
-                cb.pack(side='left')
+                cb = tk.Checkbutton(frame, variable=var,
+                                  font=('Helvetica', universal_font_box_size.input_font_size),
+                                  width=universal_font_box_size.input_width,
+                                  anchor='w',
+                                  padx=10, pady=5,
+                                  indicatoron=1)
+                cb.pack(side='left', fill='x', expand=True)
                 update_window_entries[label_text.strip(":")] = var
             elif field_type == "long_entry":
                 entry = tk.Entry(frame, 
@@ -404,8 +409,13 @@ class UpdatePopUpWindow:
                 update_window_entries[label_text.strip(":")] = entry
             elif field_type == "checkbox":
                 var = tk.BooleanVar()
-                cb = tk.Checkbutton(frame, variable=var)
-                cb.pack(side='left')
+                cb = tk.Checkbutton(frame, variable=var,
+                                  font=('Helvetica', universal_font_box_size.input_font_size),
+                                  width=universal_font_box_size.input_width,
+                                  anchor='w',
+                                  padx=10, pady=5,
+                                  indicatoron=1)
+                cb.pack(side='left', fill='x', expand=True)
                 update_window_entries[label_text.strip(":")] = var
         
         # Barcode and QR Code display section (read-only)
