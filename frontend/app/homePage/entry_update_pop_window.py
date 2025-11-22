@@ -236,7 +236,7 @@ class UpdatePopUpWindow:
             UpdatePopUpWindow.load_qrcode_image(inventory_data.get('inventory_qrcode_url', ''))
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load inventory data: {str(e)}")
+            custom_messagebox("error", "Error", f"Failed to load inventory data: {str(e)}")
 
     @classmethod
     def open_update_window(cls):
@@ -556,7 +556,7 @@ class UpdatePopUpWindow:
                 # Get inventory ID - required field
                 inventory_id = update_window_entries["InventoryID"].get()
                 if not inventory_id:
-                    messagebox.showerror("Error", "Inventory ID is required")
+                    custom_messagebox("error", "Error", "Inventory ID is required")
                     return
 
                 # Collect data from form fields
@@ -589,12 +589,12 @@ class UpdatePopUpWindow:
                 updated_item = update_existing_inventory(inventory_data)
                 
                 # Show success message and clear the form
-                messagebox.showinfo("Success", "Inventory record updated successfully")
+                custom_messagebox("info", "Success", "Inventory record updated successfully")
                 clear_form()  # Clear the form instead of reloading
                 # Refresh will be handled by the parent window
                 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update inventory: {str(e)}")
+                custom_messagebox("error", "Error", f"Failed to update inventory: {str(e)}")
 
         def toggle_edit_mode(enable):
             """Toggle edit mode for editable fields"""

@@ -164,7 +164,7 @@ class SearchResults:
                 # Project search remains the same but with empty string instead of N/A
                 results = search_project_details_by_id(project_id)
                 if not results:
-                    messagebox.showinfo("Search Results", "No matching project found")
+                    custom_messagebox("info", "Search Results", "No matching project found")
                     return
                     
                 project = results[0]
@@ -239,7 +239,7 @@ class SearchResults:
                 )
                 
                 if not results:
-                    messagebox.showinfo("Search Results", "No matching items found")
+                    custom_messagebox("info", "Search Results", "No matching items found")
                     return
                     
                 # Use centralized column headers
@@ -275,7 +275,7 @@ class SearchResults:
                     
         except Exception as e:
             logger.error(f"Search failed: {str(e)}", exc_info=True)
-            messagebox.showerror("Search Error", f"Failed to perform search: {str(e)}")
+            custom_messagebox("error", "Search Error", f"Failed to perform search: {str(e)}")
 
     def open_reveal_window(self):
         """Open the Reveal QR & Barcode window"""

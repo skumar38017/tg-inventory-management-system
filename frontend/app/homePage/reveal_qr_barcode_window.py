@@ -3,7 +3,7 @@ from common_imports import *
 from image_view import *
 from api_request.entry_inventory_api_request import list_barcode_qrcode
 from utils.universal_font_box_size import universal_font_box_size
-from utils.window_utils import setup_modern_scrolling
+from utils.window_utils import setup_modern_scrolling, custom_messagebox
 
 class RevealQrAndBarcodeWindow:
     root = None
@@ -186,7 +186,7 @@ class RevealQrAndBarcodeWindow:
             self.status_var.set(f"Loaded {len(backend_data)} items")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load data: {str(e)}")
+            custom_messagebox("error", "Error", f"Failed to load data: {str(e)}")
             self.status_var.set("Error loading data")
 
     def populate_table(self, data):
@@ -251,14 +251,14 @@ class RevealQrAndBarcodeWindow:
     def open_image_view(self):
         """Open the Image View window for the selected item"""
         if not self.selected_item:
-            messagebox.showerror("Error", "Please select an item first")
+            custom_messagebox("error", "Error", "Please select an item first")
             return
             
         try:
             image_viewer = ImageViewWindow(self.root, self.selected_item)
             image_viewer.open_image_view()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open image view: {str(e)}")
+            custom_messagebox("error", "Error", f"Failed to open image view: {str(e)}")
 
     def scroll_left(self, event):
         """Scroll table left with arrow key"""

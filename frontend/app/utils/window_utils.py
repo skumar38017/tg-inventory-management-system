@@ -7,6 +7,208 @@ import platform
 from datetime import datetime
 import calendar
 
+def custom_messagebox(msg_type, title, message):
+    """Official system-style messagebox with proper styling"""
+    from utils.universal_font_box_size import universal_font_box_size
+    
+    # Get screen dimensions
+    root = tk._default_root
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    
+    # Calculate 20% of screen size
+    popup_width = int(screen_width * 0.2)
+    popup_height = int(screen_height * 0.2)
+    
+    # Center the popup
+    x = (screen_width - popup_width) // 2
+    y = (screen_height - popup_height) // 2
+    
+    # Create official-looking popup
+    popup = tk.Toplevel()
+    popup.title(title)
+    popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+    popup.resizable(False, False)
+    popup.grab_set()
+    popup.configure(bg='#f0f0f0')
+    
+    # Calculate 20% larger font size
+    base_font_size = universal_font_box_size.new_entry_font_size
+    larger_font_size = int(base_font_size * 1.2)
+    
+    # Official icons and colors
+    icons = {
+        'error': {'icon': '✖', 'color': '#d32f2f'},
+        'warning': {'icon': '⚠', 'color': '#ff9800'},
+        'info': {'icon': 'ℹ', 'color': '#2196f3'}
+    }
+    
+    theme = icons.get(msg_type, icons['info'])
+    
+    # Main content frame
+    content_frame = tk.Frame(popup, bg='#f0f0f0')
+    content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+    
+    # Icon and message frame
+    msg_frame = tk.Frame(content_frame, bg='#f0f0f0')
+    msg_frame.pack(fill='both', expand=True)
+    
+    # Icon
+    icon_label = tk.Label(
+        msg_frame,
+        text=theme['icon'],
+        font=('Arial', larger_font_size + 10, 'bold'),
+        bg='#f0f0f0',
+        fg=theme['color']
+    )
+    icon_label.pack(side='left', padx=(0, 15))
+    
+    # Message
+    msg_label = tk.Label(
+        msg_frame, 
+        text=message, 
+        font=('Arial', larger_font_size),
+        bg='#f0f0f0', 
+        fg='#000000',
+        wraplength=popup_width-100,
+        justify='left'
+    )
+    msg_label.pack(side='left', fill='both', expand=True)
+    
+    # Button frame
+    btn_frame = tk.Frame(content_frame, bg='#f0f0f0')
+    btn_frame.pack(side='bottom', pady=(20, 0))
+    
+    # OK button - standard Windows style
+    ok_button = tk.Button(
+        btn_frame, 
+        text="OK", 
+        font=('Arial', larger_font_size),
+        bg='#e1e1e1', 
+        fg='#000000',
+        width=8,
+        height=1,
+        relief='raised',
+        bd=1,
+        command=popup.destroy
+    )
+    ok_button.pack()
+    
+    # Center on parent and wait
+    popup.transient(root)
+    popup.focus_set()
+    popup.wait_window()
+
+def custom_confirmation(title, message):
+    """Official system-style confirmation dialog"""
+    from utils.universal_font_box_size import universal_font_box_size
+    
+    # Get screen dimensions
+    root = tk._default_root
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    
+    # Calculate 20% of screen size
+    popup_width = int(screen_width * 0.2)
+    popup_height = int(screen_height * 0.2)
+    
+    # Center the popup
+    x = (screen_width - popup_width) // 2
+    y = (screen_height - popup_height) // 2
+    
+    # Create official-looking popup
+    popup = tk.Toplevel()
+    popup.title(title)
+    popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+    popup.resizable(False, False)
+    popup.grab_set()
+    popup.configure(bg='#f0f0f0')
+    
+    # Calculate 20% larger font size
+    base_font_size = universal_font_box_size.new_entry_font_size
+    larger_font_size = int(base_font_size * 1.2)
+    
+    # Main content frame
+    content_frame = tk.Frame(popup, bg='#f0f0f0')
+    content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+    
+    # Icon and message frame
+    msg_frame = tk.Frame(content_frame, bg='#f0f0f0')
+    msg_frame.pack(fill='both', expand=True)
+    
+    # Question icon
+    icon_label = tk.Label(
+        msg_frame,
+        text='?',
+        font=('Arial', larger_font_size + 10, 'bold'),
+        bg='#f0f0f0',
+        fg='#0066cc'
+    )
+    icon_label.pack(side='left', padx=(0, 15))
+    
+    # Message
+    msg_label = tk.Label(
+        msg_frame, 
+        text=message, 
+        font=('Arial', larger_font_size),
+        bg='#f0f0f0', 
+        fg='#000000',
+        wraplength=popup_width-100,
+        justify='left'
+    )
+    msg_label.pack(side='left', fill='both', expand=True)
+    
+    # Button frame
+    btn_frame = tk.Frame(content_frame, bg='#f0f0f0')
+    btn_frame.pack(side='bottom', pady=(20, 0))
+    
+    result = [False]
+    
+    def on_ok():
+        result[0] = True
+        popup.destroy()
+    
+    def on_cancel():
+        result[0] = False
+        popup.destroy()
+    
+    # OK button - standard Windows style
+    ok_button = tk.Button(
+        btn_frame, 
+        text="OK", 
+        font=('Arial', larger_font_size),
+        bg='#e1e1e1', 
+        fg='#000000',
+        width=8,
+        height=1,
+        relief='raised',
+        bd=1,
+        command=on_ok
+    )
+    ok_button.pack(side='left', padx=(0, 10))
+    
+    # Cancel button - standard Windows style
+    cancel_button = tk.Button(
+        btn_frame, 
+        text="Cancel", 
+        font=('Arial', larger_font_size),
+        bg='#e1e1e1', 
+        fg='#000000',
+        width=8,
+        height=1,
+        relief='raised',
+        bd=1,
+        command=on_cancel
+    )
+    cancel_button.pack(side='left')
+    
+    # Center on parent and wait
+    popup.transient(root)
+    popup.focus_set()
+    popup.wait_window()
+    
+    return result[0]
+
 def maximize_window(window):
     """Maximize the window across different operating systems"""
     try:

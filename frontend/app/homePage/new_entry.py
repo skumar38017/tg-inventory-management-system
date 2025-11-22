@@ -3,6 +3,7 @@
 from turtle import width
 from common_imports import *
 from utils.universal_font_box_size import universal_font_box_size
+from utils.window_utils import custom_messagebox
 
 # Global variables
 entries = {}
@@ -130,12 +131,12 @@ def create_inventory_item(scrollable_frame, header_labels):
                 added_items.append(added_item)
         except Exception as e:
             logger.error(f"Failed to add item (row {row}): {str(e)}")
-            messagebox.showerror("Error", f"Failed to add item from row {row}\\nError: {str(e)}")
+            custom_messagebox("error", "Error", f"Failed to add item from row {row}\nError: {str(e)}")
             continue
     
     # Check if no items were processed
     if not added_items:
-        messagebox.showwarning("Warning", "No valid data found to add")
+        custom_messagebox("warning", "Warning", "No valid data found to add")
         return
 
     # Display results if any items were added
@@ -176,9 +177,9 @@ def create_inventory_item(scrollable_frame, header_labels):
         
         # Refresh form and generate new IDs
         refresh_form(scrollable_frame, header_labels)
-        messagebox.showinfo("Success", f"{len(added_items)} items added successfully")
+        custom_messagebox("info", "Success", f"{len(added_items)} items added successfully")
     else:
-        messagebox.showwarning("Warning", "No items were added")
+        custom_messagebox("warning", "Warning", "No items were added")
 
 def remove_last_row(scrollable_frame):
     """Remove the last row from the form"""
@@ -194,7 +195,7 @@ def remove_last_row(scrollable_frame):
     
     # Don't remove if only header and one data row exist
     if max_row <= 0:
-        messagebox.showwarning("Warning", "Cannot remove the last remaining row!")
+        custom_messagebox("warning", "Warning", "Cannot remove the last remaining row!")
         return
     
     # Remove all widgets from the last row and clean up entries

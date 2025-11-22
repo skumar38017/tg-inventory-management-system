@@ -72,7 +72,7 @@ def update_main_inventory_list():
             update_pagination_info()
         except Exception as e:
             logger.error(f"Failed to Sync inventory: {e}")
-            messagebox.showerror("Error", "Could not Sync inventory data")
+            custom_messagebox("error", "Error", "Could not Sync inventory data")
 
 def update_pagination_info():
     """Update pagination display info"""
@@ -113,7 +113,7 @@ def go_to_page_from_entry():
             paginator.go_to_page(page_num)
             update_main_inventory_list()
     except ValueError:
-        messagebox.showwarning("Invalid Page", "Please enter a valid page number")
+        custom_messagebox("warning", "Invalid Page", "Please enter a valid page number")
 
 def update_pagination_ui():
     """Update pagination UI elements"""
@@ -191,7 +191,7 @@ def filter_by_date_range():
     to_date_str = to_date_entry.get()
     
     if not from_date_str or not to_date_str:
-          messagebox.showwarning("Warning", "Please select both From and To dates")
+          custom_messagebox("warning", "Warning", "Please select both From and To dates")
           return
     try:
         # Convert dates to proper format if needed
@@ -199,7 +199,7 @@ def filter_by_date_range():
         to_date_obj = datetime.strptime(to_date_str, "%Y-%m-%d")
         
         if from_date_obj > to_date_obj:
-            messagebox.showwarning("Warning", "From date cannot be after To date")
+            custom_messagebox("warning", "Warning", "From date cannot be after To date")
             return
             
         # Pass the date strings directly
@@ -208,10 +208,10 @@ def filter_by_date_range():
         
     except ValueError as e:
         logger.error(f"Invalid date format: {e}")
-        messagebox.showerror("Error", "Invalid date format. Please use YYYY-MM-DD")
+        custom_messagebox("error", "Error", "Invalid date format. Please use YYYY-MM-DD")
     except Exception as e:
         logger.error(f"Failed to filter by date range: {e}")
-        messagebox.showerror("Error", "Could not filter inventory by date range")
+        custom_messagebox("error", "Error", "Could not filter inventory by date range")
 
 # Perform inventory search based on search criteria [InventoryID, 'ProjectID', ProductID]
 # Moved to homePage/search_results.py
@@ -220,7 +220,7 @@ def filter_by_date_range():
 
 def quit_application():
     """Confirm and quit the application"""
-    if messagebox.askokcancel("Quit", "Do you really want to quit?"):
+    if custom_confirmation("Quit", "Do you really want to quit?"):
         root.destroy()
 
 # Add this new function above the create_list_frames function:
@@ -228,7 +228,7 @@ def upload_inventory_with_message():
     """Upload inventory and show success message"""
     result = upload_inventory()
     if result:
-        messagebox.showinfo("Success", "Inventory data uploaded successfully!")
+        custom_messagebox("info", "Success", "Inventory data uploaded successfully!")
     else:
         # The upload_inventory function already shows error messages
         pass
@@ -248,7 +248,7 @@ def open_to_event():
         ToEventWindow(root)
     except Exception as e:
         logger.error(f"Failed to open To Event window: {e}")
-        messagebox.showerror("Error", "Could not open To Event window")
+        custom_messagebox("error", "Error", "Could not open To Event window")
 
 def open_from_event():
     try:
@@ -256,7 +256,7 @@ def open_from_event():
         FromEventWindow(root)
     except Exception as e:
         logger.error(f"Failed to open Return From Event window: {e}")
-        messagebox.showerror("Error", "Could not open Return From Event window")
+        custom_messagebox("error", "Error", "Could not open Return From Event window")
 
 def open_assign_inventory():
     try:
@@ -264,7 +264,7 @@ def open_assign_inventory():
         AssignInventoryWindow(root)
     except Exception as e:
         logger.error(f"Failed to open Assign Inventory window: {e}")
-        messagebox.showerror("Error", "Could not open Assign Inventory window")
+        custom_messagebox("error", "Error", "Could not open Assign Inventory window")
 
 def open_damage_inventory():
     try:
@@ -272,7 +272,7 @@ def open_damage_inventory():
         DamageWindow(root)
     except Exception as e:
         logger.error(f"Failed to open Damage/Waste/Not Working/Lost window: {e}")
-        messagebox.showerror("Error", "Could not open Damage/Waste/Not Working/Lost window")
+        custom_messagebox("error", "Error", "Could not open Damage/Waste/Not Working/Lost window")
 
 # Main application setup
 def setup_main_window():
