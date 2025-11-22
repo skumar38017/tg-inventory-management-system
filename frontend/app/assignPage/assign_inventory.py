@@ -1,4 +1,4 @@
-# frontend/app/assign_inventory.py
+# frontend/app/assignPage/assign_inventory.py
 from common_imports import *
 from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
