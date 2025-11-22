@@ -69,6 +69,9 @@ def setup_window_closing(window, parent_window=None):
 def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
     """Setup modern touchpad-style scrolling and arrow key navigation"""
     
+    # Define scroll speed at function level
+    scroll_speed = 40
+    
     def on_mousewheel(event):
         """Handle mouse wheel scrolling (touchpad scrolling)"""
         # Check if it's a Listbox widget
@@ -76,17 +79,17 @@ def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
             # For Listbox widgets
             if event.state & 0x1:  # Shift key pressed - horizontal scroll
                 if hasattr(canvas_or_widget, 'xview_scroll'):
-                    canvas_or_widget.xview_scroll(int(event.delta / 120), "units")
+                    canvas_or_widget.xview_scroll(int(event.delta / 120) * scroll_speed, "units")
             else:
                 # Vertical scrolling
-                canvas_or_widget.yview_scroll(int(event.delta / 120), "units")
+                canvas_or_widget.yview_scroll(int(event.delta / 120) * scroll_speed, "units")
         else:
             # For Canvas widgets
             if event.state & 0x1:  # Shift key pressed
-                canvas_or_widget.xview_scroll(int(event.delta / 120), "units")
+                canvas_or_widget.xview_scroll(int(event.delta / 120) * scroll_speed, "units")
             else:
                 # Vertical scrolling
-                canvas_or_widget.yview_scroll(int(event.delta / 120), "units")
+                canvas_or_widget.yview_scroll(int(event.delta / 120) * scroll_speed, "units")
     
     def on_key_press(event):
         """Handle arrow key navigation"""
@@ -113,13 +116,13 @@ def setup_modern_scrolling(canvas_or_widget, scrollable_frame=None):
         
     # Bind mouse wheel events for touchpad scrolling
     canvas_or_widget.bind("<MouseWheel>", on_mousewheel)  # Windows/Mac
-    canvas_or_widget.bind("<Button-4>", lambda e: canvas_or_widget.yview_scroll(-1, "units"))  # Linux scroll up
-    canvas_or_widget.bind("<Button-5>", lambda e: canvas_or_widget.yview_scroll(1, "units"))   # Linux scroll down
+    canvas_or_widget.bind("<Button-4>", lambda e: canvas_or_widget.yview_scroll(- scroll_speed, "units"))  # Linux scroll up (scroll_speed x speed)
+    canvas_or_widget.bind("<Button-5>", lambda e: canvas_or_widget.yview_scroll(scroll_speed, "units"))   # Linux scroll down (scroll_speed x speed)
     
     # Horizontal scrolling for Linux (if supported)
     if hasattr(canvas_or_widget, 'xview_scroll'):
-        canvas_or_widget.bind("<Shift-Button-4>", lambda e: canvas_or_widget.xview_scroll(-1, "units"))
-        canvas_or_widget.bind("<Shift-Button-5>", lambda e: canvas_or_widget.xview_scroll(1, "units"))
+        canvas_or_widget.bind("<Shift-Button-4>", lambda e: canvas_or_widget.xview_scroll(- scroll_speed, "units"))  # scroll_speed x speed
+        canvas_or_widget.bind("<Shift-Button-5>", lambda e: canvas_or_widget.xview_scroll(scroll_speed, "units"))   # scroll_speed x speed
     
     # Make widget focusable for key events
     canvas_or_widget.focus_set()
