@@ -272,7 +272,8 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
             font=('Helvetica', universal_font_box_size.new_entry_font_size), 
             borderwidth=1,
             relief='solid',
-            width=universal_font_box_size.common * 2
+            width=universal_font_box_size.common * 2,
+            justify='center'
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
         
@@ -307,10 +308,10 @@ def create_new_entry_tab(notebook):
     scroll_container = tk.Frame(form_container)
     scroll_container.pack(fill='both', expand=True)
     
-    # Create canvas and scrollbars
+    # Create canvas and scrollbars (using ttk.Scrollbar like Added Items List)
     canvas = tk.Canvas(scroll_container)
-    h_scrollbar = tk.Scrollbar(scroll_container, orient='horizontal', command=canvas.xview)
-    v_scrollbar = tk.Scrollbar(scroll_container, orient='vertical', command=canvas.yview)
+    h_scrollbar = ttk.Scrollbar(scroll_container, orient='horizontal', command=canvas.xview)
+    v_scrollbar = ttk.Scrollbar(scroll_container, orient='vertical', command=canvas.yview)
     scrollable_frame = tk.Frame(canvas)
     
     scrollable_frame.bind(
@@ -323,17 +324,17 @@ def create_new_entry_tab(notebook):
     canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
     canvas.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
     
-    # Setup modern scrolling features
-    setup_modern_scrolling(canvas, scrollable_frame)
-    
-    # Grid layout for canvas and scrollbars
+    # Apply the exact same scrollbar layout as Added Items List
     canvas.grid(row=0, column=0, sticky='nsew')
     v_scrollbar.grid(row=0, column=1, sticky='ns')
     h_scrollbar.grid(row=1, column=0, sticky='ew')
     
-    # Configure grid weights
+    # Configure grid weights (same as Added Items List)
     scroll_container.grid_rowconfigure(0, weight=1)
     scroll_container.grid_columnconfigure(0, weight=1)
+    
+    # Apply modern scrolling (10x speed) - same as Added Items List
+    setup_modern_scrolling(canvas, scrollable_frame)
     
     # Header row with field names
     header_labels = [
