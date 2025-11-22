@@ -464,22 +464,29 @@ def create_list_frames(root):
         inventory_listbox.heading(col, text=col, anchor="center")
         inventory_listbox.column(col, width=uniform_width, minwidth=uniform_width, anchor='center', stretch=False)
     
-    # Ensure headers stay fixed at top during vertical scrolling
+    # Ensure headers scroll with data by binding xview events
+    def sync_header_scroll(*args):
+        """Synchronize header scrolling with data"""
+        inventory_listbox.xview(*args)
+    
+    # Override the horizontal scrollbar command to ensure header sync
+    h_scrollbar.config(command=sync_header_scroll)
+    
+    # Ensure headers stay synchronized with data during horizontal scrolling
     inventory_listbox.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
-    h_scrollbar.config(command=inventory_listbox.xview)
     v_scrollbar.config(command=inventory_listbox.yview)
     
     inventory_listbox.pack(side="left", fill="both", expand=True)
     
-    # Bind arrow key scrolling
+    # Bind arrow key scrolling with header sync
     def scroll_left(event):
         """Scroll table left with arrow key"""
-        inventory_listbox.xview_scroll(-50, "units")
+        sync_header_scroll("scroll", -1, "units")
         return "break"
     
     def scroll_right(event):
         """Scroll table right with arrow key"""
-        inventory_listbox.xview_scroll(50, "units")
+        sync_header_scroll("scroll", 1, "units")
         return "break"
     
     def scroll_up(event):

@@ -316,77 +316,63 @@ def create_new_entry_tab(notebook):
         'In Warehouse', 'Issued Qty', 'Balance Qty', 'submitted_by'
     ]
     
-    # Create FIXED HEADER that stays on top (outside scrollable area)
-    fixed_header_frame = tk.Frame(form_container, bg='#d4e6f1', relief='solid', bd=1)
-    fixed_header_frame.pack(fill='x', pady=(0, 2))
+    # Create unified table container with header and data in same scrollable area
+    scroll_container = tk.Frame(form_container)
+    scroll_container.pack(fill='both', expand=True)
     
+    # Create canvas and scrollbars
+    canvas = tk.Canvas(scroll_container)
+    h_scrollbar = ttk.Scrollbar(scroll_container, orient='horizontal', command=canvas.xview)
+    v_scrollbar = ttk.Scrollbar(scroll_container, orient='vertical', command=canvas.yview)
+    
+    # Create table frame that contains both header and data
+    table_frame = tk.Frame(canvas, relief='solid', bd=1)
+    
+    # Create HEADER ROW (row 0) in the same table
     for col, label in enumerate(header_labels):
-        fixed_header = tk.Label(
-            fixed_header_frame, 
+        header_cell = tk.Label(
+            table_frame, 
             text=label, 
             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size, 'bold'),
             bg='#d4e6f1', 
             fg='black',
             relief='solid',
             borderwidth=1,
-            width=15,  # Fixed width to match data cells
+            width=15,
             anchor='center'
         )
-        fixed_header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
-        fixed_header_frame.grid_columnconfigure(col, weight=1, minsize=350)
+        header_cell.grid(row=0, column=col, sticky='ew', padx=0, pady=0)
+        table_frame.grid_columnconfigure(col, weight=1, minsize=350)
     
-    # Container for the scrollable input rows
-    scroll_container = tk.Frame(form_container)
-    scroll_container.pack(fill='both', expand=True)
-    
-    # Create canvas and scrollbars (using ttk.Scrollbar like Added Items List)
-    canvas = tk.Canvas(scroll_container)
-    h_scrollbar = ttk.Scrollbar(scroll_container, orient='horizontal', command=canvas.xview)
-    v_scrollbar = ttk.Scrollbar(scroll_container, orient='vertical', command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas)
-    
-    scrollable_frame.bind(
+    # Configure canvas
+    table_frame.bind(
         "<Configure>",
-        lambda e: canvas.configure(
-            scrollregion=canvas.bbox("all")
-        )
+        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
     
-    canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
+    canvas.create_window((0, 0), window=table_frame, anchor='nw')
     canvas.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
     
-    # Bind mousewheel to canvas for better scrolling
-    def on_mousewheel(event):
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    # Disable modern scrolling to prevent horizontal scrolling
+    # setup_modern_scrolling(canvas, table_frame)
     
-    canvas.bind("<MouseWheel>", on_mousewheel)
-    canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
-    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
-    
-    # Initial scrollregion setup
-    canvas.update_idletasks()
-    canvas.configure(scrollregion=canvas.bbox("all"))
-    
-    # Apply the exact same scrollbar layout as Added Items List
+    # Create first row of input fields (row 1, since row 0 is header)
+    for col, field in enumerate(header_labels):
+        var_name = field.replace(' ', '')
+        create_field_for_row(table_frame, field, col, 1, var_name)
+                        
+    # Configure column weights with minimum size
+    for col in range(len(header_labels)):
+        table_frame.grid_columnconfigure(col, weight=1, minsize=350)
+
+    # Apply scrollbar layout
     canvas.grid(row=0, column=0, sticky='nsew')
     v_scrollbar.grid(row=0, column=1, sticky='ns')
     h_scrollbar.grid(row=1, column=0, sticky='ew')
     
-    # Configure grid weights (same as Added Items List)
+    # Configure grid weights
     scroll_container.grid_rowconfigure(0, weight=1)
     scroll_container.grid_columnconfigure(0, weight=1)
-    
-    # Apply modern scrolling (10x speed) - same as Added Items List
-    setup_modern_scrolling(canvas, scrollable_frame)
-    
-    # Create first row of input fields using reusable function (start from row 0 since no header in scrollable area)
-    for col, field in enumerate(header_labels):
-        var_name = field.replace(' ', '')
-        create_field_for_row(scrollable_frame, field, col, 0, var_name)
-                        
-    # Configure column weights with minimum size
-    for col in range(len(header_labels)):
-        scrollable_frame.grid_columnconfigure(col, weight=1, minsize=350)
 
     # Button container
     button_frame = tk.Frame(form_container)
@@ -405,7 +391,7 @@ def create_new_entry_tab(notebook):
     refresh_button = tk.Button(
         button_frame, 
         text="Refresh", 
-        command=lambda: refresh_form(scrollable_frame, header_labels),
+        command=lambda: refresh_form(table_frame, header_labels),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
         width=universal_font_box_size.button_width
     )
@@ -415,7 +401,7 @@ def create_new_entry_tab(notebook):
     add_button = tk.Button(
         button_frame, 
         text="Add Item", 
-        command=lambda: create_inventory_item(scrollable_frame, header_labels),
+        command=lambda: create_inventory_item(table_frame, header_labels),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
         width=universal_font_box_size.button_width
     )
@@ -425,7 +411,7 @@ def create_new_entry_tab(notebook):
     remove_row_button = tk.Button(
         button_frame, 
         text="Remove Row", 
-        command=lambda: remove_last_row(scrollable_frame),
+        command=lambda: remove_last_row(table_frame),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size,),
         width=universal_font_box_size.button_width
     )
@@ -434,7 +420,7 @@ def create_new_entry_tab(notebook):
     add_row_button = tk.Button(
         button_frame, 
         text="Add Row", 
-        command=lambda: add_new_row(scrollable_frame, header_labels),
+        command=lambda: add_new_row(table_frame, header_labels),
         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
         width=universal_font_box_size.button_width
     )
