@@ -193,7 +193,7 @@ def remove_last_row(scrollable_frame):
             max_row = row
     
     # Don't remove if only header and one data row exist
-    if max_row <= 1:
+    if max_row <= 0:
         messagebox.showwarning("Warning", "Cannot remove the last remaining row!")
         return
     
@@ -260,7 +260,7 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
             scrollable_frame, 
             variable=checkbox_vars[var_name],
             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size),
-            width=universal_font_box_size.common * 2,
+            width=15,  # Fixed width to match header cells
             height=1
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
@@ -272,7 +272,7 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
             font=('Helvetica', universal_font_box_size.new_entry_font_size), 
             borderwidth=1,
             relief='solid',
-            width=universal_font_box_size.common * 2,
+            width=15,  # Fixed width to match header cells
             justify='center'
         )
         entries[var_name].grid(row=row, column=col, sticky='ew', padx=1, pady=1)
@@ -287,11 +287,14 @@ def create_field_for_row(scrollable_frame, field, col, row, var_name):
 def add_new_row(scrollable_frame, header_labels):
     """Add a new row to the form"""
     widgets = scrollable_frame.grid_slaves()
-    max_row = max([widget.grid_info()['row'] for widget in widgets])
-    new_row = max_row + 1
+    if widgets:
+        max_row = max([widget.grid_info()['row'] for widget in widgets])
+        new_row = max_row + 1
+    else:
+        new_row = 0  # First row if no widgets exist
     
     for col, field in enumerate(header_labels):
-        var_name = f"{field.replace(' ', '')}_{new_row}"
+        var_name = f"{field.replace(' ', '')}_{new_row + 1}"  # Use row+1 for naming to avoid conflicts
         create_field_for_row(scrollable_frame, field, col, new_row, var_name)
 
 def create_new_entry_tab(notebook):
@@ -304,7 +307,35 @@ def create_new_entry_tab(notebook):
     form_container = tk.Frame(new_entry_frame)
     form_container.pack(fill='both', expand=True, padx=12, pady=5)
     
-    # Container for the header and input rows with scrollbars
+    # Header row with field names
+    header_labels = [
+        'Sno', "InventoryID", "ProductID", 'Name', 'Material', 'Total Quantity', 
+        'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
+        'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
+        'Rented Returned', 'Returned Date', 'On Event', 'In Office', 
+        'In Warehouse', 'Issued Qty', 'Balance Qty', 'submitted_by'
+    ]
+    
+    # Create FIXED HEADER that stays on top (outside scrollable area)
+    fixed_header_frame = tk.Frame(form_container, bg='#d4e6f1', relief='solid', bd=1)
+    fixed_header_frame.pack(fill='x', pady=(0, 2))
+    
+    for col, label in enumerate(header_labels):
+        fixed_header = tk.Label(
+            fixed_header_frame, 
+            text=label, 
+            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size, 'bold'),
+            bg='#d4e6f1', 
+            fg='black',
+            relief='solid',
+            borderwidth=1,
+            width=15,  # Fixed width to match data cells
+            anchor='center'
+        )
+        fixed_header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
+        fixed_header_frame.grid_columnconfigure(col, weight=1, minsize=350)
+    
+    # Container for the scrollable input rows
     scroll_container = tk.Frame(form_container)
     scroll_container.pack(fill='both', expand=True)
     
@@ -348,30 +379,14 @@ def create_new_entry_tab(notebook):
     # Apply modern scrolling (10x speed) - same as Added Items List
     setup_modern_scrolling(canvas, scrollable_frame)
     
-    # Header row with field names
-    header_labels = [
-        'Sno', "InventoryID", "ProductID", 'Name', 'Material', 'Total Quantity', 
-        'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
-        'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
-        'Rented Returned', 'Returned Date', 'On Event', 'In Office', 
-        'In Warehouse', 'Issued Qty', 'Balance Qty', 'Submited by'
-    ]
-    
-    # Create header row
-    for col, label in enumerate(header_labels):
-        header = tk.Label(scrollable_frame, text=label, 
-                         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.new_entry_font_size, 'bold'), borderwidth=1, relief='solid',
-                         height=1, width=int(universal_font_box_size.common * 2), anchor='center')
-        header.grid(row=0, column=col, sticky='ew', padx=1, pady=1)
-    
-    # Create first row of input fields using reusable function
+    # Create first row of input fields using reusable function (start from row 0 since no header in scrollable area)
     for col, field in enumerate(header_labels):
         var_name = field.replace(' ', '')
-        create_field_for_row(scrollable_frame, field, col, 1, var_name)
+        create_field_for_row(scrollable_frame, field, col, 0, var_name)
                         
-    # Configure column weights
+    # Configure column weights with minimum size
     for col in range(len(header_labels)):
-        scrollable_frame.grid_columnconfigure(col, weight=1)
+        scrollable_frame.grid_columnconfigure(col, weight=1, minsize=350)
 
     # Button container
     button_frame = tk.Frame(form_container)
