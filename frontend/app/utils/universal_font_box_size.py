@@ -86,7 +86,7 @@ class UniversalFontBoxSize:
         ("On Rent", 30),
         ("Vendor Name", 40),
         ("Total Rent", 25),
-        ("Rented Inventory Returned", 30),
+        ("Rented Returned", 30),
         ("Returned Date", 30),
         ("On Event", 25),
         ("In Office", 30),

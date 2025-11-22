@@ -254,7 +254,7 @@ def create_single_date_entry(parent_frame, row, col):
 
 def create_field_for_row(scrollable_frame, field, col, row, var_name):
     """Create a single field for a specific row - reusable function"""
-    if field in ['On Rent', 'Rented Inventory Returned', 'On Event', 'In Office', 'In Warehouse']:
+    if field in ['On Rent', 'Rented Returned', 'On Event', 'In Office', 'In Warehouse']:
         checkbox_vars[var_name] = tk.BooleanVar()
         entries[var_name] = tk.Checkbutton(
             scrollable_frame, 
@@ -340,7 +340,7 @@ def create_new_entry_tab(notebook):
         'Sno', "InventoryID", "ProductID", 'Name', 'Material', 'Total Quantity', 
         'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
         'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
-        'Rented Inventory Returned', 'Returned Date', 'On Event', 'In Office', 
+        'Rented Returned', 'Returned Date', 'On Event', 'In Office', 
         'In Warehouse', 'Issued Qty', 'Balance Qty', 'Submited by'
     ]
     

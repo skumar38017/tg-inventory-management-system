@@ -38,7 +38,7 @@ def format_inventory_item(item: Dict[str, Any]) -> Dict[str, str]:
         'On Rent': get_value('on_rent'),
         'Vendor Name': get_value('vendor_name'),
         'Total Rent': get_value('total_rent', '0.00'),
-        'Rented Inventory Returned': get_value('rented_inventory_returned'),
+        'Rented Returned': get_value('rented_inventory_returned'),
         'Returned Date': get_value('returned_date'),
         'On Event': get_value('on_event'),
         'In Office': get_value('in_office'),

@@ -166,7 +166,7 @@ def display_inventory_items(items):
                 item.get('On Rent', item.get('on_rent', '')),
                 item.get('Vendor Name', item.get('vendor_name', '')),
                 item.get('Total Rent', item.get('total_rent', '')),
-                item.get('Rented Inventory Returned', item.get('rented_inventory_returned', '')),
+                item.get('Rented Returned', item.get('rented_inventory_returned', '')),
                 item.get('Returned Date', item.get('returned_date', '')),
                 item.get('On Event', item.get('on_event', '')),
                 item.get('In Office', item.get('in_office', '')),
@@ -451,20 +451,20 @@ def create_list_frames(root):
     columns = ['ID','Serial No.', 'InventoryID', 'ProductID', 'Name', 'Material', 'Total Quantity', 
                'Manufacturer', 'Purchase Dealer', 'Purchase Date', 'Purchase Amount', 
                'Repair Quantity', 'Repair Cost', 'On Rent', 'Vendor Name', 'Total Rent', 
-               'Rented Inventory Returned', 'Returned Date', 'On Event', 'In Office', 
+               'Rented Returned', 'Returned Date', 'On Event', 'In Office', 
                'In Warehouse', 'Issued Qty', 'Balance Qty', 'Bar Code', 'Barcode URL', 
                'QrCodeUrl', 'Created At', 'Updated At', 'Submitted by'
             ]
     
     inventory_listbox = ttk.Treeview(list_container, columns=columns, show='headings', height=listbox_height)
-        
-    # Smart loop for headers and widths
-    for col in columns:
-        inventory_listbox.heading(col, text=col)
-        width = len(col) * 50 if len(col) > 10 else len(col) * 50  # Smart width calculation
-        inventory_listbox.column(col, width=width, anchor='center' if col in ['Sno', 'Total Quantity', 'Purchase Amount'] else 'w', stretch=False)
     
-    # Configure scrollbars and layout - use pack consistently
+    # Configure uniform column widths for equal rectangular cells  
+    uniform_width = 500  # Fixed width for all columns to create equal rectangles
+    for col in columns:
+        inventory_listbox.heading(col, text=col, anchor="center")
+        inventory_listbox.column(col, width=uniform_width, minwidth=uniform_width, anchor='center', stretch=False)
+    
+    # Ensure headers stay fixed at top during vertical scrolling
     inventory_listbox.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
     h_scrollbar.config(command=inventory_listbox.xview)
     v_scrollbar.config(command=inventory_listbox.yview)
@@ -505,9 +505,22 @@ def create_list_frames(root):
     style.configure("Treeview", rowheight=universal_font_box_size.input_height)  # Increase row height to 40 pixels
     style.configure('Treeview.Heading', font=(universal_font_box_size.qr_barcode_title_font_family))
     style.configure('Treeview.Heading', rowheight=universal_font_box_size.input_height)
+    
+    # Excel-like grid appearance with uniform rectangular cells
+    style.configure("Treeview", 
+                   relief="solid", 
+                   borderwidth=1,
+                   fieldbackground="white",
+                   rowheight=35)  # Fixed row height for uniform rectangles
+    style.configure("Treeview.Heading", 
+                   relief="solid", 
+                   borderwidth=1,
+                   background="#d4e6f1",
+                   foreground="black",
+                   anchor="center")  # Center align headers
 
-    inventory_listbox.tag_configure('evenrow', background='#f8f9fa')
-    inventory_listbox.tag_configure('oddrow', background='#ffffff')
+    inventory_listbox.tag_configure('evenrow', background='#f5f5f5')  # Official gray
+    inventory_listbox.tag_configure('oddrow', background='#ffffff')   # Pure white
     
     setup_modern_scrolling(inventory_listbox)
     
