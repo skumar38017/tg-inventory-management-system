@@ -454,22 +454,32 @@ def create_new_entry_tab(notebook):
     added_items_listbox.heading('submitted_by', text='submitted_by')
     added_items_listbox.heading('BarCode', text='BarCode')
     
-    # Set column widths - using universal_font_box_size pattern (fixed, no resizing)
-    added_items_listbox.column('ID', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('Serial No.',width=universal_font_box_size.common * 50,anchor='center', stretch=True)
-    added_items_listbox.column('InventoryID', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('ProductID', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('Name', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
-    added_items_listbox.column('Material', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
-    added_items_listbox.column('Total Quantity', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('Manufacturer', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
-    added_items_listbox.column('Purchase Dealer', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
-    added_items_listbox.column('Purchase Date', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('Purchase Amount', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('Repair Quantity', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('Repair Cost', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
-    added_items_listbox.column('submitted_by', width=universal_font_box_size.common * 50, anchor='w', stretch=True)
-    added_items_listbox.column('BarCode', width=universal_font_box_size.common * 50, anchor='center', stretch=True)
+    # Configure Treeview font styling with Excel-like appearance
+    style = ttk.Style()
+    style.configure('Treeview', font=(universal_font_box_size.qr_barcode_button_font_family, universal_font_box_size.new_entry_font_size))
+    style.configure("Treeview", rowheight=35)  # Fixed row height for uniform rectangles
+    
+    # Excel-like grid appearance with uniform rectangular cells
+    style.configure("Treeview", 
+                   relief="solid", 
+                   borderwidth=1,
+                   fieldbackground="white")
+    style.configure("Treeview.Heading", 
+                   relief="solid", 
+                   borderwidth=1,
+                   background="#d4e6f1",
+                   foreground="black",
+                   anchor="center")  # Center align headers
+    
+    # Configure uniform column widths for equal rectangular cells
+    uniform_width = 300  # Fixed width for all columns to create equal rectangles
+    for col in columns:
+        added_items_listbox.heading(col, text=col, anchor="center")
+        added_items_listbox.column(col, width=uniform_width, minwidth=uniform_width, anchor='center', stretch=True)
+    
+    # Configure alternating row colors
+    added_items_listbox.tag_configure('evenrow', background='#f5f5f5')  # Official gray
+    added_items_listbox.tag_configure('oddrow', background='#ffffff')   # Pure white
     
     # Create scrollbars
     added_v_scrollbar = ttk.Scrollbar(added_list_container, orient='vertical', command=added_items_listbox.yview)
@@ -485,9 +495,8 @@ def create_new_entry_tab(notebook):
     added_list_container.grid_rowconfigure(0, weight=1)
     added_list_container.grid_columnconfigure(0, weight=1)
     
-    # Configure Treeview font styling
-    style = ttk.Style()
-    style.configure('Treeview', font=(universal_font_box_size.qr_barcode_button_font_family, universal_font_box_size.new_entry_font_size))
+    # Apply modern scrolling (10x speed)
+    setup_modern_scrolling(added_items_listbox)
     style.configure('Treeview.Heading', font=(universal_font_box_size.qr_barcode_button_font_family, universal_font_box_size.new_entry_font_size, 'bold'))
  
     # Row styling
