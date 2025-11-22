@@ -145,6 +145,9 @@ class RevealQrAndBarcodeWindow:
         table_frame.grid_rowconfigure(0, weight=1)
         table_frame.grid_columnconfigure(0, weight=1)
         
+        # Apply modern scrolling like Added Items List
+        setup_modern_scrolling(self.tree)
+        
         # Bind selection event
         self.tree.bind('<<TreeviewSelect>>', self.on_item_select)
         
