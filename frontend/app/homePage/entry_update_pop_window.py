@@ -48,7 +48,7 @@ class UpdatePopUpWindow:
             # Load and resize image
             image = Image.open(BytesIO(response.content))
             # Resize to fit the display area (maintain aspect ratio)
-            image = image.resize((300, 100), Image.Resampling.LANCZOS)
+            image = image.resize((300, 150), Image.Resampling.LANCZOS)
             
             # Convert to PhotoImage
             photo = ImageTk.PhotoImage(image)
@@ -61,6 +61,36 @@ class UpdatePopUpWindow:
             barcode_image_label.config(image='', text=f"Failed to load barcode: Network error")
         except Exception as e:
             barcode_image_label.config(image='', text=f"Failed to load barcode: {str(e)}")
+
+    @staticmethod
+    def load_qrcode_image(qrcode_url):
+        """Load and display QR code image from URL"""
+        global qrcode_image_label
+        try:
+            if not qrcode_url or qrcode_url.strip() == '':
+                qrcode_image_label.config(image='', text="No QR code available")
+                return
+                
+            # Fetch QR code image
+            response = requests.get(qrcode_url, timeout=10)
+            response.raise_for_status()
+            
+            # Load and resize image
+            image = Image.open(BytesIO(response.content))
+            # Resize to fit the display area (maintain aspect ratio)
+            image = image.resize((300, 300), Image.Resampling.LANCZOS)
+            
+            # Convert to PhotoImage
+            photo = ImageTk.PhotoImage(image)
+            
+            # Update label
+            qrcode_image_label.config(image=photo, text="")
+            qrcode_image_label.image = photo  # Keep a reference
+            
+        except requests.RequestException as e:
+            qrcode_image_label.config(image='', text=f"Failed to load QR code: Network error")
+        except Exception as e:
+            qrcode_image_label.config(image='', text=f"Failed to load QR code: {str(e)}")
 
     @staticmethod
     def clear_date_entry(date_entry):
@@ -201,6 +231,9 @@ class UpdatePopUpWindow:
             
             # Load barcode image
             UpdatePopUpWindow.load_barcode_image(inventory_data.get('inventory_barcode_url', ''))
+            
+            # Load QR code image
+            UpdatePopUpWindow.load_qrcode_image(inventory_data.get('inventory_qrcode_url', ''))
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load inventory data: {str(e)}")
@@ -375,19 +408,34 @@ class UpdatePopUpWindow:
                 cb.pack(side='left')
                 update_window_entries[label_text.strip(":")] = var
         
-        # Barcode display section (read-only)
-        barcode_frame = tk.LabelFrame(main_frame, text="Barcode", 
-                                     font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight))
-        barcode_frame.pack(fill='x', pady=10)
+        # Barcode and QR Code display section (read-only)
+        codes_frame = tk.LabelFrame(main_frame, text="Barcode & QR Code", 
+                                   font=('Helvetica', universal_font_box_size.label_font_size_standard, universal_font_box_size.label_font_weight))
+        codes_frame.pack(fill='x', pady=10)
         
-        # Barcode image display
-        barcode_display_frame = tk.Frame(barcode_frame)
-        barcode_display_frame.pack(pady=10)
+        # Create container for both codes
+        codes_display_frame = tk.Frame(codes_frame)
+        codes_display_frame.pack(pady=10)
         
+        # Barcode section (left side)
+        barcode_section = tk.Frame(codes_display_frame)
+        barcode_section.pack(side='left', padx=10)
+        
+        tk.Label(barcode_section, text="Barcode", font=('Helvetica', 10, 'bold')).pack()
         global barcode_image_label
-        barcode_image_label = tk.Label(barcode_display_frame, text="No barcode available", 
-                                      bg='white', width=40, height=5, relief='sunken', bd=1)
+        barcode_image_label = tk.Label(barcode_section, text="No barcode available", 
+                                      width=40, height=5)
         barcode_image_label.pack()
+        
+        # QR Code section (right side)
+        qrcode_section = tk.Frame(codes_display_frame)
+        qrcode_section.pack(side='right', padx=10)
+        
+        tk.Label(qrcode_section, text="QR Code", font=('Helvetica', 10, 'bold')).pack()
+        global qrcode_image_label
+        qrcode_image_label = tk.Label(qrcode_section, text="No QR code available", 
+                                     width=20, height=10)
+        qrcode_image_label.pack()
         
         # Additional information section (read-only)
         info_frame = tk.LabelFrame(main_frame, text="Additional Information (auto-generated)", 
@@ -462,7 +510,7 @@ class UpdatePopUpWindow:
         
         def clear_form():
             """Clear all form fields while maintaining readonly states"""
-            global barcode_image_label
+            global barcode_image_label, qrcode_image_label
             
             for key, widget in update_window_entries.items():
                 if isinstance(widget, tk.Entry):
@@ -480,10 +528,14 @@ class UpdatePopUpWindow:
                 elif isinstance(widget, tk.BooleanVar):
                     widget.set(False)
             
-            # Clear barcode image
+            # Clear barcode and QR code images
             barcode_image_label.config(image='', text="No barcode available")
             if hasattr(barcode_image_label, 'image'):
                 barcode_image_label.image = None
+                
+            qrcode_image_label.config(image='', text="No QR code available")
+            if hasattr(qrcode_image_label, 'image'):
+                qrcode_image_label.image = None
             
             inventory_name_combo.set('')
             toggle_edit_mode(False)
