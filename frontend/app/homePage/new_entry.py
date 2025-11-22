@@ -324,6 +324,18 @@ def create_new_entry_tab(notebook):
     canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
     canvas.configure(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
     
+    # Bind mousewheel to canvas for better scrolling
+    def on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    canvas.bind("<MouseWheel>", on_mousewheel)
+    canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+    
+    # Initial scrollregion setup
+    canvas.update_idletasks()
+    canvas.configure(scrollregion=canvas.bbox("all"))
+    
     # Apply the exact same scrollbar layout as Added Items List
     canvas.grid(row=0, column=0, sticky='nsew')
     v_scrollbar.grid(row=0, column=1, sticky='ns')
