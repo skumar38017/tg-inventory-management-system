@@ -226,7 +226,7 @@ def create_single_date_entry(parent_frame, row, col):
     # Create DateEntry with same styling as date range picker
     date_entry = DateEntry(
         date_frame,
-        width=22,
+        width=12,
         background='#3498db',
         foreground='white',
         borderwidth=2,
