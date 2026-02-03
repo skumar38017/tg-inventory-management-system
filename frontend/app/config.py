@@ -48,7 +48,7 @@ TIMEOUT = int(os.getenv("API_TIMEOUT", "30"))  # Default 30 seconds timeout
 
 def make_api_request(method, endpoint, **kwargs):
     """Helper function for making API requests"""
-    url = f"{API_BASE_URL}{endpoint}".rstrip('/')
+    url = f"{API_BASE_URL}/api/v1/{endpoint}".rstrip('/')
     
     # Set default timeout if not provided
     if 'timeout' not in kwargs:

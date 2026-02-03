@@ -10,7 +10,7 @@ from api_request.entry_inventory_api_request import (
 )
 from to_event import ToEventWindow
 from from_event import FromEventWindow
-from assign_inventory import AssignInventoryWindow
+from assignPage.assign_inventory import AssignInventoryWindow
 from damage_inventory import DamageWindow
 from homePage.entry_update_pop_window import *
 from homePage.reveal_qr_barcode_window import *
