@@ -1,5 +1,6 @@
 # frontend/app/assignPage/assign_inventory.py
 from common_imports import *
+from utils.universal_font_box_size import universal_font_box_size
 from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
@@ -147,7 +148,7 @@ Eros City Square
 
         # ALL ASSIGNED INVENTORY section
         assigned_frame = tk.LabelFrame(content_frame, text="ALL ASSIGNED INVENTORY", 
-                                     font=('Helvetica', 10, 'bold'))
+                                     font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'))
         assigned_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
         assigned_frame.grid_columnconfigure(0, weight=1)
         assigned_frame.grid_rowconfigure(0, weight=1)
@@ -283,9 +284,9 @@ Eros City Square
             tree['show'] = 'headings'  # Remove empty first column
             
             for col, header in enumerate(self.headers):
-                tree.heading(col, text=header, anchor='w')
-                tree.column(col, width=default_font.measure(header) + 20, 
-                        stretch=False, anchor='w')  # Changed stretch to False for better control
+                tree.heading(col, text=header, anchor='center')
+                tree.column(col, width=default_font.measure(header) + 150, 
+                        stretch=False, anchor='center')  # Changed anchor to center
         
         # Bind column resize events
         for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
@@ -597,17 +598,17 @@ Eros City Square
         
         for col in range(len(self.headers)):
             # Get max width between header and content
-            max_width = default_font.measure(self.headers[col]) + 20
+            max_width = default_font.measure(self.headers[col]) + 60
             
             # Check content width
             for item in tree.get_children():
                 item_text = tree.set(item, col)
                 item_width = default_font.measure(item_text)
                 if item_width > max_width:
-                    max_width = item_width + 20
+                    max_width = item_width + 60
             
-            # Set column width with bounds (100-300 pixels) and no stretching
-            tree.column(col, width=max(min(max_width, 300), 100), stretch=False)
+            # Set column width with increased bounds (250-600 pixels) and no stretching
+            tree.column(col, width=max(min(max_width, 750), 400), stretch=False)
                              
     def load_recent_submissions(self):
         """Load recently submitted assignments (current day) with proper column sizing"""
