@@ -104,40 +104,45 @@ Eros City Square
         search_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
         # Inventory ID
-        tk.Label(search_frame, text="Inventory ID:", font=('Helvetica', 10)).grid(row=0, column=0, sticky='e', padx=5)
-        self.inventory_id = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
+        tk.Label(search_frame, text="Inventory ID:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=0, sticky='e', padx=5)
+        self.inventory_id = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
         self.inventory_id.grid(row=0, column=1, sticky='w', padx=5)
         
         # Project ID
-        tk.Label(search_frame, text="Project ID:", font=('Helvetica', 10)).grid(row=0, column=2, sticky='e', padx=5)
-        self.project_id = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
+        tk.Label(search_frame, text="Project ID:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=2, sticky='e', padx=5)
+        self.project_id = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
         self.project_id.grid(row=0, column=3, sticky='w', padx=5)
         
         # Product ID
-        tk.Label(search_frame, text="Product ID:", font=('Helvetica', 10)).grid(row=0, column=4, sticky='e', padx=5)
-        self.product_id = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
+        tk.Label(search_frame, text="Product ID:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=4, sticky='e', padx=5)
+        self.product_id = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
         self.product_id.grid(row=0, column=5, sticky='w', padx=5)
         
         # Employee Name
-        tk.Label(search_frame, text="Employee Name:", font=('Helvetica', 10)).grid(row=0, column=6, sticky='e', padx=5)
-        self.employee_name = tk.Entry(search_frame, font=('Helvetica', 10), width=20)
+        tk.Label(search_frame, text="Employee Name:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=6, sticky='e', padx=5)
+        self.employee_name = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
         self.employee_name.grid(row=0, column=7, sticky='w', padx=5)
         
-        # Search button
-        search_btn = tk.Button(search_frame, text="Search", command=self.search_product, 
-                             font=('Helvetica', 10))
-        search_btn.grid(row=0, column=8, sticky='e', padx=5)
 #  ----------------------- End of Search Buttons Header Section -----------------------
 
+        # Button frame above separator
+        button_frame = tk.Frame(self.window)
+        button_frame.grid(row=4, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
+        
+        # Separator in same line as buttons (left side)
+        separator = ttk.Separator(button_frame, orient='horizontal')
+        separator.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        
         # New Entry button
-        new_entry_btn = tk.Button(search_frame, text="New Entry", command=self.new_entry,
-                                font=('Helvetica', 10))
-        new_entry_btn.grid(row=0, column=9, sticky='e', padx=5)
+        new_entry_btn = tk.Button(button_frame, text="New Entry", command=self.new_entry,
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), width=universal_font_box_size.search_button_width)
+        new_entry_btn.pack(side=tk.RIGHT, padx=2)
 
-        # Separator line
-        separator = ttk.Separator(self.window, orient='horizontal')
-        separator.grid(row=4, column=0, columnspan=2, sticky="ew", pady=5)
-
+        # Search button
+        search_btn = tk.Button(button_frame, text="Search", command=self.search_product, 
+                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), width=universal_font_box_size.search_button_width)
+        search_btn.pack(side=tk.RIGHT, padx=2)
+        
         # =============================================
         # MAIN CONTENT AREA (row 5)
         # =============================================
@@ -152,7 +157,6 @@ Eros City Square
         assigned_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
         assigned_frame.grid_columnconfigure(0, weight=1)
         assigned_frame.grid_rowconfigure(0, weight=1)
-
         
         # Treeview for assigned inventory
         self.assigned_tree = ttk.Treeview(assigned_frame)
