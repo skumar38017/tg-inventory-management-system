@@ -135,12 +135,14 @@ Eros City Square
         
         # New Entry button
         new_entry_btn = tk.Button(button_frame, text="New Entry", command=self.new_entry,
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), width=universal_font_box_size.search_button_width)
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), 
+                                width=universal_font_box_size.search_button_width)
         new_entry_btn.pack(side=tk.RIGHT, padx=2)
 
         # Search button
         search_btn = tk.Button(button_frame, text="Search", command=self.search_product, 
-                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), width=universal_font_box_size.search_button_width)
+                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), 
+                             width=universal_font_box_size.search_button_width)
         search_btn.pack(side=tk.RIGHT, padx=2)
         
         # =============================================
