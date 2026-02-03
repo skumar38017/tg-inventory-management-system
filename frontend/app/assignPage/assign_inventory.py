@@ -173,7 +173,7 @@ Eros City Square
 
         # RECENTLY SUBMITTED section
         recent_frame = tk.LabelFrame(content_frame, text="RECENTLY SUBMITTED (current day)", 
-                                font=('Helvetica', 10, 'bold'))
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'))
         recent_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
         recent_frame.grid_columnconfigure(0, weight=1)
         recent_frame.grid_rowconfigure(0, weight=1)
@@ -236,33 +236,39 @@ Eros City Square
 
         # Wrap button
         self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
-                                font=('Helvetica', 12, 'bold'))
-        self.wrap_btn.pack(side=tk.LEFT, padx=5)
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+                                width=universal_font_box_size.button_width)
+        self.wrap_btn.pack(side=tk.LEFT, padx=2)
 
         # Remove row button
         remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.remove_table_row,
-                                 font=('Helvetica', 12, 'bold'))
-        remove_row_btn.pack(side=tk.LEFT, padx=5)
+                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+                                 width=universal_font_box_size.button_width)
+        remove_row_btn.pack(side=tk.LEFT, padx=2)
 
         # Add row button
         add_row_btn = tk.Button(button_frame, text="Add Row", command=self.add_table_row,
-                              font=('Helvetica', 12, 'bold'))
-        add_row_btn.pack(side=tk.LEFT, padx=5)
+                              font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+                              width=universal_font_box_size.button_width)
+        add_row_btn.pack(side=tk.LEFT, padx=2)
 
         # Clear button
         clear_btn = tk.Button(button_frame, text="Clear", command=self.clear_form,
-                            font=('Helvetica', 12, 'bold'))
-        clear_btn.pack(side=tk.LEFT, padx=5)
-
-        # Refresh button
-        refresh_btn = tk.Button(button_frame, text="Refresh", command=self.refresh_all_data,
-                            font=('Helvetica', 12, 'bold'))
-        refresh_btn.pack(side=tk.LEFT, padx=5)
+                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
+                            width=universal_font_box_size.button_width)
+        clear_btn.pack(side=tk.LEFT, padx=2)
 
         # Return button
-        return_btn = tk.Button(button_frame, text="Return to Main", command=self.on_close,
-                             font=('Helvetica', 12, 'bold'))
+        return_btn = tk.Button(button_frame, text="Return", command=self.on_close,
+                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
+                             width=universal_font_box_size.button_width)
         return_btn.pack(side=tk.RIGHT, padx=5)
+
+        # Refresh button (moved to right side)
+        refresh_btn = tk.Button(button_frame, text="Refresh", command=self.refresh_all_data,
+                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
+                            width=universal_font_box_size.button_width)
+        refresh_btn.pack(side=tk.RIGHT, padx=2)
 
         # Define headers for all sections
         self.headers = [
