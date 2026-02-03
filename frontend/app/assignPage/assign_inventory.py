@@ -1,6 +1,7 @@
 # frontend/app/assignPage/assign_inventory.py
 from common_imports import *
 from utils.universal_font_box_size import universal_font_box_size
+from assignPage.search_inventory import SearchInventorySection
 from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
@@ -84,7 +85,7 @@ Eros City Square
 098214 43358"""
         
         company_label = tk.Label(company_frame, text=company_info, 
-                               font=('Helvetica', 8), justify=tk.RIGHT)
+                                   font=('Helvetica', 15), justify=tk.RIGHT)
         company_label.pack()
 
         # Title section in row 2
@@ -98,32 +99,11 @@ Eros City Square
         # Centered inventory list title
         tk.Label(title_frame, text="ASSIGN INVENTORY TO EMPLOYEE",
                font=('Helvetica', 14, 'bold')).pack()
-#  ----------------------- Search Buttons Header Section -----------------------
-        # Search fields in row 3
-        search_frame = tk.Frame(self.window)
-        search_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # Inventory ID
-        tk.Label(search_frame, text="Inventory ID:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=0, sticky='e', padx=5)
-        self.inventory_id = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
-        self.inventory_id.grid(row=0, column=1, sticky='w', padx=5)
+        # Create search section using separate class
+        self.search_section = SearchInventorySection(self.window, self)
+        self.search_section.create_search_section()
         
-        # Project ID
-        tk.Label(search_frame, text="Project ID:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=2, sticky='e', padx=5)
-        self.project_id = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
-        self.project_id.grid(row=0, column=3, sticky='w', padx=5)
-        
-        # Product ID
-        tk.Label(search_frame, text="Product ID:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=4, sticky='e', padx=5)
-        self.product_id = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
-        self.product_id.grid(row=0, column=5, sticky='w', padx=5)
-        
-        # Employee Name
-        tk.Label(search_frame, text="Employee Name:", font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold')).grid(row=0, column=6, sticky='e', padx=5)
-        self.employee_name = tk.Entry(search_frame, font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), width=universal_font_box_size.search_entry_width)
-        self.employee_name.grid(row=0, column=7, sticky='w', padx=5)
-        
-#  ----------------------- End of Search Buttons Header Section -----------------------
 
         # Button frame above separator
         button_frame = tk.Frame(self.window)
