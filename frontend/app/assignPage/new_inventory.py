@@ -85,9 +85,9 @@ class NewInventorySection:
         # Make the popup modal
         popup.grab_set()
         
-        # Window dimensions (larger for better fit)
-        popup.geometry("800x800")  # Increased size to accommodate combo boxes
-        popup.minsize(700, 700)
+        # Window dimensions (larger for better fit with increased fonts and buttons)
+        popup.geometry("1200x900")  # Increased width to accommodate larger fonts and buttons
+        popup.minsize(1000, 800)
         
         # Header
         header_frame = tk.Frame(popup, bg="#f0f0f0")
@@ -179,18 +179,22 @@ class NewInventorySection:
                         values=self.parent.status_options,
                         state="readonly",
                         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
-                        width=universal_font_box_size.search_entry_width
+                        width=universal_font_box_size.search_entry_width,
+                        height=universal_font_box_size.new_entry_header_height
                     )
                     status_combo.set("Assigned")
-                    status_combo.pack(fill=tk.X, expand=True)
+                    status_combo.pack(fill=tk.X, expand=True, ipady=4)  # Added ipady to match other inputs
                     entries[field_name] = status_combo
                 elif field_name == "inventory_name":
                     # InventoryComboBox for inventory name
                     combo_frame = tk.Frame(parent_frame)
                     combo_frame.grid(row=i, column=1, sticky='ew', pady=3)
                     
-                    entry = InventoryComboBox(combo_frame)
-                    entry.pack(fill=tk.X, expand=True)
+                    entry = InventoryComboBox(combo_frame,
+                                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                            width=universal_font_box_size.search_entry_width,
+                                            height=universal_font_box_size.new_entry_header_height)
+                    entry.pack(fill=tk.X, expand=True, ipady=4)  # Added ipady to match other inputs
                     
                     # Bind selection to update related fields
                     entry.bind('<<ComboboxSelected>>', 
