@@ -204,6 +204,8 @@ class NewInventorySection:
                         width=universal_font_box_size.search_entry_width,
                         height=15  # Increased dropdown height to show more options
                     )
+                    # Configure dropdown list font
+                    status_combo.option_add('*TCombobox*Listbox.Font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
                     status_combo.set("Assigned")
                     status_combo.pack(fill=tk.X, expand=True, ipady=4)  # Increased ipady for better height match
                     entries[field_name] = status_combo
@@ -294,6 +296,8 @@ class NewInventorySection:
                     width=universal_font_box_size.search_entry_width,
                     height=universal_font_box_size.new_entry_header_height
                 )
+                # Configure dropdown list font
+                status_combo.option_add('*TCombobox*Listbox.Font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
                 status_combo.set("Assigned")
                 status_combo.pack(fill=tk.X, expand=True, ipady=4)
                 entries[field_name] = status_combo
