@@ -140,16 +140,38 @@ class NewInventorySection:
 # ---------------------------------------------- Create Form ----------------------------------------------------------    
         def create_form_row(parent_frame):
             entries = {}
-            for i, (field_name, label_text) in enumerate(fields):
+            
+            # Create a frame for this form row with 2 columns
+            form_row_frame = tk.Frame(parent_frame)
+            form_row_frame.pack(fill=tk.X, pady=10)
+            
+            # Configure grid weights for responsive layout
+            form_row_frame.grid_columnconfigure(0, weight=1)
+            form_row_frame.grid_columnconfigure(1, weight=1)
+            
+            # Split fields into two columns (8 fields each)
+            left_fields = fields[:8]   # First 8 fields in left column (without Description)
+            right_fields = fields[8:]  # Remaining 9 fields in right column (including Description)
+            
+            # Create left column
+            left_frame = tk.Frame(form_row_frame)
+            left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+            
+            # Create right column  
+            right_frame = tk.Frame(form_row_frame)
+            right_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+            
+            def create_field_widget(parent_frame, row_index, field_name, label_text):
+                """Helper function to create individual field widgets"""
                 # Label with universal font
                 lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5,
                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold'))
-                lbl.grid(row=i, column=0, sticky='e', pady=3)
+                lbl.grid(row=row_index, column=0, sticky='e', pady=3)
                 
                 if field_name in ["assigned_date", "assignment_return_date"]:
                     # DateEntry for date fields
                     date_frame = tk.Frame(parent_frame)
-                    date_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    date_frame.grid(row=row_index, column=1, sticky='ew', pady=3)
                     
                     entry = DateEntry(
                         date_frame,
@@ -172,7 +194,7 @@ class NewInventorySection:
                 elif field_name == "status":
                     # Combobox for status
                     status_frame = tk.Frame(parent_frame)
-                    status_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    status_frame.grid(row=row_index, column=1, sticky='ew', pady=3)
                     
                     status_combo = ttk.Combobox(
                         status_frame,
@@ -183,18 +205,18 @@ class NewInventorySection:
                         height=universal_font_box_size.new_entry_header_height
                     )
                     status_combo.set("Assigned")
-                    status_combo.pack(fill=tk.X, expand=True, ipady=4)  # Added ipady to match other inputs
+                    status_combo.pack(fill=tk.X, expand=True, ipady=4)
                     entries[field_name] = status_combo
                 elif field_name == "inventory_name":
                     # InventoryComboBox for inventory name
                     combo_frame = tk.Frame(parent_frame)
-                    combo_frame.grid(row=i, column=1, sticky='ew', pady=3)
+                    combo_frame.grid(row=row_index, column=1, sticky='ew', pady=3)
                     
                     entry = InventoryComboBox(combo_frame,
                                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
                                             width=universal_font_box_size.search_entry_width,
                                             height=universal_font_box_size.new_entry_header_height)
-                    entry.pack(fill=tk.X, expand=True, ipady=4)  # Added ipady to match other inputs
+                    entry.pack(fill=tk.X, expand=True, ipady=4)
                     
                     # Bind selection to update related fields
                     entry.bind('<<ComboboxSelected>>', 
@@ -205,12 +227,102 @@ class NewInventorySection:
                     entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", 
                                    width=universal_font_box_size.search_entry_width,
                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
-                    entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
+                    entry.grid(row=row_index, column=1, sticky='ew', pady=3, ipady=4)
                     
                     if field_name == "quantity":
                         entry.insert(0, "1")
                     
                     entries[field_name] = entry
+            
+            # Process left column fields
+            for i, (field_name, label_text) in enumerate(left_fields):
+                create_field_widget(left_frame, i, field_name, label_text)
+            
+            # Process right column fields
+            for i, (field_name, label_text) in enumerate(right_fields):
+                create_field_widget(right_frame, i, field_name, label_text)
+            
+            # Add separator line at the end of fields
+            separator_frame = tk.Frame(form_row_frame)
+            separator_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10, 5))
+            
+            separator = ttk.Separator(separator_frame, orient='horizontal')
+            separator.pack(fill=tk.X, expand=True)
+            
+            return entries
+        
+        def _create_field_widget(self, parent_frame, row_index, field_name, label_text, entries):
+            """Helper method to create individual field widgets"""
+            # Label with universal font
+            lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5,
+                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold'))
+            lbl.grid(row=row_index, column=0, sticky='e', pady=3)
+            
+            if field_name in ["assigned_date", "assignment_return_date"]:
+                # DateEntry for date fields
+                date_frame = tk.Frame(parent_frame)
+                date_frame.grid(row=row_index, column=1, sticky='ew', pady=3)
+                
+                entry = DateEntry(
+                    date_frame,
+                    width=universal_font_box_size.search_entry_width,
+                    background='darkblue',
+                    foreground='white',
+                    borderwidth=2,
+                    date_pattern='yyyy-mm-dd',
+                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
+                    calendar_font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
+                    calendar_width=universal_font_box_size.ID * 10,
+                    calendar_height=universal_font_box_size.ID * 10
+                )
+                entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                
+                if field_name == "assigned_date":
+                    entry.set_date(date.today())
+                elif field_name == "assignment_return_date":
+                    entry.set_date(date.today() + timedelta(days=15))
+            elif field_name == "status":
+                # Combobox for status
+                status_frame = tk.Frame(parent_frame)
+                status_frame.grid(row=row_index, column=1, sticky='ew', pady=3)
+                
+                status_combo = ttk.Combobox(
+                    status_frame,
+                    values=self.parent.status_options,
+                    state="readonly",
+                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                    width=universal_font_box_size.search_entry_width,
+                    height=universal_font_box_size.new_entry_header_height
+                )
+                status_combo.set("Assigned")
+                status_combo.pack(fill=tk.X, expand=True, ipady=4)
+                entries[field_name] = status_combo
+            elif field_name == "inventory_name":
+                # InventoryComboBox for inventory name
+                combo_frame = tk.Frame(parent_frame)
+                combo_frame.grid(row=row_index, column=1, sticky='ew', pady=3)
+                
+                entry = InventoryComboBox(combo_frame,
+                                        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                        width=universal_font_box_size.search_entry_width,
+                                        height=universal_font_box_size.new_entry_header_height)
+                entry.pack(fill=tk.X, expand=True, ipady=4)
+                
+                # Bind selection to update related fields
+                entry.bind('<<ComboboxSelected>>', 
+                        lambda e: self._update_inventory_fields(entries, e))
+                entries[field_name] = entry
+            else:
+                # Regular Entry for other fields with universal font
+                entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", 
+                               width=universal_font_box_size.search_entry_width,
+                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                entry.grid(row=row_index, column=1, sticky='ew', pady=3, ipady=4)
+                
+                if field_name == "quantity":
+                    entry.insert(0, "1")
+                
+                entries[field_name] = entry
             
             return entries
                     
