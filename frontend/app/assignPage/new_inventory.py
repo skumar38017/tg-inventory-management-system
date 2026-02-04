@@ -23,7 +23,7 @@ class NewInventorySection:
         """Create the NEW ENTRY section"""
         # NEW ENTRY section
         new_entry_frame = tk.LabelFrame(content_frame, text="NEW ENTRY", 
-                                    font=('Helvetica', 10, 'bold'))
+                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'))
         new_entry_frame.grid(row=2, column=0, sticky="nsew")
         new_entry_frame.grid_columnconfigure(0, weight=1)
         new_entry_frame.grid_rowconfigure(0, weight=1)  # For the treeview
@@ -47,17 +47,17 @@ class NewInventorySection:
 
         # Edit button
         edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_update_section.edit_selected_entry,
-                            font=('Helvetica', 10))
+                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size))
         edit_btn.pack(side=tk.LEFT, padx=5)
         
         # Update button
         update_btn = tk.Button(action_frame, text="Update", command=self.edit_update_section.update_selected_entry,
-                            font=('Helvetica', 10))
+                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size))
         update_btn.pack(side=tk.LEFT, padx=5)
         
         # Delete button
         delete_btn = tk.Button(action_frame, text="Delete", command=self.edit_update_section.delete_selected_entry,
-                            font=('Helvetica', 10))
+                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size))
         delete_btn.pack(side=tk.LEFT, padx=5)
 
         return new_entry_frame
@@ -93,7 +93,7 @@ class NewInventorySection:
         header_frame = tk.Frame(popup, bg="#f0f0f0")
         header_frame.pack(fill=tk.X, pady=10)
         tk.Label(header_frame, text="NEW INVENTORY ASSIGNMENT", 
-                font=('Helvetica', 14, 'bold'), bg="#f0f0f0").pack(pady=10)
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'), bg="#f0f0f0").pack(pady=10)
         
         # Main content area with scrollbar
         container = tk.Frame(popup)
@@ -141,8 +141,9 @@ class NewInventorySection:
         def create_form_row(parent_frame):
             entries = {}
             for i, (field_name, label_text) in enumerate(fields):
-                # Label
-                lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5)
+                # Label with universal font
+                lbl = tk.Label(parent_frame, text=label_text, anchor='e', padx=5,
+                              font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_label_font_size, 'bold'))
                 lbl.grid(row=i, column=0, sticky='e', pady=3)
                 
                 if field_name in ["assigned_date", "assignment_return_date"]:
@@ -152,11 +153,15 @@ class NewInventorySection:
                     
                     entry = DateEntry(
                         date_frame,
-                        width=18,
+                        width=universal_font_box_size.search_entry_width,
                         background='darkblue',
                         foreground='white',
                         borderwidth=2,
-                        date_pattern='yyyy-mm-dd'
+                        date_pattern='yyyy-mm-dd',
+                        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
+                        calendar_font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.date_box_size),
+                        calendar_width=universal_font_box_size.ID * 10,
+                        calendar_height=universal_font_box_size.ID * 10
                     )
                     entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
                     
@@ -172,7 +177,9 @@ class NewInventorySection:
                     status_combo = ttk.Combobox(
                         status_frame,
                         values=self.parent.status_options,
-                        state="readonly"
+                        state="readonly",
+                        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                        width=universal_font_box_size.search_entry_width
                     )
                     status_combo.set("Assigned")
                     status_combo.pack(fill=tk.X, expand=True)
@@ -190,8 +197,10 @@ class NewInventorySection:
                             lambda e: self._update_inventory_fields(entries, e))
                     entries[field_name] = entry
                 else:
-                    # Regular Entry for other fields
-                    entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", width=30)
+                    # Regular Entry for other fields with universal font
+                    entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", 
+                                   width=universal_font_box_size.search_entry_width,
+                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
                     entry.grid(row=i, column=1, sticky='ew', pady=3, ipady=4)
                     
                     if field_name == "quantity":
@@ -296,7 +305,9 @@ class NewInventorySection:
         ]
         
         for text, command in buttons:
-            btn = tk.Button(button_frame, text=text, command=command, width=12)
+            btn = tk.Button(button_frame, text=text, command=command, 
+                          width=universal_font_box_size.button_width,
+                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size))
             btn.pack(side=tk.LEFT, padx=5)
         
         # Make submit button stand out
