@@ -2,6 +2,9 @@
 from common_imports import *
 from utils.universal_font_box_size import universal_font_box_size
 from assignPage.search_inventory import SearchInventorySection
+from assignPage.all_assign_inventory import AllAssignedInventorySection
+from assignPage.recent_assign import RecentlySubmittedSection
+from assignPage.new_inventory import NewInventorySection
 from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
@@ -70,7 +73,7 @@ class AssignInventoryWindow:
         clock_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)
         
         # Clock in center
-        self.clock_label = tk.Label(clock_frame, font=('Helvetica', 10))
+        self.clock_label = tk.Label(clock_frame, font=('Helvetica', 15))
         self.clock_label.pack()
         self.update_clock()
 
@@ -104,6 +107,9 @@ Eros City Square
         self.search_section = SearchInventorySection(self.window, self)
         self.search_section.create_search_section()
         
+        # Create NEW ENTRY section using separate class (before buttons that reference it)
+        self.new_entry_section = NewInventorySection(self.window, self)
+        
 
         # Button frame above separator
         button_frame = tk.Frame(self.window)
@@ -114,7 +120,7 @@ Eros City Square
         separator.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         
         # New Entry button
-        new_entry_btn = tk.Button(button_frame, text="New Entry", command=self.new_entry,
+        new_entry_btn = tk.Button(button_frame, text="New Entry", command=self.new_entry_section.new_entry,
                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'), 
                                 width=universal_font_box_size.search_button_width)
         new_entry_btn.pack(side=tk.RIGHT, padx=2)
@@ -133,103 +139,36 @@ Eros City Square
         content_frame.grid_rowconfigure(2, weight=1)  # New Entry section
         content_frame.grid_columnconfigure(0, weight=1)
 
-        # ALL ASSIGNED INVENTORY section
-        assigned_frame = tk.LabelFrame(content_frame, text="ALL ASSIGNED INVENTORY", 
-                                     font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'))
-        assigned_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
-        assigned_frame.grid_columnconfigure(0, weight=1)
-        assigned_frame.grid_rowconfigure(0, weight=1)
-        
-        # Treeview for assigned inventory
-        self.assigned_tree = ttk.Treeview(assigned_frame)
-        self.assigned_tree.grid(row=0, column=0, sticky="nsew")
-            
-        # Scrollbars - Modified for proper left-to-right scrolling
-        assigned_vsb = ttk.Scrollbar(assigned_frame, orient="vertical", command=self.assigned_tree.yview)
-        assigned_hsb = ttk.Scrollbar(assigned_frame, orient="horizontal", command=self.assigned_tree.xview)
-        self.assigned_tree.configure(yscrollcommand=assigned_vsb.set, xscrollcommand=assigned_hsb.set)
-        
-        # Grid placement - ensure horizontal scrollbar is at the bottom
-        assigned_vsb.grid(row=0, column=1, sticky="ns")
-        assigned_hsb.grid(row=1, column=0, sticky="ew")
+        # Create ALL ASSIGNED INVENTORY section using separate class
+        self.all_assigned_section = AllAssignedInventorySection(self.window, self)
+        self.all_assigned_section.create_all_assigned_inventory_section(content_frame)
 
-        # RECENTLY SUBMITTED section
-        recent_frame = tk.LabelFrame(content_frame, text="RECENTLY SUBMITTED (current day)", 
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.qr_barcode_header_font_size, 'bold'))
-        recent_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
-        recent_frame.grid_columnconfigure(0, weight=1)
-        recent_frame.grid_rowconfigure(0, weight=1)
-        
-        # Treeview for recent submissions
-        self.recent_tree = ttk.Treeview(recent_frame)
-        self.recent_tree.grid(row=0, column=0, sticky="nsew")
-        
-        # Scrollbars - Modified for proper left-to-right scrolling
-        recent_vsb = ttk.Scrollbar(recent_frame, orient="vertical", command=self.recent_tree.yview)
-        recent_hsb = ttk.Scrollbar(recent_frame, orient="horizontal", command=self.recent_tree.xview)
-        self.recent_tree.configure(yscrollcommand=recent_vsb.set, xscrollcommand=recent_hsb.set)
-        
-        # Grid placement
-        recent_vsb.grid(row=0, column=1, sticky="ns")
-        recent_hsb.grid(row=1, column=0, sticky="ew")
+        # Create RECENTLY SUBMITTED section using separate class
+        self.recent_section = RecentlySubmittedSection(self.window, self)
+        self.recent_section.create_recently_submitted_section(content_frame)
 
-        # NEW ENTRY section
-        new_entry_frame = tk.LabelFrame(content_frame, text="NEW ENTRY", 
-                                    font=('Helvetica', 10, 'bold'))
-        new_entry_frame.grid(row=2, column=0, sticky="nsew")
-        new_entry_frame.grid_columnconfigure(0, weight=1)
-        new_entry_frame.grid_rowconfigure(0, weight=1)  # For the treeview
-        
-        # Treeview for new entries
-        self.new_entry_tree = ttk.Treeview(new_entry_frame)
-        self.new_entry_tree.grid(row=0, column=0, sticky="nsew")
-
-        # Scrollbars - Modified for proper left-to-right scrolling
-        new_entry_vsb = ttk.Scrollbar(new_entry_frame, orient="vertical", command=self.new_entry_tree.yview)
-        new_entry_hsb = ttk.Scrollbar(new_entry_frame, orient="horizontal", command=self.new_entry_tree.xview)
-        self.new_entry_tree.configure(yscrollcommand=new_entry_vsb.set, xscrollcommand=new_entry_hsb.set)
-        
-        # Grid placement
-        new_entry_vsb.grid(row=0, column=1, sticky="ns")
-        new_entry_hsb.grid(row=1, column=0, sticky="ew")
-            
-        # Action buttons frame for the new entry section
-        action_frame = tk.Frame(new_entry_frame)
-        action_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
-
-        # Edit button
-        edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_selected_entry,
-                            font=('Helvetica', 10))
-        edit_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Update button
-        update_btn = tk.Button(action_frame, text="Update", command=self.update_selected_entry,
-                            font=('Helvetica', 10))
-        update_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Delete button
-        delete_btn = tk.Button(action_frame, text="Delete", command=self.delete_selected_entry,
-                            font=('Helvetica', 10))
-        delete_btn.pack(side=tk.LEFT, padx=5)
+        # Create NEW ENTRY section using separate class
+        self.new_entry_section = NewInventorySection(self.window, self)
+        self.new_entry_section.create_new_entry_section(content_frame)
 
         # Bottom buttons in row 6
         button_frame = tk.Frame(self.window)
         button_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=10)
 
         # Wrap button
-        self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
+        self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.new_entry_section.toggle_wrap,
                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
                                 width=universal_font_box_size.button_width)
         self.wrap_btn.pack(side=tk.LEFT, padx=2)
 
         # Remove row button
-        remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.remove_table_row,
+        remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.new_entry_section.remove_table_row,
                                  font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
                                  width=universal_font_box_size.button_width)
         remove_row_btn.pack(side=tk.LEFT, padx=2)
 
         # Add row button
-        add_row_btn = tk.Button(button_frame, text="Add Row", command=self.add_table_row,
+        add_row_btn = tk.Button(button_frame, text="Add Row", command=self.new_entry_section.add_table_row,
                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
                               width=universal_font_box_size.button_width)
         add_row_btn.pack(side=tk.LEFT, padx=2)
@@ -261,10 +200,6 @@ Eros City Square
         
         # Configure all treeviews
         self.configure_treeviews()
-        
-        # Bind double-click events
-        self.assigned_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.assigned_tree))
-        self.recent_tree.bind('<Double-1>', lambda e: self.load_selected_to_new_entry(self.recent_tree))
 
     def configure_treeviews(self):
         """Configure columns for all treeviews"""
@@ -283,43 +218,6 @@ Eros City Square
         # Bind column resize events
         for tree in [self.assigned_tree, self.recent_tree, self.new_entry_tree]:
             tree.bind("<Map>", lambda e: self.auto_size_columns(e.widget))
-
-    def load_selected_to_new_entry(self, source_tree):
-        """Load selected item from source tree into new entry tree"""
-        selected_item = source_tree.selection()
-        if not selected_item:
-            return
-            
-        try:
-            item = selected_item[0]
-            values = source_tree.item(item, 'values')
-            
-            # Clear existing entries in new entry tree
-            self.new_entry_tree.delete(*self.new_entry_tree.get_children())
-            
-            # Add the selected record to new entry tree
-            self.new_entry_tree.insert('', 'end', values=values)
-            
-            # Store the ID of the record being edited
-            self.currently_editing_id = values[0]
-            self.edit_mode = True
-            
-            # Update search fields
-            self.inventory_id.delete(0, tk.END)
-            self.inventory_id.insert(0, values[3])  # Inventory ID
-            
-            self.project_id.delete(0, tk.END)
-            self.project_id.insert(0, values[4])  # Project ID
-            
-            self.product_id.delete(0, tk.END)
-            self.product_id.insert(0, values[5])  # Product ID
-            
-            self.employee_name.delete(0, tk.END)
-            self.employee_name.insert(0, values[2])  # Employee Name
-                        
-        except Exception as e:
-            logger.error(f"Error loading record to new entry: {e}")
-            messagebox.showerror("Error", "Could not load record to new entry")
 
 # ---------------------------------------- Edit/Update section --------------------------------------------
     def edit_selected_entry(self):
@@ -539,53 +437,22 @@ Eros City Square
                 messagebox.showerror("Error", f"Failed to delete record: {str(e)}")
 
     def refresh_assigned_inventory_list(self):
-        """Refresh the list of all assigned inventory with proper column sizing"""
-        try:
-            # Clear existing items
-            self.assigned_tree.delete(*self.assigned_tree.get_children())
-            
-            # Load data from database
-            inventory_list = show_all_assigned_inventory_from_db()
-            
-            if not inventory_list:
-                return
-            
-            # Add items to treeview
-            for item in inventory_list:
-                values = [
-                    item.get('id', ''),
-                    item.get('sno', ''),
-                    item.get('assigned_to', ''),
-                    item.get('employee_name', ''),
-                    item.get('inventory_id', ''),
-                    item.get('project_id', ''),
-                    item.get('product_id', ''),
-                    item.get('inventory_name', ''),
-                    item.get('description', ''),
-                    item.get('quantity', ''),
-                    item.get('status', ''),
-                    self.format_date(item.get('assigned_date', '')),
-                    self.format_date(item.get('submission_date', '')),
-                    item.get('purpose_reason', ''),
-                    item.get('assigned_by', ''),
-                    item.get('comments', ''),
-                    self.format_date(item.get('assignment_return_date', '')),
-                    item.get('assignment_barcode', ''),
-                    item.get('zone_activity', ''),
-                    item.get('location', ''),
-                    item.get('client_name', '')
-                ]
-                self.assigned_tree.insert('', 'end', values=values)
-            
-            # Auto-size columns after loading data
-            self.auto_size_columns(self.assigned_tree)
-                
-        except Exception as e:
-            logger.error(f"Error refreshing assigned inventory list: {e}")
-            messagebox.showerror("Error", "Could not refresh assigned inventory list")
+        """Delegate to the all assigned inventory section"""
+        self.all_assigned_section.refresh_assigned_inventory_list()
 
     def auto_size_columns(self, tree):
         """Automatically resize columns to fit content"""
+        # Delegate to all assigned section if it's the assigned tree
+        if hasattr(self, 'assigned_tree') and tree == self.assigned_tree:
+            self.all_assigned_section.auto_size_columns(tree)
+            return
+        
+        # Delegate to recent section if it's the recent tree
+        if hasattr(self, 'recent_tree') and tree == self.recent_tree:
+            self.recent_section.auto_size_columns(tree)
+            return
+            
+        # Handle other trees (new_entry_tree)
         default_font = font.nametofont("TkDefaultFont")
         
         for col in range(len(self.headers)):
@@ -603,57 +470,8 @@ Eros City Square
             tree.column(col, width=max(min(max_width, 750), 400), stretch=False)
                              
     def load_recent_submissions(self):
-        """Load recently submitted assignments (current day) with proper column sizing"""
-        try:
-            # Clear existing items
-            self.recent_tree.delete(*self.recent_tree.get_children())
-            
-            # Load data from API
-            recent_submissions = load_submitted_assigned_inventory()
-            current_day = datetime.now().date()
-            
-            if not recent_submissions:
-                return
-            
-            # Add items to treeview
-            for item in recent_submissions:
-                try:
-                    updated_at_str = item.get('updated_at', '')
-                    if updated_at_str:
-                        # Parse date and check if it's today
-                        updated_at = datetime.fromisoformat(updated_at_str.replace('Z', '+00:00'))
-                        if updated_at.date() == current_day:
-                            values = [
-                                item.get('id', ''),
-                                item.get('sno', ''),
-                                item.get('assigned_to', ''),
-                                item.get('employee_name', ''),
-                                item.get('inventory_id', ''),
-                                item.get('project_id', ''),
-                                item.get('product_id', ''),
-                                item.get('inventory_name', ''),
-                                item.get('description', ''),
-                                item.get('quantity', ''),
-                                item.get('status', ''),
-                                self.format_date(item.get('assigned_date', '')),
-                                self.format_date(item.get('submission_date', '')),
-                                item.get('purpose_reason', ''),
-                                item.get('assigned_by', ''),
-                                item.get('comments', ''),
-                                self.format_date(item.get('assignment_return_date', '')),
-                                item.get('assignment_barcode', '')
-                            ]
-                            self.recent_tree.insert('', 'end', values=values)
-                except Exception as e:
-                    logger.warning(f"Skipping record due to parsing error: {e}")
-                    continue
-            
-            # Auto-size columns after loading data
-            self.auto_size_columns(self.recent_tree)
-                    
-        except Exception as e:
-            logger.error(f"Error loading recent submissions: {e}")
-            messagebox.showerror("Error", "Could not load recent submissions")
+        """Delegate to the recently submitted section"""
+        self.recent_section.load_recent_submissions()
 
     def format_date(self, date_str: str) -> str:
         """Format date string for display (handles multiple formats)"""
@@ -979,59 +797,9 @@ Eros City Square
             self.wrap_btn.config(text="Wrap")
             self.is_wrapped = False
 
-#  ----------------------- Search by Inventory_ID  Popup -----------------------
     def search_product(self):
-        """Handle product search with proper error handling"""
-        try:
-            inventory_id = self.inventory_id.get().strip()
-            project_id = self.project_id.get().strip()
-            product_id = self.product_id.get().strip()
-            employee_name = self.employee_name.get().strip()
-            
-            if not any([inventory_id, project_id, product_id, employee_name]):
-                messagebox.showwarning("Warning", "Please enter at least one search criteria")
-                return
-
-            results = search_assigned_inventory_by_id(
-                inventory_id=inventory_id,
-                project_id=project_id,
-                product_id=product_id,
-                employee_name=employee_name
-            )
-            
-            if results:
-                # Clear existing items
-                self.assigned_tree.delete(*self.assigned_tree.get_children())
-                
-                # Add search results
-                for item in results:
-                    self.assigned_tree.insert('', 'end', values=[
-                        item.get('id', ''),
-                        item.get('sno', ''),
-                        item.get('assigned_to', ''),
-                        item.get('employee_name', ''),
-                        item.get('inventory_id', ''),
-                        item.get('project_id', ''),
-                        item.get('product_id', ''),
-                        item.get('inventory_name', ''),
-                        item.get('description', ''),
-                        item.get('quantity', ''),
-                        item.get('status', ''),
-                        self.format_date(item.get('assigned_date', '')),
-                        self.format_date(item.get('submission_date', '')),
-                        item.get('purpose_reason', ''),
-                        item.get('assigned_by', ''),
-                        item.get('comments', ''),
-                        self.format_date(item.get('assignment_return_date', '')),
-                        item.get('assignment_barcode', ''),
-                    ])
-            else:
-                messagebox.showinfo("Info", "No matching records found")
-                
-        except Exception as e:
-            logger.error(f"Search error: {e}")
-            messagebox.showerror("Error", str(e))
-#  ----------------------- End of Search by Inventory_ID  Popup -----------------------
+        """Delegate to the search inventory section"""
+        self.search_section.search_product()
 
     def submit_form(self):
         """Handle form submission for new records - all fields are optional"""

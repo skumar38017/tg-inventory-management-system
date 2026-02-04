@@ -2,6 +2,7 @@
 
 from common_imports import *
 from utils.universal_font_box_size import universal_font_box_size
+from api_request.assign_inventory_api_request import search_assigned_inventory_by_id
 
 class SearchInventorySection:
     def __init__(self, parent_window, parent_instance):
@@ -38,3 +39,55 @@ class SearchInventorySection:
         #  ----------------------- End of Search Buttons Header Section -----------------------
         
         return search_frame
+    
+    def search_product(self):
+        """Handle product search with proper error handling"""
+        try:
+            inventory_id = self.parent.inventory_id.get().strip()
+            project_id = self.parent.project_id.get().strip()
+            product_id = self.parent.product_id.get().strip()
+            employee_name = self.parent.employee_name.get().strip()
+            
+            if not any([inventory_id, project_id, product_id, employee_name]):
+                messagebox.showwarning("Warning", "Please enter at least one search criteria")
+                return
+
+            results = search_assigned_inventory_by_id(
+                inventory_id=inventory_id,
+                project_id=project_id,
+                product_id=product_id,
+                employee_name=employee_name
+            )
+            
+            if results:
+                # Clear existing items
+                self.parent.assigned_tree.delete(*self.parent.assigned_tree.get_children())
+                
+                # Add search results
+                for item in results:
+                    self.parent.assigned_tree.insert('', 'end', values=[
+                        item.get('id', ''),
+                        item.get('sno', ''),
+                        item.get('assigned_to', ''),
+                        item.get('employee_name', ''),
+                        item.get('inventory_id', ''),
+                        item.get('project_id', ''),
+                        item.get('product_id', ''),
+                        item.get('inventory_name', ''),
+                        item.get('description', ''),
+                        item.get('quantity', ''),
+                        item.get('status', ''),
+                        self.parent.format_date(item.get('assigned_date', '')),
+                        self.parent.format_date(item.get('submission_date', '')),
+                        item.get('purpose_reason', ''),
+                        item.get('assigned_by', ''),
+                        item.get('comments', ''),
+                        self.parent.format_date(item.get('assignment_return_date', '')),
+                        item.get('assignment_barcode', ''),
+                    ])
+            else:
+                messagebox.showinfo("Info", "No matching records found")
+                
+        except Exception as e:
+            logger.error(f"Search error: {e}")
+            messagebox.showerror("Error", str(e))
