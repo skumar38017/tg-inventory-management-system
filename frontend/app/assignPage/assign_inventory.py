@@ -5,6 +5,7 @@ from assignPage.search_inventory import SearchInventorySection
 from assignPage.all_assign_inventory import AllAssignedInventorySection
 from assignPage.recent_assign import RecentlySubmittedSection
 from assignPage.new_inventory import NewInventorySection
+from assignPage.footers import FootersSection
 from api_request.assign_inventory_api_request import (
     search_assigned_inventory_by_id,
     load_submitted_assigned_inventory,
@@ -151,45 +152,9 @@ Eros City Square
         self.new_entry_section = NewInventorySection(self.window, self)
         self.new_entry_section.create_new_entry_section(content_frame)
 
-        # Bottom buttons in row 6
-        button_frame = tk.Frame(self.window)
-        button_frame.grid(row=6, column=0, columnspan=2, sticky="ew", pady=10)
-
-        # Wrap button
-        self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.new_entry_section.toggle_wrap,
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
-                                width=universal_font_box_size.button_width)
-        self.wrap_btn.pack(side=tk.LEFT, padx=2)
-
-        # Remove row button
-        remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.new_entry_section.remove_table_row,
-                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
-                                 width=universal_font_box_size.button_width)
-        remove_row_btn.pack(side=tk.LEFT, padx=2)
-
-        # Add row button
-        add_row_btn = tk.Button(button_frame, text="Add Row", command=self.new_entry_section.add_table_row,
-                              font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
-                              width=universal_font_box_size.button_width)
-        add_row_btn.pack(side=tk.LEFT, padx=2)
-
-        # Clear button
-        clear_btn = tk.Button(button_frame, text="Clear", command=self.clear_form,
-                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
-                            width=universal_font_box_size.button_width)
-        clear_btn.pack(side=tk.LEFT, padx=2)
-
-        # Return button
-        return_btn = tk.Button(button_frame, text="Return", command=self.on_close,
-                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size, 'bold'),
-                             width=universal_font_box_size.button_width)
-        return_btn.pack(side=tk.RIGHT, padx=5)
-
-        # Refresh button (moved to right side)
-        refresh_btn = tk.Button(button_frame, text="Refresh", command=self.refresh_all_data,
-                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_button_font_size),
-                            width=universal_font_box_size.button_width)
-        refresh_btn.pack(side=tk.RIGHT, padx=2)
+        # Create bottom buttons using separate class
+        self.footers_section = FootersSection(self.window, self)
+        self.footers_section.create_bottom_buttons()
 
         # Define headers for all sections
         self.headers = [
