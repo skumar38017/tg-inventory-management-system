@@ -13,6 +13,9 @@ class ToEventWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs - To Event")
 
+        # Configure global messagebox font for consistent appearance across all dialogs
+        self.window.option_add('*Dialog.msg.font', ('Arial', 12))
+
         # Maximize window
         maximize_window(self.window)
 

@@ -282,6 +282,9 @@ def setup_main_window():
     root.title("Tagglabs Inventory Management System")
     root.configure(bg='#f0f0f0')  # Light gray background
     
+    # Configure global messagebox font for consistent appearance across all dialogs
+    root.option_add('*Dialog.msg.font', ('Arial', 12))
+    
     # Use the imported maximize_window function
     maximize_window(root)
     

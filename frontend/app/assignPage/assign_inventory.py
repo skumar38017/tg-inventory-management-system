@@ -25,6 +25,9 @@ class AssignInventoryWindow:
         self.window = tk.Toplevel(parent)
         self.window.title("Tagglabs's Inventory - Assign Inventory To Employee")
 
+        # Configure global messagebox font for consistent appearance across all dialogs
+        self.window.option_add('*Dialog.msg.font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+
         # Maximize window
         self.maximize_window()
         
