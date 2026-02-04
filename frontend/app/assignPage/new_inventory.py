@@ -9,11 +9,15 @@ from api_request.assign_inventory_api_request import (
     delete_assigned_inventory
 )
 from widgets.inventory_combobox import InventoryComboBox
+from assignPage.edit_update import EditUpdateSection
 
 class NewInventorySection:
     def __init__(self, parent_window, parent_instance):
         self.window = parent_window
         self.parent = parent_instance
+        
+        # Create edit/update section
+        self.edit_update_section = EditUpdateSection(parent_window, parent_instance)
         
     def create_new_entry_section(self, content_frame):
         """Create the NEW ENTRY section"""
@@ -42,34 +46,34 @@ class NewInventorySection:
         action_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
 
         # Edit button
-        edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_selected_entry,
+        edit_btn = tk.Button(action_frame, text="Edit", command=self.edit_update_section.edit_selected_entry,
                             font=('Helvetica', 10))
         edit_btn.pack(side=tk.LEFT, padx=5)
         
         # Update button
-        update_btn = tk.Button(action_frame, text="Update", command=self.update_selected_entry,
+        update_btn = tk.Button(action_frame, text="Update", command=self.edit_update_section.update_selected_entry,
                             font=('Helvetica', 10))
         update_btn.pack(side=tk.LEFT, padx=5)
         
         # Delete button
-        delete_btn = tk.Button(action_frame, text="Delete", command=self.delete_selected_entry,
+        delete_btn = tk.Button(action_frame, text="Delete", command=self.edit_update_section.delete_selected_entry,
                             font=('Helvetica', 10))
         delete_btn.pack(side=tk.LEFT, padx=5)
 
         return new_entry_frame
     
-    # Delegate methods - these will call the parent methods for now
+    # Delegate methods to edit_update section
     def edit_selected_entry(self):
-        """Delegate to parent method"""
-        self.parent.edit_selected_entry()
+        """Delegate to edit_update section"""
+        self.edit_update_section.edit_selected_entry()
     
     def update_selected_entry(self):
-        """Delegate to parent method"""
-        self.parent.update_selected_entry()
+        """Delegate to edit_update section"""
+        self.edit_update_section.update_selected_entry()
     
     def delete_selected_entry(self):
-        """Delegate to parent method"""
-        self.parent.delete_selected_entry()
+        """Delegate to edit_update section"""
+        self.edit_update_section.delete_selected_entry()
     
     # --------------------------- New Entry Popup ---------------------------
     def new_entry(self):
