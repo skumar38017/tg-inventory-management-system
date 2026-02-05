@@ -1,6 +1,7 @@
 # frontend/app/damage_inventory.py
 
 from common_imports import *
+from utils.universal_font_box_size import universal_font_box_size
 from api_request.damage_inventory_api_request import (
     search_wastage_inventory_by_id,
     submit_wastage_inventory,
@@ -17,7 +18,7 @@ class DamageWindow:
         self.window.title("Inventory Damage/Waste Management")
         
         # Configure global messagebox font for consistent appearance across all dialogs
-        self.window.option_add('*Dialog.msg.font', ('Arial', 12))
+        self.window.option_add('*Dialog.msg.font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
         
         # Maximize window
         self.maximize_window()
@@ -85,13 +86,14 @@ class DamageWindow:
             row = i // 3
             col = (i % 3) * 2
             
-            tk.Label(input_frame, text=display + ":").grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
+            tk.Label(input_frame, text=display + ":",
+                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
             
             # Special handling for inventory_name and project_name
             if field == "inventory_name":
                 self.inventory_name_combobox = InventoryComboBox(
                     input_frame, 
-                    width=23
+                    width=universal_font_box_size.search_entry_width
                 )
                 self.inventory_name_combobox.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
                 self.inventory_name_combobox.bind("<<ComboboxSelected>>", self.on_inventory_selected)
@@ -100,7 +102,7 @@ class DamageWindow:
             elif field == "project_name":
                 self.project_name_combobox = ttk.Combobox(
                     input_frame, 
-                    width=23,
+                    width=universal_font_box_size.search_entry_width,
                     postcommand=self.update_project_combobox
                 )
                 self.project_name_combobox.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
@@ -109,19 +111,19 @@ class DamageWindow:
                 
             # Use Combobox for status and wastage_status fields
             elif field in ["status", "wastage_status", "check_status"]:
-                combo = ttk.Combobox(input_frame, width=23, values=self.status_options)
+                combo = ttk.Combobox(input_frame, width=universal_font_box_size.search_entry_width, values=self.status_options)
                 combo.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
                 self.entries[field] = combo
                 
             # Use DateEntry for date fields
             elif field in ["wastage_date", "event_date", "receive_date"]:
-                date_entry = DateEntry(input_frame, width=22, background='darkblue',
+                date_entry = DateEntry(input_frame, width=universal_font_box_size.search_entry_width-1, background='darkblue',
                                       foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
                 date_entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
                 self.entries[field] = date_entry
                 
             else:
-                entry = tk.Entry(input_frame, width=25)
+                entry = tk.Entry(input_frame, width=universal_font_box_size.search_entry_width)
                 entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
                 self.entries[field] = entry
             
@@ -144,25 +146,34 @@ class DamageWindow:
         tk.Button(button_frame, text="Refresh", command=self.refresh_data).pack(side=tk.LEFT, padx=5)
         
         # Search frame
-        search_frame = tk.LabelFrame(main_frame, text="Search", padx=5, pady=5)
+        search_frame = tk.LabelFrame(main_frame, text="Search", padx=5, pady=5,
+                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         search_frame.pack(fill=tk.X, pady=5)
         
-        tk.Label(search_frame, text="Inventory ID:").grid(row=0, column=0, sticky=tk.E, padx=5)
-        self.search_inventory_id = tk.Entry(search_frame, width=20)
+        tk.Label(search_frame, text="Inventory ID:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=0, sticky=tk.E, padx=5)
+        self.search_inventory_id = tk.Entry(search_frame, width=universal_font_box_size.search_entry_width,
+                                          font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
         self.search_inventory_id.grid(row=0, column=1, sticky=tk.W, padx=5)
         
-        tk.Label(search_frame, text="Project ID:").grid(row=0, column=2, sticky=tk.E, padx=5)
-        self.search_project_id = tk.Entry(search_frame, width=20)
+        tk.Label(search_frame, text="Project ID:",
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=2, sticky=tk.E, padx=5)
+        self.search_project_id = tk.Entry(search_frame, width=universal_font_box_size.search_entry_width,
+                                        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
         self.search_project_id.grid(row=0, column=3, sticky=tk.W, padx=5)
         
-        tk.Label(search_frame, text="Product ID:").grid(row=0, column=4, sticky=tk.E, padx=5)
-        self.search_product_id = tk.Entry(search_frame, width=20)
+        tk.Label(search_frame, text="Product ID:",
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=4, sticky=tk.E, padx=5)
+        self.search_product_id = tk.Entry(search_frame, width=universal_font_box_size.search_entry_width,
+                                        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
         self.search_product_id.grid(row=0, column=5, sticky=tk.W, padx=5)
         
-        tk.Button(search_frame, text="Search", command=self.search_inventory).grid(row=0, column=6, padx=5)
+        tk.Button(search_frame, text="Search", command=self.search_inventory,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=6, padx=5)
         
         # Results frame with treeview
-        results_frame = tk.LabelFrame(main_frame, text="Results", padx=5, pady=5)
+        results_frame = tk.LabelFrame(main_frame, text="Results", padx=5, pady=5,
+                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         results_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         # Create treeview with scrollbars
@@ -178,14 +189,14 @@ class DamageWindow:
         # Configure column headings
         for col, name in enumerate(self.display_names):
             self.tree.heading(col, text=name)
-            self.tree.column(col, width=120, minwidth=50)
+            self.tree.column(col, width=400, minwidth=250)
         
         # Bind treeview selection
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
         # Return button
         return_btn = tk.Button(button_frame, text="Return to Main", command=self.on_close,
-                             font=('Helvetica', 12, 'bold'))
+                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         return_btn.pack(side=tk.RIGHT, padx=5)
         
         # Configure grid weights
