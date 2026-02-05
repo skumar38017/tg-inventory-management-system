@@ -91,28 +91,47 @@ class DamageWindow:
             
             # Special handling for inventory_name and project_name
             if field == "inventory_name":
+                # InventoryComboBox with frame wrapper (same as assignPage structure)
+                combo_frame = tk.Frame(input_frame)
+                combo_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
+                
                 self.inventory_name_combobox = InventoryComboBox(
-                    input_frame, 
-                    width=universal_font_box_size.search_entry_width
+                    combo_frame,
+                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                    width=universal_font_box_size.search_entry_width,
+                    height=universal_font_box_size.new_entry_header_height
                 )
-                self.inventory_name_combobox.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.inventory_name_combobox.pack(fill=tk.X, expand=True, ipady=4)
                 self.inventory_name_combobox.bind("<<ComboboxSelected>>", self.on_inventory_selected)
                 self.entries[field] = self.inventory_name_combobox
                 
             elif field == "project_name":
+                # Project combobox with frame wrapper
+                combo_frame = tk.Frame(input_frame)
+                combo_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
+                
                 self.project_name_combobox = ttk.Combobox(
-                    input_frame, 
+                    combo_frame,
+                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
                     width=universal_font_box_size.search_entry_width,
+                    height=universal_font_box_size.new_entry_header_height,
                     postcommand=self.update_project_combobox
                 )
-                self.project_name_combobox.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                self.project_name_combobox.pack(fill=tk.X, expand=True, ipady=4)
                 self.project_name_combobox.bind("<<ComboboxSelected>>", self.on_project_selected)
                 self.entries[field] = self.project_name_combobox
                 
             # Use Combobox for status and wastage_status fields
             elif field in ["status", "wastage_status", "check_status"]:
-                combo = ttk.Combobox(input_frame, width=universal_font_box_size.search_entry_width, values=self.status_options)
-                combo.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                # Status combobox with frame wrapper
+                combo_frame = tk.Frame(input_frame)
+                combo_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
+                
+                combo = ttk.Combobox(combo_frame, values=self.status_options,
+                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                   width=universal_font_box_size.search_entry_width,
+                                   height=universal_font_box_size.new_entry_header_height, state="readonly")
+                combo.pack(fill=tk.X, expand=True, ipady=4)
                 self.entries[field] = combo
                 
             # Use DateEntry for date fields
