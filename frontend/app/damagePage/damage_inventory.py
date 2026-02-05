@@ -121,6 +121,8 @@ class DamageWindow:
                     width=universal_font_box_size.search_entry_width,
                     height=universal_font_box_size.new_entry_header_height
                 )
+                # Configure dropdown list font
+                self.inventory_name_combobox.option_add('*TCombobox*Listbox.Font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
                 self.inventory_name_combobox.pack(fill=tk.X, expand=True, ipady=4)
                 self.inventory_name_combobox.bind("<<ComboboxSelected>>", self.on_inventory_selected)
                 self.entries[field] = self.inventory_name_combobox
@@ -137,6 +139,8 @@ class DamageWindow:
                     height=universal_font_box_size.new_entry_header_height,
                     postcommand=self.update_project_combobox
                 )
+                # Configure dropdown list font
+                self.project_name_combobox.option_add('*TCombobox*Listbox.Font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
                 self.project_name_combobox.pack(fill=tk.X, expand=True, ipady=4)
                 self.project_name_combobox.bind("<<ComboboxSelected>>", self.on_project_selected)
                 self.entries[field] = self.project_name_combobox
@@ -151,6 +155,8 @@ class DamageWindow:
                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
                                    width=universal_font_box_size.search_entry_width,
                                    height=universal_font_box_size.new_entry_header_height, state="readonly")
+                # Configure dropdown list font
+                combo.option_add('*TCombobox*Listbox.Font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
                 combo.pack(fill=tk.X, expand=True, ipady=4)
                 self.entries[field] = combo
                 
