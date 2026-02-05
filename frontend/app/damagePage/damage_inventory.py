@@ -76,9 +76,29 @@ class DamageWindow:
         main_frame = tk.Frame(self.window)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Input frame
-        input_frame = tk.LabelFrame(main_frame, text="Enter Wastage Details", padx=5, pady=5)
+        # Input frame with consistent font
+        input_frame = tk.LabelFrame(main_frame, text="Enter Wastage Details", padx=5, pady=5,
+                                  font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         input_frame.pack(fill=tk.X, pady=5)
+        
+        # Scrollable container inside the input frame
+        canvas = tk.Canvas(input_frame, height=300)  # Increased height to show 5-6 fields
+        h_scrollbar = tk.Scrollbar(input_frame, orient="horizontal", command=canvas.xview)
+        scrollable_frame = tk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(xscrollcommand=h_scrollbar.set)
+        
+        canvas.pack(side="top", fill="both", expand=True)
+        h_scrollbar.pack(side="bottom", fill="x")
+        
+        # Now the input fields will be created inside scrollable_frame
+        fields_frame = scrollable_frame
         
         # Create input fields - arrange 4-5 fields per column in 4 columns
         self.entries = {}
@@ -86,13 +106,13 @@ class DamageWindow:
             row = i % 5  # 4-5 fields per column
             col = (i // 5) * 2  # 4 columns (each field takes 2 grid columns: label + input)
             
-            tk.Label(input_frame, text=display + ":",
+            tk.Label(fields_frame, text=display + ":",
                     font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
             
             # Special handling for inventory_name and project_name
             if field == "inventory_name":
                 # InventoryComboBox with frame wrapper (same as assignPage structure)
-                combo_frame = tk.Frame(input_frame)
+                combo_frame = tk.Frame(fields_frame)
                 combo_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
                 
                 self.inventory_name_combobox = InventoryComboBox(
@@ -107,7 +127,7 @@ class DamageWindow:
                 
             elif field == "project_name":
                 # Project combobox with frame wrapper
-                combo_frame = tk.Frame(input_frame)
+                combo_frame = tk.Frame(fields_frame)
                 combo_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
                 
                 self.project_name_combobox = ttk.Combobox(
@@ -124,7 +144,7 @@ class DamageWindow:
             # Use Combobox for status and wastage_status fields
             elif field in ["status", "wastage_status", "check_status"]:
                 # Status combobox with frame wrapper
-                combo_frame = tk.Frame(input_frame)
+                combo_frame = tk.Frame(fields_frame)
                 combo_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
                 
                 combo = ttk.Combobox(combo_frame, values=self.status_options,
@@ -137,7 +157,7 @@ class DamageWindow:
             # Use DateEntry for date fields
             elif field in ["wastage_date", "event_date", "receive_date"]:
                 # Date entry with frame wrapper for consistent sizing
-                date_frame = tk.Frame(input_frame)
+                date_frame = tk.Frame(fields_frame)
                 date_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
                 
                 date_entry = DateEntry(date_frame, width=universal_font_box_size.search_entry_width-1, background='darkblue',
@@ -148,7 +168,7 @@ class DamageWindow:
                 
             else:
                 # Regular entry with frame wrapper for consistent sizing
-                entry_frame = tk.Frame(input_frame)
+                entry_frame = tk.Frame(fields_frame)
                 entry_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
                 
                 entry = tk.Entry(entry_frame, width=universal_font_box_size.search_entry_width,
@@ -167,12 +187,18 @@ class DamageWindow:
         button_frame.pack(fill=tk.X, pady=10)
         
         # Action buttons
-        tk.Button(button_frame, text="New", command=self.new_entry).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Submit", command=self.submit_form).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Edit", command=self.edit_selected).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Update", command=self.update_selected).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Delete", command=self.delete_selected).pack(side=tk.LEFT, padx=5)
-        tk.Button(button_frame, text="Refresh", command=self.refresh_data).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="New", command=self.new_entry,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Submit", command=self.submit_form,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Edit", command=self.edit_selected,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Update", command=self.update_selected,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Delete", command=self.delete_selected,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Refresh", command=self.refresh_data,
+                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).pack(side=tk.LEFT, padx=5)
         
         # Search frame
         search_frame = tk.LabelFrame(main_frame, text="Search", padx=5, pady=5,
