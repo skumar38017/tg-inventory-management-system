@@ -80,11 +80,11 @@ class DamageWindow:
         input_frame = tk.LabelFrame(main_frame, text="Enter Wastage Details", padx=5, pady=5)
         input_frame.pack(fill=tk.X, pady=5)
         
-        # Create input fields
+        # Create input fields - arrange 4-5 fields per column in 4 columns
         self.entries = {}
         for i, (field, display) in enumerate(zip(self.fields, self.display_names)):
-            row = i // 3
-            col = (i % 3) * 2
+            row = i % 5  # 4-5 fields per column
+            col = (i // 5) * 2  # 4 columns (each field takes 2 grid columns: label + input)
             
             tk.Label(input_frame, text=display + ":",
                     font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=row, column=col, sticky=tk.E, padx=5, pady=2)
@@ -136,14 +136,24 @@ class DamageWindow:
                 
             # Use DateEntry for date fields
             elif field in ["wastage_date", "event_date", "receive_date"]:
-                date_entry = DateEntry(input_frame, width=universal_font_box_size.search_entry_width-1, background='darkblue',
-                                      foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd')
-                date_entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                # Date entry with frame wrapper for consistent sizing
+                date_frame = tk.Frame(input_frame)
+                date_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
+                
+                date_entry = DateEntry(date_frame, width=universal_font_box_size.search_entry_width-1, background='darkblue',
+                                      foreground='white', borderwidth=2, date_pattern='yyyy-mm-dd',
+                                      font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                date_entry.pack(fill=tk.X, expand=True, ipady=4)
                 self.entries[field] = date_entry
                 
             else:
-                entry = tk.Entry(input_frame, width=universal_font_box_size.search_entry_width)
-                entry.grid(row=row, column=col+1, sticky=tk.W, padx=5, pady=2)
+                # Regular entry with frame wrapper for consistent sizing
+                entry_frame = tk.Frame(input_frame)
+                entry_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
+                
+                entry = tk.Entry(entry_frame, width=universal_font_box_size.search_entry_width,
+                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                entry.pack(fill=tk.X, expand=True, ipady=4)
                 self.entries[field] = entry
             
             # Set default values for certain fields
