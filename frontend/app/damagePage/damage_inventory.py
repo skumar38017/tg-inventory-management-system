@@ -2,22 +2,19 @@
 
 from common_imports import *
 from utils.universal_font_box_size import universal_font_box_size
-from api_request.damage_inventory_api_request import (
-    search_wastage_inventory_by_id,
-    show_all_wastage_inventory
-)
-from damagePage.wastage_inventory import (
+from api_request.damage_inventory_api_request import show_all_wastage_inventory
+from damagePage.entry_wastage import (
     setup_wastage_entry_ui,
     new_entry,
     submit_form,
-    update_selected,
     delete_selected,
-    edit_selected,
     on_inventory_selected,
     on_project_selected,
     update_project_combobox
 )
+from damagePage.update_inventory import edit_selected, update_selected
 from damagePage.search_inventory import setup_search_ui, search_inventory
+from damagePage.result import setup_results_ui, display_results
 
 class DamageWindow:
     def __init__(self, parent):
@@ -105,31 +102,11 @@ class DamageWindow:
         # Setup search section
         search_frame, self.search_entries = setup_search_ui(main_container, self.search_inventory)
         
-        # Results frame
-        results_frame = tk.LabelFrame(main_container, text="Results", padx=5, pady=5,
-                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        results_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
-        self.tree = ttk.Treeview(results_frame, columns=self.display_names, show="headings")
-        vsb = ttk.Scrollbar(results_frame, orient="vertical", command=self.tree.yview)
-        hsb = ttk.Scrollbar(results_frame, orient="horizontal", command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb.grid(row=1, column=0, sticky="ew")
-        
-        for col, name in enumerate(self.display_names):
-            self.tree.heading(col, text=name)
-            self.tree.column(col, width=400, minwidth=250)
-        
-        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+        # Setup results section
+        results_frame, self.tree = setup_results_ui(main_container, self.display_names, self.on_tree_select)
         
         tk.Button(button_frame, text="Return to Main", command=self.on_close,
                  font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold')).pack(side=tk.RIGHT, padx=5)
-        
-        results_frame.grid_rowconfigure(0, weight=1)
-        results_frame.grid_columnconfigure(0, weight=1)
 
     def new_entry(self):
         """Clear all fields for a new entry"""
@@ -154,7 +131,7 @@ class DamageWindow:
     def search_inventory(self):
         """Search inventory"""
         results = search_inventory(self.search_entries)
-        self.display_results(results)
+        display_results(self.tree, results, self.fields)
 
     def on_tree_select(self, event):
         """Handle selection from treeview"""
@@ -168,16 +145,8 @@ class DamageWindow:
     def refresh_data(self):
         """Refresh all data from API"""
         results = show_all_wastage_inventory()
-        self.display_results(results)
+        display_results(self.tree, results, self.fields)
         logger.info("Data refreshed")
-
-    def display_results(self, results):
-        """Display results in treeview"""
-        self.tree.delete(*self.tree.get_children())
-        if results:
-            for item in results:
-                values = [item.get(field, "") for field in self.fields]
-                self.tree.insert("", tk.END, values=values)
 
     def on_close(self):
         """Handle window closing"""
