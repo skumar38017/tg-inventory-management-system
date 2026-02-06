@@ -1,6 +1,7 @@
 # frontend/app/from_event.py
 
 from common_imports import *
+from utils.universal_font_box_size import universal_font_box_size
 from api_request.from_event_inventory_request import (
     create_to_return_inventory_list,
     load_submitted_project_return_from_db,
@@ -16,7 +17,7 @@ class FromEventWindow:
         self.window.title("Tagglabs - Return From Event")
 
         # Configure global messagebox font for consistent appearance across all dialogs
-        self.window.option_add('*Dialog.msg.font', ('Arial', 12))
+        self.window.option_add('*Dialog.msg.font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
 
         # Maximize window
         self.maximize_window()
@@ -187,80 +188,96 @@ class FromEventWindow:
         info_frame = tk.Frame(self.window)
         info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         
-        # First row - Work ID and buttons
-        tk.Label(info_frame, text="Project ID (Search):", font=('Helvetica', 9)).grid(row=0, column=0, sticky='e', padx=2)
-        self.project_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
+        # First row - Project ID and buttons
+        tk.Label(info_frame, text="Project ID (Search):", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=0, sticky='e', padx=2)
+        self.project_id = tk.Entry(info_frame, 
+                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                   width=universal_font_box_size.search_entry_width)
         self.project_id.grid(row=0, column=1, sticky='w', padx=2)
                 
         self.fetch_btn = tk.Button(info_frame, text="Fetch", command=self.fetch_record,
-                                 font=('Helvetica', 9, 'bold'))
-        self.fetch_btn.grid(row=0, column=2, padx=5)
+                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
+        self.fetch_btn.grid(row=0, column=2, sticky='w', padx=(5, 0))
         
         self.edit_btn = tk.Button(info_frame, text="Edit", command=self.edit_record,
-                                font=('Helvetica', 9, 'bold'), state=tk.NORMAL)
-        self.edit_btn.grid(row=0, column=3, padx=5)
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'), state=tk.NORMAL)
+        self.edit_btn.grid(row=0, column=3, sticky='w', padx=(5, 0))
         
         self.update_btn = tk.Button(info_frame, text="Update", command=self.update_record,
-                                  font=('Helvetica', 9, 'bold'), state=tk.DISABLED)
-        self.update_btn.grid(row=0, column=4, padx=5)
+                                  font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'), state=tk.DISABLED)
+        self.update_btn.grid(row=0, column=4, sticky='w', padx=(5, 0))
 
-        # Add new entry button on the same row (column 5)
         self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
-                                font=('Helvetica', 9, 'bold'))
-        self.add_btn.grid(row=0, column=5, padx=5)
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
+        self.add_btn.grid(row=0, column=5, sticky='w', padx=(5, 0))
 
-        # Add clear button on the same row (column 6)
         self.clear_btn = tk.Button(info_frame, text="Clear", command=self.clear_form,
-                                font=('Helvetica', 9, 'bold'))
-        self.clear_btn.grid(row=0, column=6, padx=5)
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
+        self.clear_btn.grid(row=0, column=6, sticky='w', padx=(5, 0))
 
-        # Add refresh button on the same row (column 7)
         self.refresh_btn = tk.Button(info_frame, text="Refresh", command=self.refresh_data,
-                                   font=('Helvetica', 9, 'bold'))
-        self.refresh_btn.grid(row=0, column=7, padx=5)
+                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
+        self.refresh_btn.grid(row=0, column=7, sticky='w', padx=(5, 0))
 
-        # Second row - all fields (added Work ID at the end)
-        tk.Label(info_frame, text="Employee Name:", font=('Helvetica', 9)).grid(row=1, column=0, sticky='e', padx=2)
-        self.employee_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
-        self.employee_name.grid(row=1, column=1, sticky='w', padx=2)
+        # Second row - Employee Name, Location, Client Name, Setup Date
+        tk.Label(info_frame, text="Employee Name:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=1, column=0, sticky='e', padx=2, pady=(5, 2))
+        self.employee_name = tk.Entry(info_frame, 
+                                      font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                      width=universal_font_box_size.search_entry_width)
+        self.employee_name.grid(row=1, column=1, sticky='w', padx=2, pady=(5, 2))
 
-        tk.Label(info_frame, text="Location:", font=('Helvetica', 9)).grid(row=1, column=2, sticky='e', padx=2)
-        self.location = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
-        self.location.grid(row=1, column=3, sticky='w', padx=2)
+        tk.Label(info_frame, text="Location:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=1, column=2, sticky='e', padx=2, pady=(5, 2))
+        self.location = tk.Entry(info_frame, 
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                width=universal_font_box_size.search_entry_width)
+        self.location.grid(row=1, column=3, sticky='w', padx=2, pady=(5, 2))
 
-        tk.Label(info_frame, text="Client Name:", font=('Helvetica', 9)).grid(row=1, column=4, sticky='e', padx=2)
-        self.client_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
-        self.client_name.grid(row=1, column=5, sticky='w', padx=2)
+        tk.Label(info_frame, text="Client Name:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=1, column=4, sticky='e', padx=2, pady=(5, 2))
+        self.client_name = tk.Entry(info_frame, 
+                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                    width=universal_font_box_size.search_entry_width)
+        self.client_name.grid(row=1, column=5, sticky='w', padx=2, pady=(5, 2))
 
-        tk.Label(info_frame, text="Setup Date:", font=('Helvetica', 9)).grid(row=1, column=6, sticky='e', padx=2)
+        # Third row - Project Name, Setup Date, Event Date, Current Work ID
+        tk.Label(info_frame, text="Project Name:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=0, sticky='e', padx=2, pady=(5, 2))
+        self.project_name = tk.Entry(info_frame, 
+                                     font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                     width=universal_font_box_size.search_entry_width)
+        self.project_name.grid(row=2, column=1, sticky='w', padx=2, pady=(5, 2))
+
+        tk.Label(info_frame, text="Setup Date:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=2, sticky='e', padx=2, pady=(5, 2))
         self.setup_date = DateEntry(info_frame, 
-                                font=('Helvetica', 9), 
-                                width=15,
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                width=universal_font_box_size.search_entry_width-1,
                                 date_pattern='yyyy-mm-dd',
                                 background='darkblue',
                                 foreground='white',
                                 borderwidth=2)
-        self.setup_date.grid(row=1, column=7, sticky='w', padx=2)
+        self.setup_date.grid(row=2, column=3, sticky='w', padx=2, pady=(5, 2))
 
-
-        tk.Label(info_frame, text="Project Name:", font=('Helvetica', 9)).grid(row=1, column=8, sticky='e', padx=2)
-        self.project_name = tk.Entry(info_frame, font=('Helvetica', 9), width=15)
-        self.project_name.grid(row=1, column=9, sticky='w', padx=2)
-
-        tk.Label(info_frame, text="Event Date:", font=('Helvetica', 9)).grid(row=1, column=10, sticky='e', padx=2)
+        tk.Label(info_frame, text="Event Date:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=4, sticky='e', padx=2, pady=(5, 2))
         self.event_date = DateEntry(info_frame, 
-                                font=('Helvetica', 9), 
-                                width=15,
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                                width=universal_font_box_size.search_entry_width-1,
                                 date_pattern='yyyy-mm-dd',
                                 background='darkblue',
                                 foreground='white',
                                 borderwidth=2)
-        self.event_date.grid(row=1, column=11, sticky='w', padx=2)
+        self.event_date.grid(row=2, column=5, sticky='w', padx=2, pady=(5, 2))
 
-        # Current Work ID display
-        tk.Label(info_frame, text="Current Work ID:", font=('Helvetica', 9)).grid(row=1, column=12, sticky='e', padx=2)
-        self.work_id = tk.Entry(info_frame, font=('Helvetica', 9), width=15, state='readonly')
-        self.work_id.grid(row=1, column=13, sticky='w', padx=2)
+        tk.Label(info_frame, text="Current Work ID:", 
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=6, sticky='e', padx=2, pady=(5, 2))
+        self.work_id = tk.Entry(info_frame, 
+                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
+                               width=universal_font_box_size.search_entry_width, state='readonly')
+        self.work_id.grid(row=2, column=7, sticky='w', padx=2, pady=(5, 2))
 
 
         # Separator line
