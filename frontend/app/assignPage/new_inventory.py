@@ -509,3 +509,19 @@ class NewInventorySection:
                     tree.column(col, width=100, stretch=False)
             self.parent.wrap_btn.config(text="Wrap")
             self.parent.is_wrapped = False
+
+    def clear_all_entries(self):
+        """Clear all form fields and entries"""
+        if hasattr(self.parent, 'inventory_id'):
+            self.parent.inventory_id.delete(0, tk.END)
+        if hasattr(self.parent, 'project_id'):
+            self.parent.project_id.delete(0, tk.END)
+        if hasattr(self.parent, 'product_id'):
+            self.parent.product_id.delete(0, tk.END)
+        if hasattr(self.parent, 'employee_name'):
+            self.parent.employee_name.delete(0, tk.END)
+        if hasattr(self.parent, 'new_entry_tree'):
+            self.parent.new_entry_tree.delete(*self.parent.new_entry_tree.get_children())
+        
+        self.parent.currently_editing_id = None
+        self.parent.edit_mode = False
