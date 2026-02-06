@@ -18,6 +18,9 @@ class FromEventWindow:
 
         # Configure global messagebox font for consistent appearance across all dialogs
         self.window.option_add('*Dialog.msg.font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+        
+        # Configure Combobox dropdown list font
+        self.window.option_add('*TCombobox*Listbox.Font', (universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
 
         # Maximize window
         self.maximize_window()
