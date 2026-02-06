@@ -151,7 +151,7 @@ class FromEventWindow:
         clock_frame.grid_columnconfigure(1, weight=0)
         clock_frame.grid_columnconfigure(2, weight=1)
 
-        self.clock_label = tk.Label(clock_frame, font=('Helvetica', 8))
+        self.clock_label = tk.Label(clock_frame, font=(universal_font_box_size.qr_barcode_header_font_family, 8))
         self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
         self.update_clock()
 
@@ -168,7 +168,7 @@ class FromEventWindow:
 
         company_label = tk.Label(company_frame,
                                text=company_info,
-                               font=('Helvetica', 7),
+                               font=(universal_font_box_size.qr_barcode_header_font_family, 7),
                                justify=tk.RIGHT)
         company_label.grid(row=0, column=1, sticky='ne', pady=(0,0))
 
@@ -178,11 +178,11 @@ class FromEventWindow:
         
         tk.Label(title_frame, 
                text="Tagglabs Experiential Pvt. Ltd",
-               font=('Helvetica', 14, 'bold')).pack()
+               font=(universal_font_box_size.qr_barcode_header_font_family, 14, 'bold')).pack()
         
         tk.Label(title_frame, 
                text="Return From Event Inventory List",
-               font=('Helvetica', 12, 'bold')).pack()
+               font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold')).pack()
 
         # Information fields
         info_frame = tk.Frame(self.window)
@@ -198,27 +198,27 @@ class FromEventWindow:
                 
         self.fetch_btn = tk.Button(info_frame, text="Fetch", command=self.fetch_record,
                                  font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.fetch_btn.grid(row=0, column=2, sticky='w', padx=(5, 0))
+        self.fetch_btn.grid(row=0, column=2, sticky='w', padx=5)
         
         self.edit_btn = tk.Button(info_frame, text="Edit", command=self.edit_record,
                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'), state=tk.NORMAL)
-        self.edit_btn.grid(row=0, column=3, sticky='w', padx=(5, 0))
+        self.edit_btn.grid(row=0, column=3, sticky='w', padx=5)
         
         self.update_btn = tk.Button(info_frame, text="Update", command=self.update_record,
                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'), state=tk.DISABLED)
-        self.update_btn.grid(row=0, column=4, sticky='w', padx=(5, 0))
+        self.update_btn.grid(row=0, column=4, sticky='w', padx=5)
 
         self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.add_btn.grid(row=0, column=5, sticky='w', padx=(5, 0))
+        self.add_btn.grid(row=0, column=5, sticky='w', padx=5)
 
         self.clear_btn = tk.Button(info_frame, text="Clear", command=self.clear_form,
                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.clear_btn.grid(row=0, column=6, sticky='w', padx=(5, 0))
+        self.clear_btn.grid(row=0, column=6, sticky='w', padx=5)
 
         self.refresh_btn = tk.Button(info_frame, text="Refresh", command=self.refresh_data,
                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.refresh_btn.grid(row=0, column=7, sticky='w', padx=(5, 0))
+        self.refresh_btn.grid(row=0, column=7, sticky='w', padx=5)
 
         # Second row - Employee Name, Location, Client Name, Setup Date
         tk.Label(info_frame, text="Employee Name:", 
@@ -319,7 +319,8 @@ class FromEventWindow:
         self.original_column_widths = [20 if col not in [4,6,7,8,9] else 15 for col in range(len(self.headers))]
         
         for col, header in enumerate(self.headers):
-            tk.Label(self.scrollable_frame, text=header, font=('Helvetica', 9, 'bold'),
+            tk.Label(self.scrollable_frame, text=header, 
+                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'),
                    borderwidth=1, relief="solid", padx=5, pady=2).grid(row=0, column=col, sticky="ew")
 
         # Create entry fields
@@ -335,7 +336,7 @@ class FromEventWindow:
                         textvariable=status_var,
                         values=self.status_options,
                         state="state",
-                        font=('Helvetica', 9)
+                        font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)
                     )
                     combo.set(self.status_options[0])  # Set default status
                     combo.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
@@ -343,7 +344,7 @@ class FromEventWindow:
                 else:
                     # Regular Entry for other columns
                     entry = tk.Entry(self.scrollable_frame, 
-                                font=('Helvetica', 9), 
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
                                 width=self.original_column_widths[col])
                     entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
                     row_entries.append(entry)
@@ -368,25 +369,25 @@ class FromEventWindow:
         button_frame.grid(row=7, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
 
         self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
-                                font=('Helvetica', 10, 'bold'))
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         self.wrap_btn.pack(side=tk.LEFT, padx=5)
 
         remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.remove_table_row,
-                                 font=('Helvetica', 10, 'bold'))
+                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         remove_row_btn.pack(side=tk.LEFT, padx=5)
 
         add_row_btn = tk.Button(button_frame, text="Add Row", command=self.add_table_row,
-                              font=('Helvetica', 10, 'bold'))
+                              font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         add_row_btn.pack(side=tk.LEFT, padx=5)
 
         submit_btn = tk.Button(button_frame, text="Submit", command=self.submit_form,
-                             font=('Helvetica', 10, 'bold'))
+                             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
         submit_btn.pack(side=tk.LEFT, padx=5)
 
         return_button = tk.Button(button_frame, 
                                 text="Return to Main", 
                                 command=self.on_close,
-                                font=('Helvetica', 10, 'bold'),
+                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'),
                                 width=15)
         return_button.pack(side=tk.RIGHT, padx=5)
 
@@ -883,14 +884,14 @@ class FromEventWindow:
                     textvariable=status_var,
                     values=self.status_options,
                     state="state",
-                    font=('Helvetica', 9)
+                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)
                 )
                 combo.set(self.status_options[0])  # Set default status
                 combo.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
                 row_entries.append(combo)
             else:
                 entry = tk.Entry(self.scrollable_frame, 
-                            font=('Helvetica', 9), 
+                            font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
                             width=self.original_column_widths[col])
                 entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
                 row_entries.append(entry)
