@@ -7,7 +7,7 @@ def create_header_section(window, clock_label_ref):
     clock_frame = tk.Frame(window)
     clock_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)
     
-    clock_label = tk.Label(clock_frame, font=('Helvetica', 15))
+    clock_label = tk.Label(clock_frame, font=(universal_font_box_size.qr_barcode_header_font_family, 14, 'bold'))
     clock_label.pack()
     clock_label_ref['label'] = clock_label
     
@@ -22,7 +22,7 @@ Eros City Square
 098214 43358"""
     
     company_label = tk.Label(company_frame, text=company_info, 
-                               font=('Helvetica', 15), justify=tk.RIGHT)
+                               font=(universal_font_box_size.qr_barcode_header_font_family, 12), justify=tk.RIGHT)
     company_label.pack()
     
     # Title section in row 2
@@ -30,10 +30,10 @@ Eros City Square
     title_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
     
     tk.Label(title_frame, text="Tagglabs Experiential Pvt. Ltd",
-           font=('Helvetica', 16, 'bold')).pack()
+           font=(universal_font_box_size.qr_barcode_header_font_family, 14, 'bold')).pack()
     
     tk.Label(title_frame, text="ASSIGN INVENTORY TO EMPLOYEE",
-           font=('Helvetica', 14, 'bold')).pack()
+           font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold')).pack()
 
 def update_clock(clock_label_ref, window):
     """Update the clock display"""

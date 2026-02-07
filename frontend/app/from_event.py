@@ -8,6 +8,12 @@ from api_request.from_event_inventory_request import (
     update_submitted__return_project_in_db,
     search_return_details_by_id
 )
+from fromEvent.header import create_header_section, update_clock
+from fromEvent.Information_fields import create_information_fields
+from fromEvent.submitted_project import setup_submitted_tab
+from fromEvent.search_result import setup_search_tab
+from fromEvent.new_event_entry import generate_work_id, set_fields_readonly, clear_form, new_button_click
+from fromEvent.edit_field import edit_record, update_record, validate_number, complete_refresh
 import pandas as pd
 
 class FromEventWindow:
@@ -112,34 +118,12 @@ class FromEventWindow:
             return None
 
     def generate_work_id(self):
-        """Generate a random WorkID in format PRJ followed by 5 digits"""
-        prefix = "PRJ"
-        digits = ''.join(random.choices(string.digits, k=5))
-        work_id = f"{prefix}{digits}"
-        self.work_id.config(state='normal')
-        self.work_id.delete(0, tk.END)
-        self.work_id.insert(0, work_id)
-        self.work_id.config(state='readonly')
-        return work_id
+        """Generate a random WorkID"""
+        return generate_work_id(self.work_id)
 
     def set_fields_readonly(self, readonly):
         """Set all fields to readonly or editable"""
-        state = 'readonly' if readonly else 'normal'
-        
-        # Main fields
-        self.employee_name.config(state=state)
-        self.location.config(state=state)
-        self.client_name.config(state=state)
-        self.setup_date.config(state=state)  # This works for DateEntry
-        self.project_name.config(state=state)
-        self.event_date.config(state=state)  # This works for DateEntry
-        self.work_id.config(state='readonly')  # Always readonly
-        self.project_id.config(state='normal')  # Project ID is editable for fetching
-        
-        # Table entries
-        for row in self.table_entries:
-            for entry in row:
-                entry.config(state=state)
+        set_fields_readonly(self, readonly)
 
     def maximize_window(self):
         maximize_window(self.window)
@@ -147,140 +131,23 @@ class FromEventWindow:
 
     def setup_ui(self):
         """Set up all UI elements"""
-        # Header section
-        clock_frame = tk.Frame(self.window)
-        clock_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)
-        clock_frame.grid_columnconfigure(0, weight=1)
-        clock_frame.grid_columnconfigure(1, weight=0)
-        clock_frame.grid_columnconfigure(2, weight=1)
-
-        self.clock_label = tk.Label(clock_frame, font=(universal_font_box_size.qr_barcode_header_font_family, 8))
-        self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
-        self.update_clock()
-
-        # Company info
-        company_frame = tk.Frame(self.window)
-        company_frame.grid(row=1, column=0, columnspan=2, sticky="e", padx=10, pady=0)
-        company_frame.grid_columnconfigure(0, weight=1)
-
-        company_info = """Tagglabs Experiential Pvt. Ltd.
-        Sector 49, Gurugram, Haryana 122018
-        201, Second Floor, Eros City Square Mall
-        Eros City Square
-        098214 43358"""
-
-        company_label = tk.Label(company_frame,
-                               text=company_info,
-                               font=(universal_font_box_size.qr_barcode_header_font_family, 7),
-                               justify=tk.RIGHT)
-        company_label.grid(row=0, column=1, sticky='ne', pady=(0,0))
-
-        # Title section
-        title_frame = tk.Frame(self.window)
-        title_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
+        # Create header section
+        self.clock_label_ref = {}
+        create_header_section(self.window, self.clock_label_ref)
+        update_clock(self.clock_label_ref, self.window)
         
-        tk.Label(title_frame, 
-               text="Tagglabs Experiential Pvt. Ltd",
-               font=(universal_font_box_size.qr_barcode_header_font_family, 14, 'bold')).pack()
+        # Create information fields
+        entries, self.fetch_btn, self.edit_btn, self.update_btn = create_information_fields(self.window, self)
         
-        tk.Label(title_frame, 
-               text="Return From Event Inventory List",
-               font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold')).pack()
-
-        # Information fields
-        info_frame = tk.Frame(self.window)
-        info_frame.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-        
-        # First row - Project ID and buttons
-        tk.Label(info_frame, text="Project ID (Search):", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=0, sticky='e', padx=2)
-        self.project_id = tk.Entry(info_frame, 
-                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                   width=universal_font_box_size.search_entry_width)
-        self.project_id.grid(row=0, column=1, sticky='w', padx=2)
-                
-        self.fetch_btn = tk.Button(info_frame, text="Fetch", command=self.fetch_record,
-                                 font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.fetch_btn.grid(row=0, column=2, sticky='w', padx=5)
-        
-        self.edit_btn = tk.Button(info_frame, text="Edit", command=self.edit_record,
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'), state=tk.NORMAL)
-        self.edit_btn.grid(row=0, column=3, sticky='w', padx=5)
-        
-        self.update_btn = tk.Button(info_frame, text="Update", command=self.update_record,
-                                  font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'), state=tk.DISABLED)
-        self.update_btn.grid(row=0, column=4, sticky='w', padx=5)
-
-        self.add_btn = tk.Button(info_frame, text="New Entry", command=self.new_button_click,
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.add_btn.grid(row=0, column=5, sticky='w', padx=5)
-
-        self.clear_btn = tk.Button(info_frame, text="Clear", command=self.clear_form,
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.clear_btn.grid(row=0, column=6, sticky='w', padx=5)
-
-        self.refresh_btn = tk.Button(info_frame, text="Refresh", command=self.refresh_data,
-                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size, 'bold'))
-        self.refresh_btn.grid(row=0, column=7, sticky='w', padx=5)
-
-        # Second row - Employee Name, Location, Client Name, Setup Date
-        tk.Label(info_frame, text="Employee Name:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=1, column=0, sticky='e', padx=2, pady=(5, 2))
-        self.employee_name = tk.Entry(info_frame, 
-                                      font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                      width=universal_font_box_size.search_entry_width)
-        self.employee_name.grid(row=1, column=1, sticky='w', padx=2, pady=(5, 2))
-
-        tk.Label(info_frame, text="Location:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=1, column=2, sticky='e', padx=2, pady=(5, 2))
-        self.location = tk.Entry(info_frame, 
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                width=universal_font_box_size.search_entry_width)
-        self.location.grid(row=1, column=3, sticky='w', padx=2, pady=(5, 2))
-
-        tk.Label(info_frame, text="Client Name:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=1, column=4, sticky='e', padx=2, pady=(5, 2))
-        self.client_name = tk.Entry(info_frame, 
-                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                    width=universal_font_box_size.search_entry_width)
-        self.client_name.grid(row=1, column=5, sticky='w', padx=2, pady=(5, 2))
-
-        # Third row - Project Name, Setup Date, Event Date, Current Work ID
-        tk.Label(info_frame, text="Project Name:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=0, sticky='e', padx=2, pady=(5, 2))
-        self.project_name = tk.Entry(info_frame, 
-                                     font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                     width=universal_font_box_size.search_entry_width)
-        self.project_name.grid(row=2, column=1, sticky='w', padx=2, pady=(5, 2))
-
-        tk.Label(info_frame, text="Setup Date:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=2, sticky='e', padx=2, pady=(5, 2))
-        self.setup_date = DateEntry(info_frame, 
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                width=universal_font_box_size.search_entry_width-1,
-                                date_pattern='yyyy-mm-dd',
-                                background='darkblue',
-                                foreground='white',
-                                borderwidth=2)
-        self.setup_date.grid(row=2, column=3, sticky='w', padx=2, pady=(5, 2))
-
-        tk.Label(info_frame, text="Event Date:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=4, sticky='e', padx=2, pady=(5, 2))
-        self.event_date = DateEntry(info_frame, 
-                                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                                width=universal_font_box_size.search_entry_width-1,
-                                date_pattern='yyyy-mm-dd',
-                                background='darkblue',
-                                foreground='white',
-                                borderwidth=2)
-        self.event_date.grid(row=2, column=5, sticky='w', padx=2, pady=(5, 2))
-
-        tk.Label(info_frame, text="Current Work ID:", 
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=2, column=6, sticky='e', padx=2, pady=(5, 2))
-        self.work_id = tk.Entry(info_frame, 
-                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                               width=universal_font_box_size.search_entry_width, state='readonly')
-        self.work_id.grid(row=2, column=7, sticky='w', padx=2, pady=(5, 2))
+        # Map entries to instance variables
+        self.project_id = entries['project_id']
+        self.employee_name = entries['employee_name']
+        self.location = entries['location']
+        self.client_name = entries['client_name']
+        self.project_name = entries['project_name']
+        self.setup_date = entries['setup_date']
+        self.event_date = entries['event_date']
+        self.work_id = entries['work_id']
 
 
         # Separator line
@@ -360,12 +227,12 @@ class FromEventWindow:
         # Tab 1: Submitted Projects
         self.submitted_tab = ttk.Frame(self.tab_control)
         self.tab_control.add(self.submitted_tab, text="Submitted Projects")
-        self.setup_submitted_tab()
+        self.submitted_tree = setup_submitted_tab(self.submitted_tab, self)
 
         # Tab 2: Search Results
         self.search_tab = ttk.Frame(self.tab_control)
         self.tab_control.add(self.search_tab, text="Search Results")
-        self.setup_search_tab()
+        self.search_tree = setup_search_tab(self.search_tab, self)
 
         # Bottom buttons
         button_frame = tk.Frame(self.window)
@@ -407,93 +274,8 @@ class FromEventWindow:
         self.window.grid_columnconfigure(1, weight=1)
 
     def new_button_click(self):
-        """Handle New Entry button click - clears the form and generates new Work ID"""
-        self.clear_form()
-        self.generate_work_id()
-        self.set_fields_readonly(False)
-        messagebox.showinfo("New Entry", "Ready to create a new entry")
-
-    def setup_submitted_tab(self):
-        """Setup the tab for submitted projects"""
-        frame = tk.Frame(self.submitted_tab)
-        frame.pack(fill="both", expand=True)
-
-        # Treeview for submitted projects
-        self.submitted_tree = ttk.Treeview(frame, height=10,
-                                         columns=("WorkID", "Employee", "Location", "ProjectName", 
-                                                 "Client", "SetupDate", "EventDate", "LastUpdated"),
-                                         show="headings")
-        
-        # Configure columns
-        self.submitted_tree.heading("WorkID", text="Work ID")
-        self.submitted_tree.heading("Employee", text="Employee")
-        self.submitted_tree.heading("Location", text="Location")
-        self.submitted_tree.heading("ProjectName", text="Project Name")
-        self.submitted_tree.heading("Client", text="Client Name")
-        self.submitted_tree.heading("SetupDate", text="Setup Date")
-        self.submitted_tree.heading("EventDate", text="Event Date")
-        self.submitted_tree.heading("LastUpdated", text="Last Updated")
-        
-        self.submitted_tree.column("WorkID", width=100)
-        self.submitted_tree.column("Employee", width=150)
-        self.submitted_tree.column("Location", width=100)
-        self.submitted_tree.column("ProjectName", width=150)
-        self.submitted_tree.column("Client", width=150)
-        self.submitted_tree.column("SetupDate", width=100)
-        self.submitted_tree.column("EventDate", width=100)
-        self.submitted_tree.column("LastUpdated", width=150)
-
-        # Scrollbars
-        y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.submitted_tree.yview)
-        self.submitted_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=y_scroll.set)
-
-        # Grid layout
-        self.submitted_tree.pack(side="left", fill="both", expand=True)
-        y_scroll.pack(side="right", fill="y")
-
-        # Double-click to load project
-        self.submitted_tree.bind("<Double-1>", self.load_submitted_project)
-
-    def setup_search_tab(self):
-        """Setup the tab for search results"""
-        frame = tk.Frame(self.search_tab)
-        frame.pack(fill="both", expand=True)
-
-        # Treeview for search results
-        self.search_tree = ttk.Treeview(frame, height=10,
-                                      columns=("WorkID", "ProjectName", "Employee", "Location", 
-                                              "Client", "SetupDate", "EventDate", "LastUpdated"),
-                                      show="headings")
-        
-        # Configure columns
-        self.search_tree.heading("WorkID", text="Work ID")
-        self.search_tree.heading("ProjectName", text="Project Name")
-        self.search_tree.heading("Employee", text="Employee")
-        self.search_tree.heading("Location", text="Location")
-        self.search_tree.heading("Client", text="Client")
-        self.search_tree.heading("SetupDate", text="Setup Date")
-        self.search_tree.heading("EventDate", text="Event Date")
-        self.search_tree.heading("LastUpdated", text="Last Updated")
-        
-        self.search_tree.column("WorkID", width=100)
-        self.search_tree.column("ProjectName", width=150)
-        self.search_tree.column("Employee", width=150)
-        self.search_tree.column("Location", width=100)
-        self.search_tree.column("Client", width=150)
-        self.search_tree.column("SetupDate", width=100)
-        self.search_tree.column("EventDate", width=100)
-        self.search_tree.column("LastUpdated", width=150)
-
-        # Scrollbars
-        y_scroll = ttk.Scrollbar(frame, orient="vertical", command=self.search_tree.yview)
-        self.search_tree.configure(yscrollcommand=y_scroll.set, xscrollcommand=y_scroll.set)
-
-        # Grid layout
-        self.search_tree.pack(side="left", fill="both", expand=True)
-        y_scroll.pack(side="right", fill="y")
-
-        # Double-click to load project
-        self.search_tree.bind("<Double-1>", self.load_search_result)
+        """Handle New Entry button click"""
+        new_button_click(self)
 
     def load_submitted_forms(self):
         """Load all submitted forms into the submitted tab sorted by updated_at"""
@@ -529,14 +311,6 @@ class FromEventWindow:
                 record['event_date'],
                 formatted_date  # Make sure this is included
             ))
-
-    def load_submitted_project(self, event):
-        """Load project from submitted tab when double-clicked"""
-        selected = self.submitted_tree.selection()
-        if selected:
-            item = self.submitted_tree.item(selected)
-            work_id = item['values'][0]
-            self.load_project_data(work_id)
 
     def fetch_record(self):
         """Search records by Work ID and display in Search Results tab"""
@@ -581,14 +355,6 @@ class FromEventWindow:
         
         # Switch to search results tab
         self.tab_control.select(self.search_tab)
-
-    def load_search_result(self, event):
-        """Load project from search results when double-clicked"""
-        selected = self.search_tree.selection()
-        if selected:
-            item = self.search_tree.item(selected)
-            work_id = item['values'][0]
-            self.load_project_data(work_id)
 
     def load_project_data(self, work_id):
         """Load project data into the form"""
@@ -697,110 +463,19 @@ class FromEventWindow:
 
     def edit_record(self):
         """Enable editing of the record"""
-        if not self.work_id.get():
-            messagebox.showwarning("Warning", "No record loaded to edit")
-            return
-            
-        self.set_fields_readonly(False)
-        self.edit_btn.config(state=tk.DISABLED)
-        self.update_btn.config(state=tk.NORMAL)
-        logger.info("Editing record")
+        edit_record(self)
 
     def update_record(self):
-        """Update the record in database via API with multiple rows"""
-        try:
-            work_id = self.work_id.get()
-            if not work_id:
-                messagebox.showwarning("Warning", "Work ID is required for update")
-                return
-                
-            # Prepare the complete data package
-            data = {
-                'work_id': work_id,
-                'employee_name': self.employee_name.get() or '',
-                'location': self.location.get() or '',
-                'client_name': self.client_name.get() or '',
-                'setup_date': self.setup_date.get() or '',
-                'project_name': self.project_name.get() or '',
-                'event_date': self.event_date.get() or '',
-                'inventory_items': []
-            }
-            
-            # Process all rows - no limit
-            for row_idx, row in enumerate(self.table_entries, start=1):
-                # Only process rows with inventory name (skip empty rows)
-                if not row[2].get().strip():
-                    continue
-                    
-                try:
-                    item = {
-                        'zone_active': row[0].get() or 'General',
-                        'sno': row[1].get() or str(row_idx),
-                        'name': row[2].get(),
-                        'description': row[3].get() or '',
-                        'quantity': self._validate_number(row[4].get(), default=1),
-                        'comments': row[5].get() or '',
-                        'total': self._validate_number(row[6].get(), default=0),
-                        'unit': row[7].get() or 'pcs',
-                        'per_unit_power': self._validate_number(row[8].get(), default=0),
-                        'total_power': self._validate_number(row[9].get(), default=0),
-                        'status': row[10].get(),  # Simplified - just get the Combobox value
-                        'poc': row[11].get() or '',
-                        'RecQty': row[12].get() if len(row) > 12 else ''
-                    }
-                    data['inventory_items'].append(item)
-                except Exception as e:
-                    logger.error(f"Error processing row {row_idx}: {str(e)}")
-                    continue
-                        
-            if not data['inventory_items']:
-                messagebox.showwarning("Warning", "No valid inventory items to update")
-                return
-                
-            logger.debug(f"Prepared update data for {work_id} with {len(data['inventory_items'])} items")
-            
-            # Save and verify
-            if not self.save_to_db(data):
-                raise Exception("Failed to persist changes to database")
-                
-            # Force complete refresh
-            self._complete_refresh(work_id)
-            
-            messagebox.showinfo("Success", f"Updated {len(data['inventory_items'])} items successfully")
-            
-        except Exception as e:
-            messagebox.showerror("Error", f"Update failed: {str(e)}")
-            logger.error(f"Update error: {str(e)}", exc_info=True)
+        """Update the record in database"""
+        update_record(self)
 
     def _validate_number(self, value, default=0):
         """Ensure numeric fields are valid"""
-        try:
-            if not value:
-                return default
-            return float(value) if '.' in value else int(value)
-        except:
-            return default
+        return validate_number(value, default)
 
     def _complete_refresh(self, work_id):
         """Complete refresh after update"""
-        try:
-            # Reload all data
-            self.load_submitted_forms()
-            
-            # Reload this specific project
-            self.load_project_data(work_id)
-            
-            # Reset UI state
-            self.set_fields_readonly(True)
-            self.edit_btn.config(state=tk.NORMAL)
-            self.update_btn.config(state=tk.DISABLED)
-            
-            # Ensure visibility in UI
-            self.tab_control.select(self.submitted_tab)
-            self._scroll_to_project(work_id)
-            
-        except Exception as e:
-            logger.error(f"Refresh error: {str(e)}", exc_info=True)
+        complete_refresh(self, work_id)
 
     def _scroll_to_project(self, work_id):
         """Scroll to the updated project in the treeview"""
@@ -989,34 +664,10 @@ class FromEventWindow:
             logger.error(f"Submit failed: {str(e)}")
 
     def clear_form(self):
-        """Clear all form fields and generate new Work ID"""
-        try:
-            self.project_id.delete(0, tk.END)
-            self.employee_name.delete(0, tk.END)
-            self.location.delete(0, tk.END)
-            self.client_name.delete(0, tk.END)
-            
-            # Clear DateEntry widgets properly
-            self.setup_date.set_date(datetime.now().strftime('%Y-%m-%d'))
-            self.project_name.delete(0, tk.END)
-            self.event_date.set_date(datetime.now().strftime('%Y-%m-%d'))
-            
-            # Clear table entries
-            for row in self.table_entries:
-                for entry in row:
-                    entry.delete(0, tk.END)
-            
-            # Generate new Work ID
-            self.generate_work_id()
-            
-            # Set fields to editable state
-            self.set_fields_readonly(False)
-            
-            messagebox.showinfo("Cleared", "Form has been cleared")
-            logger.info("Form cleared successfully")
-        except Exception as e:
-            messagebox.showerror("Clear Error", f"Failed to clear form: {str(e)}")
-            logger.error(f"Clear failed: {str(e)}")
+        """Clear all form fields"""
+        clear_form(self)
+        self.set_fields_readonly(False)
+        messagebox.showinfo("Cleared", "Form has been cleared")
 
     def refresh_data(self):
         """Refresh the form and data lists"""
@@ -1030,11 +681,6 @@ class FromEventWindow:
         except Exception as e:
             messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
             logger.error(f"Refresh failed: {str(e)}")
-
-    def update_clock(self):
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.clock_label.config(text=now)
-        self.window.after(1000, self.update_clock)
 
     def on_close(self):
         """Handle window closing"""
