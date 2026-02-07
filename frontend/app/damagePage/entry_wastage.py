@@ -87,7 +87,8 @@ def setup_wastage_entry_ui(parent, window, fields, display_names, status_options
             entry_frame.grid(row=row, column=col+1, sticky='ew', padx=5, pady=2)
             
             entry = tk.Entry(entry_frame, width=universal_font_box_size.search_entry_width,
-                           font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                           font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                           justify='center')
             entry.pack(fill=tk.X, expand=True, ipady=4)
             entries[field] = entry
         

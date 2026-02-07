@@ -84,8 +84,7 @@ class EditUpdateSection:
                 status_combo.pack(fill=tk.X, expand=True)
                 entry_widgets.append(status_combo)
             else:
-                # Create an entry widget for editable fields
-                entry = tk.Entry(edit_window)
+                entry = tk.Entry(edit_window, justify='center')
                 entry.insert(0, value)
                 entry.grid(row=i, column=1, padx=5, pady=2, sticky="ew")
                 entry_widgets.append(entry)

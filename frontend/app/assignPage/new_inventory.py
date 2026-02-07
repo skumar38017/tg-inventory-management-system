@@ -225,10 +225,10 @@ class NewInventorySection:
                             lambda e: self._update_inventory_fields(entries, e))
                     entries[field_name] = entry
                 else:
-                    # Regular Entry for other fields with universal font
                     entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", 
                                    width=universal_font_box_size.search_entry_width,
-                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                                   font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                   justify='center')
                     entry.grid(row=row_index, column=1, sticky='ew', pady=3, ipady=4)
                     
                     if field_name == "quantity":
@@ -317,10 +317,10 @@ class NewInventorySection:
                         lambda e: self._update_inventory_fields(entries, e))
                 entries[field_name] = entry
             else:
-                # Regular Entry for other fields with universal font
                 entry = tk.Entry(parent_frame, borderwidth=1, relief="solid", 
                                width=universal_font_box_size.search_entry_width,
-                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                               font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                               justify='center')
                 entry.grid(row=row_index, column=1, sticky='ew', pady=3, ipady=4)
                 
                 if field_name == "quantity":

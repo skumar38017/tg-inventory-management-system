@@ -13,19 +13,22 @@ def setup_search_ui(parent, search_callback):
     tk.Label(search_frame, text="Inventory ID:", 
             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=0, sticky=tk.E, padx=5)
     search_entries['inventory_id'] = tk.Entry(search_frame, width=universal_font_box_size.search_entry_width,
-                                      font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                                      font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                      justify='center')
     search_entries['inventory_id'].grid(row=0, column=1, sticky=tk.W, padx=5)
     
     tk.Label(search_frame, text="Project ID:",
             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=2, sticky=tk.E, padx=5)
     search_entries['project_id'] = tk.Entry(search_frame, width=universal_font_box_size.search_entry_width,
-                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                    justify='center')
     search_entries['project_id'].grid(row=0, column=3, sticky=tk.W, padx=5)
     
     tk.Label(search_frame, text="Product ID:",
             font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)).grid(row=0, column=4, sticky=tk.E, padx=5)
     search_entries['product_id'] = tk.Entry(search_frame, width=universal_font_box_size.search_entry_width,
-                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size))
+                                    font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                                    justify='center')
     search_entries['product_id'].grid(row=0, column=5, sticky=tk.W, padx=5)
     
     tk.Button(search_frame, text="Search", command=search_callback,
