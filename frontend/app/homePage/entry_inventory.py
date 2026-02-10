@@ -13,7 +13,7 @@ from api_request.entry_inventory_api_request import (
     get_current_page
 )
 from to_event import ToEventWindow
-from from_event import FromEventWindow
+from fromEvent.from_event import FromEventWindow
 from assignPage.assign_inventory import AssignInventoryWindow
 from damagePage.damage_inventory import DamageWindow
 from homePage.entry_update_pop_window import *
