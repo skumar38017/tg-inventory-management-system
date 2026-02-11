@@ -1,5 +1,5 @@
 from common_imports import *
-from utils.universal_font_box_size import universal_font_box_size
+from toEvent.database_operations import save_to_db
 
 def edit_record(parent_instance):
     """Enable editing of the record"""
@@ -20,7 +20,6 @@ def update_record(parent_instance):
             messagebox.showwarning("Warning", "Work ID is required for update")
             return
             
-        # Prepare the complete data package
         data = {
             'work_id': work_id,
             'employee_name': parent_instance.employee_name.get() or '',
@@ -32,9 +31,7 @@ def update_record(parent_instance):
             'inventory_items': []
         }
         
-        # Process all rows - no limit
         for row_idx, row in enumerate(parent_instance.table_entries, start=1):
-            # Only process rows with inventory name (skip empty rows)
             if not row[2].get().strip():
                 continue
                 
@@ -65,11 +62,9 @@ def update_record(parent_instance):
             
         logger.debug(f"Prepared update data for {work_id} with {len(data['inventory_items'])} items")
         
-        # Save and verify
-        if not parent_instance.save_to_db(data):
+        if not save_to_db(data):
             raise Exception("Failed to persist changes to database")
             
-        # Force complete refresh
         complete_refresh(parent_instance, work_id)
         
         messagebox.showinfo("Success", f"Updated {len(data['inventory_items'])} items successfully")
@@ -90,17 +85,25 @@ def validate_number(value, default=0):
 def complete_refresh(parent_instance, work_id):
     """Complete refresh after update"""
     try:
-        # Reload all data
-        parent_instance.load_submitted_forms()
+        from toEvent.submitted_project import load_submitted_forms
+        load_submitted_forms(parent_instance.submitted_tree)
         
-        # Reload this specific project
         parent_instance.load_project_data(work_id)
         
-        # Reset UI state
         parent_instance.set_fields_readonly(True)
         parent_instance.edit_btn.config(state=tk.NORMAL)
         parent_instance.update_btn.config(state=tk.DISABLED)
         
-        logger.info("Refresh completed")
+        parent_instance.tab_control.select(parent_instance.submitted_tab)
+        scroll_to_project(parent_instance, work_id)
+        
     except Exception as e:
-        logger.error(f"Refresh error: {str(e)}")
+        logger.error(f"Refresh error: {str(e)}", exc_info=True)
+
+def scroll_to_project(parent_instance, work_id):
+    """Scroll to the updated project in the treeview"""
+    for item in parent_instance.submitted_tree.get_children():
+        if parent_instance.submitted_tree.item(item)['values'][0] == work_id:
+            parent_instance.submitted_tree.selection_set(item)
+            parent_instance.submitted_tree.see(item)
+            break

@@ -1,11 +1,11 @@
 from common_imports import *
+from toEvent.database_operations import load_from_db
 
 def load_submitted_forms(self):
     """Load all submitted forms into the submitted tab sorted by updated_at"""
     for item in self.submitted_tree.get_children():
         self.submitted_tree.delete(item)
     
-    from fromEvent.database_operations import load_from_db
     records = load_from_db()
     
     if not records:
@@ -40,7 +40,6 @@ def fetch_record(self):
         messagebox.showwarning("Warning", "Please enter a Work ID to search")
         return
     
-    from fromEvent.database_operations import load_from_db
     record = load_from_db(work_id)
     
     if not record:
@@ -75,7 +74,6 @@ def fetch_record(self):
 
 def load_project_data(self, work_id):
     """Load project data into the form"""
-    from fromEvent.database_operations import load_from_db
     record = load_from_db(work_id)
     if not record:
         messagebox.showerror("Error", f"Record with Work ID {work_id} not found")
@@ -95,38 +93,36 @@ def load_project_data(self, work_id):
     self.client_name.delete(0, tk.END)
     self.client_name.insert(0, record['client_name'])
     
-    if record['setup_date']:
+    if record.get('setup_date'):
         try:
             if isinstance(record['setup_date'], str):
-                try:
-                    dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
-                except ValueError:
-                    dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
+                dt = datetime.strptime(record['setup_date'], '%Y-%m-%d')
                 self.setup_date.set_date(dt)
             else:
                 self.setup_date.set_date(record['setup_date'])
         except Exception as e:
             logger.error(f"Error setting setup date: {str(e)}")
             self.setup_date.set_date(datetime.now())
+    else:
+        self.setup_date.set_date(datetime.now())
     
     self.project_name.delete(0, tk.END)
     self.project_name.insert(0, record['project_name'])
     
-    if record['event_date']:
+    if record.get('event_date'):
         try:
             if isinstance(record['event_date'], str):
-                try:
-                    dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
-                except ValueError:
-                    dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
+                dt = datetime.strptime(record['event_date'], '%Y-%m-%d')
                 self.event_date.set_date(dt)
             else:
                 self.event_date.set_date(record['event_date'])
         except Exception as e:
             logger.error(f"Error setting event date: {str(e)}")
             self.event_date.set_date(datetime.now())
+    else:
+        self.event_date.set_date(datetime.now())
     
-    from fromEvent.table_operations import clear_table, add_table_row
+    from toEvent.inventory_table import clear_table, add_table_row
     clear_table(self.table_entries)
     
     for _ in range(len(record.get('inventory_items', [])) - len(self.table_entries)):
@@ -146,16 +142,20 @@ def load_project_data(self, work_id):
         
         for col, field in enumerate(fields):
             if col < len(row):
-                if col == 10:
-                    row[col].set(item.get(field, self.status_options[0]))
+                value = str(item.get(field, ''))
+                if col == 2:  # Inventory column
+                    row[col].set(value)
+                elif col == 10:  # Status column
+                    try:
+                        row[col].set(value if value in self.status_options else self.status_options[0])
+                    except Exception as e:
+                        logger.error(f"Error setting status for row {i}: {str(e)}")
+                        row[col].set(self.status_options[0])
                 else:
                     row[col].delete(0, tk.END)
-                    value = str(item.get(field, ''))
                     row[col].insert(0, value)
     
     self.tab_control.select(0)
-    
-    from fromEvent.new_event_entry import set_fields_readonly
-    set_fields_readonly(self, True)
+    self.set_fields_readonly(True)
     self.edit_btn.config(state=tk.NORMAL)
     self.update_btn.config(state=tk.DISABLED)

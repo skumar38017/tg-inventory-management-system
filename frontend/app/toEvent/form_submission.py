@@ -1,4 +1,5 @@
 from common_imports import *
+from toEvent.database_operations import save_to_db
 
 def submit_form(self):
     """Handle form submission with multiple inventory items"""
@@ -50,14 +51,13 @@ def submit_form(self):
 
         logger.debug(f"Sending payload: {data}")
 
-        from fromEvent.database_operations import save_to_db
         if not save_to_db(data):
             raise Exception("Failed to save to database")
 
         messagebox.showinfo("Success", "Form submitted successfully")
         logger.info(f"Form submitted: {data}")
 
-        from fromEvent.new_event_entry import clear_form, generate_work_id
+        from toEvent.new_event_entry import clear_form, generate_work_id
         clear_form(self)
         generate_work_id(self.work_id)
 
