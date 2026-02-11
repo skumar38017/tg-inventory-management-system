@@ -40,7 +40,7 @@ def create_header_section(window, clock_label_ref):
            font=(universal_font_box_size.qr_barcode_header_font_family, 14, 'bold')).pack()
     
     tk.Label(title_frame, 
-           text="Return From Event Inventory List",
+           text="To Create Event Inventory List",
            font=(universal_font_box_size.qr_barcode_header_font_family, 12, 'bold')).pack()
 
 def update_clock(clock_label_ref, window):

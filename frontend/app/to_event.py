@@ -7,6 +7,8 @@ from api_request.to_event_inventory_request import (
     update_submitted_project_in_db,
     search_project_details_by_id
 )
+from toEvent.bottom_buttons import create_bottom_buttons
+from toEvent.header import create_header_section, update_clock
 class ToEventWindow:
     def __init__(self, parent):
         self.parent = parent
@@ -31,6 +33,9 @@ class ToEventWindow:
 
         # Initialize inventory combo box data
         self.inventory_combo_data = []
+        
+        # Clock label reference
+        self.clock_label_ref = {}
         
         # Initialize database
         self.initialize_db()
@@ -165,44 +170,8 @@ class ToEventWindow:
     def setup_ui(self):
         """Set up all UI elements"""
         # Header section
-        clock_frame = tk.Frame(self.window)
-        clock_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=0)
-        clock_frame.grid_columnconfigure(0, weight=1)
-        clock_frame.grid_columnconfigure(1, weight=0)
-        clock_frame.grid_columnconfigure(2, weight=1)
-
-        self.clock_label = tk.Label(clock_frame, font=('Helvetica', 8))
-        self.clock_label.grid(row=0, column=1, sticky='n', pady=(0,0))
-        self.update_clock()
-
-        # Company info
-        company_frame = tk.Frame(self.window)
-        company_frame.grid(row=1, column=0, columnspan=2, sticky="e", padx=10, pady=0)
-        company_frame.grid_columnconfigure(0, weight=1)
-
-        company_info = """Tagglabs Experiential Pvt. Ltd.
-        Sector 49, Gurugram, Haryana 122018
-        201, Second Floor, Eros City Square Mall
-        Eros City Square
-        098214 43358"""
-
-        company_label = tk.Label(company_frame,
-                               text=company_info,
-                               font=('Helvetica', 7),
-                               justify=tk.RIGHT)
-        company_label.grid(row=0, column=1, sticky='ne', pady=(0,0))
-
-        # Title section
-        title_frame = tk.Frame(self.window)
-        title_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
-        
-        tk.Label(title_frame, 
-               text="Tagglabs Experiential Pvt. Ltd",
-               font=('Helvetica', 14, 'bold')).pack()
-        
-        tk.Label(title_frame, 
-               text="To Create Event Inventory List",
-               font=('Helvetica', 12, 'bold')).pack()
+        create_header_section(self.window, self.clock_label_ref)
+        update_clock(self.clock_label_ref, self.window)
 
         # Information fields
         info_frame = tk.Frame(self.window)
@@ -383,31 +352,14 @@ class ToEventWindow:
         self.setup_search_tab()
 
         # Bottom buttons
-        button_frame = tk.Frame(self.window)
-        button_frame.grid(row=7, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-
-        self.wrap_btn = tk.Button(button_frame, text="Wrap", command=self.toggle_wrap,
-                                font=('Helvetica', 10, 'bold'))
-        self.wrap_btn.pack(side=tk.LEFT, padx=5)
-
-        remove_row_btn = tk.Button(button_frame, text="Remove Row", command=self.remove_table_row,
-                                 font=('Helvetica', 10, 'bold'))
-        remove_row_btn.pack(side=tk.LEFT, padx=5)
-
-        add_row_btn = tk.Button(button_frame, text="Add Row", command=self.add_table_row,
-                              font=('Helvetica', 10, 'bold'))
-        add_row_btn.pack(side=tk.LEFT, padx=5)
-
-        submit_btn = tk.Button(button_frame, text="Submit", command=self.submit_form,
-                             font=('Helvetica', 10, 'bold'))
-        submit_btn.pack(side=tk.LEFT, padx=5)
-
-        return_button = tk.Button(button_frame, 
-                                text="Return to Main", 
-                                command=self.on_close,
-                                font=('Helvetica', 10, 'bold'),
-                                width=15)
-        return_button.pack(side=tk.RIGHT, padx=5)
+        callbacks = {
+            'toggle_wrap': self.toggle_wrap,
+            'remove_row': self.remove_table_row,
+            'add_row': self.add_table_row,
+            'submit': self.submit_form,
+            'close': self.on_close
+        }
+        self.wrap_btn = create_bottom_buttons(self.window, callbacks)
 
         # Grid configuration
         self.window.grid_rowconfigure(0, weight=0)
@@ -1087,11 +1039,6 @@ class ToEventWindow:
         except Exception as e:
             messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
             logger.error(f"Refresh failed: {str(e)}")
-
-    def update_clock(self):
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.clock_label.config(text=now)
-        self.window.after(1000, self.update_clock)
 
     def on_close(self):
         """Handle window closing"""
