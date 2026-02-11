@@ -51,6 +51,8 @@ def add_table_row(scrollable_frame, table_entries, headers, original_column_widt
             combo_frame.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
             
             combo = InventoryComboBox(combo_frame)
+            combo.configure(font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                          height=universal_font_box_size.search_entry_font_size)
             combo.pack(fill=tk.X, expand=True)
             row_entries.append(combo)
         elif col == 10:  # Status column
