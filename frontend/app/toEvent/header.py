@@ -22,8 +22,7 @@ def create_header_section(window, clock_label_ref):
     company_info = """Tagglabs Experiential Pvt. Ltd.
         Sector 49, Gurugram, Haryana 122018
         201, Second Floor, Eros City Square Mall
-        Eros City Square
-        098214 43358"""
+        Eros City Square, 098214 43358"""
 
     company_label = tk.Label(company_frame,
                            text=company_info,

@@ -12,7 +12,7 @@ from api_request.entry_inventory_api_request import (
     filter_inventory_by_date_range,
     get_current_page
 )
-from to_event import ToEventWindow
+from toEvent.to_event import ToEventWindow
 from fromEvent.from_event import FromEventWindow
 from assignPage.assign_inventory import AssignInventoryWindow
 from damagePage.damage_inventory import DamageWindow

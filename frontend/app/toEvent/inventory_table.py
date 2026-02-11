@@ -52,7 +52,8 @@ def add_table_row(scrollable_frame, table_entries, headers, original_column_widt
             
             combo = InventoryComboBox(combo_frame)
             combo.configure(font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
-                          height=universal_font_box_size.search_entry_font_size)
+                          height=universal_font_box_size.search_entry_font_size,
+                          justify='center')
             combo.pack(fill=tk.X, expand=True)
             row_entries.append(combo)
         elif col == 10:  # Status column
@@ -62,7 +63,8 @@ def add_table_row(scrollable_frame, table_entries, headers, original_column_widt
                 textvariable=status_var,
                 values=status_options,
                 state="readonly",
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                justify='center'
             )
             combo.set(status_options[0])
             combo.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)
@@ -75,7 +77,8 @@ def add_table_row(scrollable_frame, table_entries, headers, original_column_widt
         else:
             entry = tk.Entry(scrollable_frame, 
                         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                        width=original_column_widths[col])
+                        width=original_column_widths[col],
+                        justify='center')
             if col == 12:  # RecQty column
                 entry.config(state='readonly')
             entry.grid(row=current_rows+1, column=col, sticky="ew", padx=2, pady=2)

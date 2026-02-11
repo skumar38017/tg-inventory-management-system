@@ -56,7 +56,8 @@ def create_table_row(scrollable_frame, row, headers, column_widths, status_optio
                 textvariable=status_var,
                 values=status_options,
                 state="readonly",
-                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size)
+                font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size),
+                justify='center'
             )
             combo.set(status_options[0])
             combo.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
@@ -64,7 +65,8 @@ def create_table_row(scrollable_frame, row, headers, column_widths, status_optio
         else:
             entry = tk.Entry(scrollable_frame, 
                         font=(universal_font_box_size.qr_barcode_header_font_family, universal_font_box_size.search_entry_font_size), 
-                        width=column_widths[col])
+                        width=column_widths[col],
+                        justify='center')
             entry.grid(row=row, column=col, sticky="ew", padx=2, pady=2)
             row_entries.append(entry)
     return row_entries
