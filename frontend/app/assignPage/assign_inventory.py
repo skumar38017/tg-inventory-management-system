@@ -46,7 +46,7 @@ class AssignInventoryWindow:
         self.window.grid_rowconfigure(5, weight=1)
         self.window.grid_columnconfigure(0, weight=1)
         
-        create_header_section(self.window, self.clock_label_ref)
+        create_header_section(self.window, self.clock_label_ref, "ASSIGN INVENTORY TO EMPLOYEE")
         update_clock(self.clock_label_ref, self.window)
         
         self.search_section = SearchInventorySection(self.window, self)

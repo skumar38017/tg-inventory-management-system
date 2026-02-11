@@ -50,7 +50,7 @@ class FromEventWindow:
     def setup_ui(self):
         """Set up all UI elements"""
         self.clock_label_ref = {}
-        create_header_section(self.window, self.clock_label_ref)
+        create_header_section(self.window, self.clock_label_ref, "Return From Event Inventory List")
         update_clock(self.clock_label_ref, self.window)
         
         entries, self.fetch_btn, self.edit_btn, self.update_btn = create_information_fields(self.window, self)
